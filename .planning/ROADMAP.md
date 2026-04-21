@@ -11,7 +11,7 @@
 ## Phases
 
 - [ ] **Phase 0: Legal & Brand Gate** - Clear Anthropic/Epic/Fab ToS and trademark before any subscription-driving code ships (runs in parallel with Phase 1 plugin-shell work)
-- [ ] **Phase 1: Plugin Shell + Three-Process IPC** - UE C++ plugin + NyraHost Python sidecar + NyraInfer llama.cpp + Slate chat panel skeleton; Ring 0 "it can talk" (2/15 plans complete — 01-03 shipped 2026-04-21; 01-01 shipped 2026-04-21)
+- [ ] **Phase 1: Plugin Shell + Three-Process IPC** - UE C++ plugin + NyraHost Python sidecar + NyraInfer llama.cpp + Slate chat panel skeleton; Ring 0 "it can talk" (3/16 plans complete — 01-03 shipped 2026-04-21; 01-01 shipped 2026-04-21; 01-02 shipped 2026-04-21)
 - [ ] **Phase 2: Subscription Bridge + Four-Version CI Matrix** - Claude CLI subprocess driving with Gemma fallback, transactional safety, safe-mode, console/log tools, EV code-signing, and UE 5.4/5.5/5.6/5.7 CI from day one
 - [ ] **Phase 3: UE5 Knowledge RAG** - Bundled LanceDB index with version-tagged citations, symbol validation, Epic-release auto-updater, and Gemma multimodal offline fallback
 - [ ] **Phase 4: Blueprint + Asset + Material + Actor Tool Catalog** - Deep UE-native Tool Catalog targeting Aura's Blueprint error-reduction benchmark; every tool transactional, every action post-condition-verified
@@ -141,7 +141,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Legal & Brand Gate | 0/? | Not started | - |
-| 1. Plugin Shell + Three-Process IPC | 2/15 | In progress | 01-03 (2026-04-21), 01-01 (2026-04-21) |
+| 1. Plugin Shell + Three-Process IPC | 3/16 | In progress | 01-03 (2026-04-21), 01-01 (2026-04-21), 01-02 (2026-04-21) |
 | 2. Subscription Bridge + Four-Version CI Matrix | 0/? | Not started | - |
 | 3. UE5 Knowledge RAG | 0/? | Not started | - |
 | 4. Blueprint + Asset + Material + Actor Tool Catalog | 0/? | Not started | - |
