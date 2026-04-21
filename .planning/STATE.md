@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: 4
+current_plan: 2
 status: executing
-last_updated: "2026-04-21T21:07:00Z"
+last_updated: "2026-04-21T17:08:37Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 1
-  percent: 6
+  completed_plans: 2
+  percent: 13
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-21 (Plan 01-03 completed)
+**Last Updated:** 2026-04-21 (Plan 01-01 completed)
 
 ---
 
@@ -38,22 +38,22 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 4 of 16 (next to execute)
+Plan: 2 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 4
-**Status:** Executing Phase 01 (Plan 03 complete — two-module scaffold on disk)
+**Current Plan:** 2
+**Status:** Executing Phase 01 (Plans 01, 03 complete — Wave 0 C++ test scaffold and two-module scaffold on disk; Plan 02 Python pytest scaffold next)
 
 **Progress (v1):**
 
 ```text
-[..................] 0/9 phases complete (Phases 0-8), Phase 01 in progress (1/15 plans complete, Plan 03 shipped)
+[.................] 0/9 phases complete (Phases 0-8), Phase 01 in progress (2/15 plans complete, Plans 01 + 03 shipped)
 ```
 
 **Plans completed in Phase 01:**
 
 - [x] Plan 03 — UPlugin two-module scaffold (5 tasks, 5 commits, SUMMARY on disk)
-- [ ] Plan 01 — C++ automation scaffold (Wave 0, pending — overlaps with Plan 03 Tests/; partial stub written by Plan 03 Rule 3 deviation)
+- [x] Plan 01 — C++ automation scaffold (Wave 0, 2 tasks, 2 commits, SUMMARY on disk — upgraded Plan 03 Rule-3 NyraTestFixtures.h stub to full Nyra::Tests namespace; added 4 new spec shells + README)
 - [ ] Plan 02 — Python pytest scaffold (Wave 0, pending)
 - [ ] Plan 04 onwards
 
@@ -89,6 +89,7 @@ Populated as phases complete. Tracks:
 | Phase | Plan | Name                         | Tasks | Files | Duration | Commits                                           |
 | ----- | ---- | ---------------------------- | ----- | ----- | -------- | ------------------------------------------------- |
 | 01    | 03   | uplugin-two-module-scaffold  | 5     | 18    | ~28min   | c650c84 · 1bbf4e4 · 2dd106c · 106ed82 · 2dc2d32   |
+| 01    | 01   | cpp-automation-scaffold      | 2     | 7     | ~34min   | 35ed37d · ca182ba                                 |
 
 ---
 
@@ -126,6 +127,8 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 - UE 5.6 compile of NyraEditor/NyraRuntime modules — deferred to Windows CI (macOS host cannot run UBT/MSVC)
 - `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.Plugin` — deferred to Windows CI (macOS host cannot run UnrealEditor-Cmd.exe)
 - Visual confirmation of NYRA in UE Plugins browser — deferred to Windows dev-machine first open
+- `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.;Quit` enumerates all 5 Nyra.* spec shells from Plan 01 — deferred to Windows CI (same constraint as above)
+- Compile of NyraTestFixtures.cpp + 4 new Nyra.* spec .cpp files against UE 5.6 headers — deferred to Windows CI
 
 ### Phase 1 pre-start checks (awaiting orchestrator or user)
 
@@ -138,18 +141,22 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Last session handoff:**
 
-- Plan 01-03 (uplugin-two-module-scaffold) executed end-to-end on main branch (sequential, no worktree).
+- Plan 01-01 (cpp-automation-scaffold) executed end-to-end on main branch (sequential, no worktree).
+  - 2 atomic commits: 35ed37d · ca182ba
+  - 6 files created + 1 modified under TestProject/Plugins/NYRA/Source/NyraEditor/Private/Tests/
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-01-cpp-automation-scaffold-SUMMARY.md
+  - 2 non-breaking reconciliations with Plan 03: (a) NyraTestFixtures.h stub upgraded in place to full Nyra::Tests namespace (superset — Plan 03 symbols preserved); (b) NyraIntegrationSpec.cpp left untouched because Plan 03's version already satisfied every Plan 01 acceptance literal AND hosts FNyraPluginModulesLoadSpec (PLUG-01)
+  - 3 platform-gap verification deferrals logged (host=macOS, target=Windows — UE 5.6 UBT/MSVC + UnrealEditor-Cmd.exe unavailable)
+
+- Plan 01-03 (uplugin-two-module-scaffold) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 5 atomic commits: c650c84 · 1bbf4e4 · 2dd106c · 106ed82 · 2dc2d32
   - 18 files created under TestProject/, TestProject/Plugins/NYRA/, and docs/
   - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-03-uplugin-two-module-scaffold-SUMMARY.md
-  - 1 auto-fix deviation: minimal Rule-3 NyraTestFixtures.h stub added because Plan 01 has not yet executed
-  - 5 platform-gap verification deferrals logged (host=macOS, target=Windows)
 
 ### Next session
 
-1. Execute Plan 01-01 (cpp-automation-scaffold, Wave 0) — replaces Plan 03's Rule-3 NyraTestFixtures.h stub with the full Nyra::Tests fixture namespace
-2. Execute Plan 01-02 (python-pytest-scaffold, Wave 0)
-3. Continue through Phase 01 Wave 1/2/3 plans (01-04 nomad-tab, 01-05 specs, 01-06 nyrahost-core, etc.)
+1. Execute Plan 01-02 (python-pytest-scaffold, Wave 0) — parallel-safe with Plan 01 (different subtree: Plugins/NYRA/Source/NyraHost/)
+2. Continue through Phase 01 Wave 1/2/3 plans (01-04 nomad-tab, 01-05 specs, 01-06 nyrahost-core, etc.)
 
 **Files-on-disk checkpoint (all present):**
 
@@ -167,4 +174,4 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-21 after Plan 01-03 execution*
+*Last update: 2026-04-21 after Plan 01-01 execution*
