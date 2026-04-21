@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: 1
+current_plan: 4
 status: executing
-last_updated: "2026-04-21T13:48:38.091Z"
+last_updated: "2026-04-21T21:07:00Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 6
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-21 (initialization)
+**Last Updated:** 2026-04-21 (Plan 01-03 completed)
 
 ---
 
@@ -38,17 +38,24 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 1 of 16
+Plan: 4 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 1
-**Status:** Executing Phase 01
+**Current Plan:** 4
+**Status:** Executing Phase 01 (Plan 03 complete — two-module scaffold on disk)
 
 **Progress (v1):**
 
+```text
+[..................] 0/9 phases complete (Phases 0-8), Phase 01 in progress (1/15 plans complete, Plan 03 shipped)
 ```
-[..................] 0/9 phases complete (Phases 0-8)
-```
+
+**Plans completed in Phase 01:**
+
+- [x] Plan 03 — UPlugin two-module scaffold (5 tasks, 5 commits, SUMMARY on disk)
+- [ ] Plan 01 — C++ automation scaffold (Wave 0, pending — overlaps with Plan 03 Tests/; partial stub written by Plan 03 Rule 3 deviation)
+- [ ] Plan 02 — Python pytest scaffold (Wave 0, pending)
+- [ ] Plan 04 onwards
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -76,6 +83,12 @@ Populated as phases complete. Tracks:
 - **Architectural gates cleared:** 0 (Phase 0 legal clearance, Phase 1 three-process IPC, Phase 2 four-version CI + EV cert + subscription bridge, Phase 5 computer-use reliability spike, Phase 7 cold-start release gate)
 - **Cut-lines triggered:** 0 (see `ROADMAP.md#kill-cut-lines`)
 - **Timeline consumed:** 0 weeks of 26-39 week budget (6-9 months)
+
+### Per-plan execution metrics
+
+| Phase | Plan | Name                         | Tasks | Files | Duration | Commits                                           |
+| ----- | ---- | ---------------------------- | ----- | ----- | -------- | ------------------------------------------------- |
+| 01    | 03   | uplugin-two-module-scaffold  | 5     | 18    | ~28min   | c650c84 · 1bbf4e4 · 2dd106c · 106ed82 · 2dc2d32   |
 
 ---
 
@@ -108,6 +121,12 @@ Populated as phases complete. Tracks:
 
 None at initialization. Phase 0 legal emails will be in flight Week 1.
 
+**Deferred verifications (host-platform gap):**
+
+- UE 5.6 compile of NyraEditor/NyraRuntime modules — deferred to Windows CI (macOS host cannot run UBT/MSVC)
+- `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.Plugin` — deferred to Windows CI (macOS host cannot run UnrealEditor-Cmd.exe)
+- Visual confirmation of NYRA in UE Plugins browser — deferred to Windows dev-machine first open
+
 ### Phase 1 pre-start checks (awaiting orchestrator or user)
 
 - [ ] Confirm granularity=standard acceptance of 9 phases (Phase 0 is non-code; 8 code phases within standard band)
@@ -119,16 +138,18 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Last session handoff:**
 
-- Research synthesized (STACK/FEATURES/ARCHITECTURE/PITFALLS → SUMMARY)
-- Founder directives applied (Codex deferred, Python sidecar, API-first external tools, Phase 0 parallel with Phase 1)
-- Roadmap drafted: 9 phases, 34/34 coverage, kill cut-lines explicit, dependency graph mapped
-- STATE initialized
+- Plan 01-03 (uplugin-two-module-scaffold) executed end-to-end on main branch (sequential, no worktree).
+  - 5 atomic commits: c650c84 · 1bbf4e4 · 2dd106c · 106ed82 · 2dc2d32
+  - 18 files created under TestProject/, TestProject/Plugins/NYRA/, and docs/
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-03-uplugin-two-module-scaffold-SUMMARY.md
+  - 1 auto-fix deviation: minimal Rule-3 NyraTestFixtures.h stub added because Plan 01 has not yet executed
+  - 5 platform-gap verification deferrals logged (host=macOS, target=Windows)
 
-**Next session:**
+### Next session
 
-1. Begin Phase 0 legal-gate work (Anthropic + Epic email drafts, trademark screening, Gemma license re-verify)
-2. Begin Phase 1 plugin-shell scaffolding (UE 5.6 C++ module, NyraHost skeleton, loopback WebSocket IPC, NyraInfer spawn)
-3. Run `/gsd-plan-phase 0` and `/gsd-plan-phase 1` to decompose into executable plans
+1. Execute Plan 01-01 (cpp-automation-scaffold, Wave 0) — replaces Plan 03's Rule-3 NyraTestFixtures.h stub with the full Nyra::Tests fixture namespace
+2. Execute Plan 01-02 (python-pytest-scaffold, Wave 0)
+3. Continue through Phase 01 Wave 1/2/3 plans (01-04 nomad-tab, 01-05 specs, 01-06 nyrahost-core, etc.)
 
 **Files-on-disk checkpoint (all present):**
 
@@ -146,3 +167,4 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
+*Last update: 2026-04-21 after Plan 01-03 execution*
