@@ -10,6 +10,18 @@ NYRA is a free Unreal Engine 5 plugin, distributed on Fab, that gives UE develop
 
 If everything else fails, this must work: the user hands NYRA a reference, NYRA uses the user's own Claude/Codex subscription to plan and execute, drives the tools needed via computer-use, and delivers a UE-native result (imported meshes, authored materials, spawned actors, configured lighting).
 
+## Quality Bar
+
+**NYRA must be materially better than every competitor on every dimension it competes on.** Parity with Nwiro, Aura (Telos), Ultimate Engine CoPilot, Ludus AI, or the OSS MCP servers is a failure state. Every phase goal, requirement, and success criterion in this project carries the same bar: *beats competitor X on dimension Y*, not *matches X*.
+
+Concrete implications that downstream plans must respect:
+- Tool / action count ≥ Ultimate Engine CoPilot's 1,050+ actions, OR an explicit depth-over-breadth argument with measurable proof
+- Blueprint reasoning accuracy / speed ≥ Aura Telos 2.0's published baselines (25× error reduction)
+- UE version update latency < any competitor (day-of support for new UE releases, not day-one)
+- Reference-video → matched scene: no competitor ships this; NYRA must set the benchmark
+- Subscription-driven (Claude + Codex) economics: no competitor ships this; defend the wedge relentlessly
+- If a plan reads like "reach parity with X", it gets rejected and re-scoped before execution
+
 ## Requirements
 
 ### Validated
