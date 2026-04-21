@@ -1,0 +1,32 @@
+{
+    "$schema_version": 1,
+    "comment": "Values must mirror ModelPins.h. Update both in same commit. Resolved 2026-04-21 from upstream release metadata (python-build-standalone/latest-release.json, huggingface.co/api/models/google/gemma-3-4b-it-qat-q4_0-gguf, api.github.com/repos/ggml-org/llama.cpp/releases/latest).",
+    "python_build_standalone": {
+        "tag": "20260414",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.12.13+20260414-x86_64-pc-windows-msvc-install_only.tar.gz",
+        "sha256": "c5a9e011e284c49c48106ca177342f3e3f64e95b4c6652d4a382cc7c9bb1cc46",
+        "dest": "Binaries/Win64/NyraHost/cpython/"
+    },
+    "llama_server_cuda": {
+        "tag": "b8870",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b8870/llama-b8870-bin-win-cuda-12.4-x64.zip",
+        "sha256": "2497c31b7bff97cf978ee5a4ea08cdedc1381f692dad1acb45895677a8547626",
+        "dest": "Binaries/Win64/NyraInfer/cuda/",
+        "extract": "llama-server.exe"
+    },
+    "llama_server_vulkan": {
+        "tag": "b8870",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b8870/llama-b8870-bin-win-vulkan-x64.zip",
+        "sha256": "efb8c9cf5d1812328a079ff388b7d5d43add79ed382045cc6437e63011a4611c",
+        "dest": "Binaries/Win64/NyraInfer/vulkan/",
+        "extract": "llama-server.exe"
+    },
+    "llama_server_cpu": {
+        "tag": "b8870",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b8870/llama-b8870-bin-win-cpu-x64.zip",
+        "sha256": "be637acd74a2428539f4f19c2fba9d6054794322eb2b9848047ac7562e6768e0",
+        "dest": "Binaries/Win64/NyraInfer/cpu/",
+        "extract": "llama-server.exe"
+    },
+    "gemma_model_note": "Gemma GGUF (filename gemma-3-4b-it-qat-q4_0.gguf per repo naming; actual HF filename is gemma-3-4b-it-q4_0.gguf) is NOT a prebuild artefact — downloaded at runtime to <ProjectDir>/Saved/NYRA/models/ per D-17. See ModelPins::GemmaGgufUrl (pinned to revision 15f73f5eee9c28f53afefef5723e29680c2fc78a, SHA256 76aed0a8285b83102f18b5d60e53c70d09eb4e9917a20ce8956bd546452b56e2). Repo is GATED — user must accept Gemma license on HF + supply an access token; Plan 09 surfaces this as -32005 gemma_not_installed with remediation."
+}
