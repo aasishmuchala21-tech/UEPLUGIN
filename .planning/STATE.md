@@ -22,9 +22,9 @@
 ## Current Position
 
 **Milestone:** v1 (Fab launch)
-**Current Phase:** Not started (roadmap just created)
-**Current Plan:** —
-**Status:** Roadmap approved; ready for `/gsd-plan-phase 0` (Legal & Brand Gate) and `/gsd-plan-phase 1` (Plugin Shell + Three-Process IPC) to begin in parallel.
+**Current Phase:** 1 — Plugin Shell + Three-Process IPC (planned, ready to execute)
+**Current Plan:** 0 of 16 plans executed
+**Status:** Phase 1 fully planned — CONTEXT.md + RESEARCH.md + VALIDATION.md + 16 PLAN.md files committed. Verification passed iteration 2/3. Ready for `/gsd:execute-phase 1` in a fresh top-level session. Phase 0 (Legal & Brand Gate) still needs `/gsd:discuss-phase 0` + `/gsd:plan-phase 0 --skip-research` and runs in parallel.
 
 **Progress (v1):**
 
