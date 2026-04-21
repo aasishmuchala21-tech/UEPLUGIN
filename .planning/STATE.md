@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: 3
+current_plan: 4
 status: executing
-last_updated: "2026-04-21T17:31:14Z"
+last_updated: "2026-04-21T17:58:36Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 3
-  percent: 19
+  completed_plans: 4
+  percent: 25
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-21 (Plan 01-02 completed)
+**Last Updated:** 2026-04-21 (Plan 01-04 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 4 of 16 (next to execute)
+Plan: 5 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 3 (incrementing toward 04-nomad-tab)
-**Status:** Executing Phase 01 (Plans 01, 02, 03 complete — Wave 0 C++ + Python test scaffolds and two-module scaffold all on disk; Plan 04 nomad-tab next)
+**Current Plan:** 4 (incrementing toward 05-specs-handshake-jsonrpc-pins)
+**Status:** Executing Phase 01 (Plans 01, 02, 03, 04 complete — Wave 0 C++ + Python test scaffolds, two-module scaffold, and Wave 1 nomad-tab-placeholder-panel all on disk; Plan 05 specs/handshake next)
 
 **Progress (v1):**
 
 ```text
-[██░░░░░░░░] 19% — 0/9 phases complete (Phases 0-8), Phase 01 in progress (3/16 plans complete, Plans 01 + 02 + 03 shipped)
+[██▌░░░░░░░] 25% — 0/9 phases complete (Phases 0-8), Phase 01 in progress (4/16 plans complete, Plans 01 + 02 + 03 + 04 shipped)
 ```
 
 **Plans completed in Phase 01:**
@@ -55,7 +55,8 @@ Plan: 4 of 16 (next to execute)
 - [x] Plan 03 — UPlugin two-module scaffold (5 tasks, 5 commits, SUMMARY on disk)
 - [x] Plan 01 — C++ automation scaffold (Wave 0, 2 tasks, 2 commits, SUMMARY on disk — upgraded Plan 03 Rule-3 NyraTestFixtures.h stub to full Nyra::Tests namespace; added 4 new spec shells + README)
 - [x] Plan 02 — Python pytest scaffold (Wave 0, 2 tasks, 2 commits, SUMMARY on disk — pyproject.toml + requirements-dev.lock + conftest.py with 4 fixtures + 9 @pytest.mark.skip test shells + README; pytest verified live on macOS host 9 skipped/0 failed/0 errors)
-- [ ] Plan 04 onwards
+- [x] Plan 04 — Nomad tab placeholder panel (Wave 1, 3 tasks, 3 commits, SUMMARY on disk — Nyra::NyraChatTabId + SNyraChatPanel placeholder + Tools > NYRA > Chat menu wiring + Nyra.Panel.TabSpawner automation It block closing VALIDATION 1-04-01)
+- [ ] Plan 05 onwards
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -86,11 +87,12 @@ Populated as phases complete. Tracks:
 
 ### Per-plan execution metrics
 
-| Phase | Plan | Name                         | Tasks | Files | Duration | Commits                                           |
-| ----- | ---- | ---------------------------- | ----- | ----- | -------- | ------------------------------------------------- |
-| 01    | 03   | uplugin-two-module-scaffold  | 5     | 18    | ~28min   | c650c84 · 1bbf4e4 · 2dd106c · 106ed82 · 2dc2d32   |
-| 01    | 01   | cpp-automation-scaffold      | 2     | 7     | ~34min   | 35ed37d · ca182ba                                 |
-| 01    | 02   | python-pytest-scaffold       | 2     | 14    | ~9min    | 1465d8d · 0cbfe95                                 |
+| Phase | Plan | Name                             | Tasks | Files | Duration | Commits                                           |
+| ----- | ---- | -------------------------------- | ----- | ----- | -------- | ------------------------------------------------- |
+| 01    | 03   | uplugin-two-module-scaffold      | 5     | 18    | ~28min   | c650c84 · 1bbf4e4 · 2dd106c · 106ed82 · 2dc2d32   |
+| 01    | 01   | cpp-automation-scaffold          | 2     | 7     | ~34min   | 35ed37d · ca182ba                                 |
+| 01    | 02   | python-pytest-scaffold           | 2     | 14    | ~9min    | 1465d8d · 0cbfe95                                 |
+| 01    | 04   | nomad-tab-placeholder-panel      | 3     | 5     | ~8min    | 224ffa7 · 628de82 · cf3ab9c                       |
 
 ---
 
@@ -126,6 +128,14 @@ Populated as phases complete. Tracks:
 - Did NOT silence pytest-asyncio's `asyncio_default_fixture_loop_scope` deprecation warning — PLAN.md's `<interfaces>` specifies EXACT contents and the key is Optional per Context7 docs. Plan 06 (first real async test writer) is the right place to pick a fixture loop scope.
 - Kept `mock_llama_server` async-signatured with a `None`-returning body (instead of making it sync) — locks the callsite shape `await mock_llama_server` for all Plan 06/07 callers today; Plan 08 swaps the body without breaking any caller.
 
+### Decisions from Plan 04 (nomad-tab-placeholder-panel, 2026-04-21)
+
+- Accepted UE 5.6 nomad-tab floating-default dock over explicit right-side 420px placement. UE 5.6 FTabSpawnerEntry does not expose a stable `SetDefaultDockArea` API; enforcing right-side placement requires `FTabManager::FLayout` which needs a saved layout to already exist (chicken-and-egg at StartupModule time). Plan 12 revisits via `FLayoutExtender` when the panel gains persistent layout config.
+- Named FName constants (Nyra::NyraChatTabId etc.) in a canonical header (Public/NyraChatTabNames.h) instead of inline FName literals — single source of truth shared by module registrar, unregistrar, Tools-menu FUIAction callback, and automation test.
+- UToolMenus::RegisterStartupCallback (not direct ExtendMenu during StartupModule) — LoadingPhase PostEngineInit fires before the level editor menu tree is fully populated; the callback queues the extension until UToolMenus signals ready. Matches how FLevelEditorModule registers its own extensions.
+- LOCTEXT namespace split: "NyraEditor" for module-owned strings (tab/menu labels), "NyraChatPanel" for widget-owned strings (panel copy). Plan 12 extends "NyraChatPanel" without touching module labels — separates localizer surfaces.
+- Module-superset pattern locked: every plan that modifies NyraEditorModule.cpp MUST preserve prior plans' symbols and log lines verbatim (Plan 04 preserved Plan 03's IMPLEMENT_MODULE line and StartupModule log line per explicit acceptance criteria). New wiring only appends. Plans 10/12/13 inherit this contract.
+
 ### Blockers
 
 None at initialization. Phase 0 legal emails will be in flight Week 1.
@@ -137,6 +147,9 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 - Visual confirmation of NYRA in UE Plugins browser — deferred to Windows dev-machine first open
 - `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.;Quit` enumerates all 5 Nyra.* spec shells from Plan 01 — deferred to Windows CI (same constraint as above)
 - Compile of NyraTestFixtures.cpp + 4 new Nyra.* spec .cpp files against UE 5.6 headers — deferred to Windows CI
+- UE 5.6 compile of SNyraChatPanel + updated NyraEditorModule.cpp with new UE include surface (Framework/Docking/TabManager.h, Widgets/Docking/SDockTab.h, WorkspaceMenuStructure, WorkspaceMenuStructureModule, ToolMenus, Styling/AppStyle.h) — deferred to Windows CI (Plan 04)
+- `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.Panel.TabSpawner;Quit` exit 0 — deferred to Windows CI (Plan 04, VALIDATION 1-04-01 closes here)
+- Manual verification: Tools -> NYRA -> Chat menu entry appears on editor launch + clicking it spawns a nomad tab rendering "NYRA — not yet connected" — deferred to Windows dev-machine first open (Plan 04)
 
 **Plan 02 (python-pytest-scaffold): ZERO platform-gap deferrals.** Full pytest verification (`pytest tests/ -v` 9 skipped / 0 failed / 0 errors) was executed live on macOS Darwin with Python 3.13.5 and a dev venv pinned to pytest 8.3.3 + pytest-asyncio 0.24.0 + pytest-httpx 0.32.0 + httpx.
 
@@ -151,7 +164,15 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Last session handoff:**
 
-- Plan 01-02 (python-pytest-scaffold) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-04 (nomad-tab-placeholder-panel) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 3 atomic commits: 224ffa7 · 628de82 · cf3ab9c
+  - 3 files created (NyraChatTabNames.h, SNyraChatPanel.h, SNyraChatPanel.cpp) + 2 modified (NyraEditorModule.cpp additive superset of Plan 03, NyraPanelSpec.cpp additive superset of Plan 01)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-04-nomad-tab-placeholder-panel-SUMMARY.md
+  - ZERO Rule-1/2/3/4 deviations — plan content was followed exactly. 2 PLAN.md-mandated non-breaking supersets (NyraEditorModule.cpp preserves Plan 03's IMPLEMENT_MODULE line and StartupModule log line verbatim per Task 2 acceptance criteria; NyraPanelSpec.cpp preserves Plan 01's BEGIN_DEFINE_SPEC signature + #if WITH_AUTOMATION_TESTS guard + Plan 12 placeholder comments).
+  - 4 platform-gap deferrals logged (UE 5.6 UBT/MSVC compile of the new Slate + ToolMenus surface; UnrealEditor-Cmd.exe Nyra.Panel.TabSpawner run; Tools -> NYRA -> Chat menu visual confirmation; nomad tab spawn manual verification — all Windows-only).
+  - All 29 grep-level acceptance literals across Tasks 1+2+3 pass.
+
+- Plan 01-02 (python-pytest-scaffold) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 2 atomic commits: 1465d8d · 0cbfe95
   - 14 files created under TestProject/Plugins/NYRA/Source/NyraHost/ + 1 modified (TestProject/.gitignore — Python dev-tooling ignores appended)
   - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-02-python-pytest-scaffold-SUMMARY.md
@@ -173,8 +194,8 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 ### Next session
 
-1. Execute Plan 01-04 (nomad-tab-placeholder-panel, Wave 1) — first UI-layer C++ plan; registers the `NyraChatTab` tab spawner and lands the empty SDockTab shell. The Plan 01 NyraPanelSpec.cpp is ready to accept the TabSpawner It() block.
-2. Continue through Phase 01 Wave 1/2/3 plans (01-05 specs, 01-06 nyrahost-core, etc.)
+1. Execute Plan 01-05 (specs-handshake-jsonrpc-pins) — lands the JSON-RPC 2.0 envelope specification, D-06 handshake file schema pins, and supervisor fault-injection clock pins. Pure spec + fixture work; does not touch NyraEditorModule.cpp.
+2. Continue through Phase 01 Wave 2/3 plans (01-06 nyrahost-core, 01-07 storage/attachments, 01-08 infer spawn + Ollama detect, 01-09 gemma downloader, 01-10 cpp supervisor + ws/jsonrpc, 01-11 markdown parser, 01-12 chat panel streaming, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
 
 **Files-on-disk checkpoint (all present):**
 
@@ -192,4 +213,4 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-21 after Plan 01-02 execution*
+*Last update: 2026-04-21 after Plan 01-04 execution*
