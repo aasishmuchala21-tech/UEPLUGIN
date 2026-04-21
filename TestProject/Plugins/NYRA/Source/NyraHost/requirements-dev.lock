@@ -1,0 +1,18 @@
+# Dev-only — NOT included in Binaries/Win64/NyraHost/wheels/ (runtime deps live in requirements.lock in Plan 06).
+#
+# Install on a developer machine with:
+#   python -m venv .venv-dev
+#   .venv-dev\Scripts\activate           (Windows)
+#   source .venv-dev/bin/activate        (macOS/Linux)
+#   pip install -r requirements-dev.lock
+#
+# Pins chosen to match VALIDATION.md §"Test Infrastructure" and RESEARCH §"Validation Architecture".
+# When bumping versions, re-verify the pyproject.toml [tool.pytest.ini_options] shape against
+# pytest-asyncio release notes (breaking-change-prone; current minor is 0.24.x).
+
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-httpx==0.32.0
+black==24.10.0
+ruff==0.7.1
+mypy==1.13.0

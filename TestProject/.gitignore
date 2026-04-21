@@ -18,3 +18,11 @@
 /Plugins/NYRA/Binaries/Win64/UnrealEditor-*.dll
 /Plugins/NYRA/Binaries/Win64/UnrealEditor-*.pdb
 /Plugins/NYRA/Intermediate/
+
+# NyraHost Python dev-tooling artefacts (NOT shipped; Plan 02 scaffold)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv-dev/

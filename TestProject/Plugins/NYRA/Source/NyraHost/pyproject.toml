@@ -1,0 +1,46 @@
+# NyraHost — Python MCP sidecar for the NYRA Unreal Engine plugin.
+#
+# This descriptor is used ONLY by developer tooling (pytest, black, ruff, mypy)
+# running against the developer's system Python 3.12+. It is NOT consumed by the
+# shipped plugin — runtime Python deps live in requirements.lock (Plan 06 adds
+# that file and the wheel cache under Binaries/Win64/NyraHost/wheels/).
+#
+# Per CONTEXT.md:
+#   D-13 — Plugin bundles astral-sh python-build-standalone CPython 3.12 Windows x64
+#   D-14 — Runtime uses a pre-resolved wheel cache; tests use system Python instead
+#   D-15 — Phase 1 deps: mcp, websockets, httpx, pydantic, structlog (not declared here)
+#
+# Sources (fetched 2026-04-21 via Context7 /pytest-dev/pytest-asyncio):
+#   pytest-asyncio 'auto' mode pyproject.toml canonical shape confirmed.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nyrahost"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "integration: end-to-end tests that spawn real subprocesses (default: skip in CI quick)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
