@@ -134,50 +134,61 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` after it's generated.
+Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for phase definitions, success criteria, and dependency graph.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLUG-01 | TBD | Pending |
-| PLUG-02 | TBD | Pending |
-| PLUG-03 | TBD | Pending |
-| PLUG-04 | TBD | Pending |
-| PLUG-05 | TBD | Pending |
-| CHAT-01 | TBD | Pending |
-| CHAT-02 | TBD | Pending |
-| CHAT-03 | TBD | Pending |
-| CHAT-04 | TBD | Pending |
-| SUBS-01 | TBD | Pending |
-| SUBS-02 | TBD | Pending |
-| SUBS-03 | TBD | Pending |
-| KNOW-01 | TBD | Pending |
-| KNOW-02 | TBD | Pending |
-| KNOW-03 | TBD | Pending |
-| KNOW-04 | TBD | Pending |
-| ACT-01 | TBD | Pending |
-| ACT-02 | TBD | Pending |
-| ACT-03 | TBD | Pending |
-| ACT-04 | TBD | Pending |
-| ACT-05 | TBD | Pending |
-| ACT-06 | TBD | Pending |
-| ACT-07 | TBD | Pending |
-| SCENE-01 | TBD | Pending |
-| SCENE-02 | TBD | Pending |
-| GEN-01 | TBD | Pending |
-| GEN-02 | TBD | Pending |
-| GEN-03 | TBD | Pending |
-| DEMO-01 | TBD | Pending |
-| DEMO-02 | TBD | Pending |
-| DIST-01 | TBD | Pending |
-| DIST-02 | TBD | Pending |
-| DIST-03 | TBD | Pending |
-| DIST-04 | TBD | Pending |
+| PLUG-01 | Phase 1 | Pending |
+| PLUG-02 | Phase 1 | Pending |
+| PLUG-03 | Phase 1 | Pending |
+| PLUG-04 | Phase 2 | Pending |
+| PLUG-05 | Phase 0 | Pending |
+| CHAT-01 | Phase 1 | Pending |
+| CHAT-02 | Phase 2 | Pending |
+| CHAT-03 | Phase 2 | Pending |
+| CHAT-04 | Phase 2 | Pending |
+| SUBS-01 | Phase 2 | Pending |
+| SUBS-02 | Phase 2 | Pending |
+| SUBS-03 | Phase 2 | Pending |
+| KNOW-01 | Phase 3 | Pending |
+| KNOW-02 | Phase 3 | Pending |
+| KNOW-03 | Phase 3 | Pending |
+| KNOW-04 | Phase 3 | Pending |
+| ACT-01 | Phase 4 | Pending |
+| ACT-02 | Phase 4 | Pending |
+| ACT-03 | Phase 4 | Pending |
+| ACT-04 | Phase 4 | Pending |
+| ACT-05 | Phase 4 | Pending |
+| ACT-06 | Phase 2 | Pending |
+| ACT-07 | Phase 2 | Pending |
+| SCENE-01 | Phase 6 | Pending |
+| SCENE-02 | Phase 7 | Pending |
+| GEN-01 | Phase 5 | Pending |
+| GEN-02 | Phase 5 | Pending |
+| GEN-03 | Phase 5 | Pending |
+| DEMO-01 | Phase 6 | Pending |
+| DEMO-02 | Phase 7 | Pending |
+| DIST-01 | Phase 8 | Pending |
+| DIST-02 | Phase 8 | Pending |
+| DIST-03 | Phase 8 | Pending |
+| DIST-04 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 33 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 33 ⚠ (will be resolved by the roadmapper)
+- v1 requirements: 34 total
+- Mapped to phases: 34 ✓
+- Unmapped: 0 ✓
+
+**Distribution by phase:**
+- Phase 0 (Legal & Brand Gate): 1 (PLUG-05)
+- Phase 1 (Plugin Shell + Three-Process IPC): 4 (PLUG-01, PLUG-02, PLUG-03, CHAT-01)
+- Phase 2 (Subscription Bridge + Four-Version CI Matrix): 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07)
+- Phase 3 (UE5 Knowledge RAG): 4 (KNOW-01, KNOW-02, KNOW-03, KNOW-04)
+- Phase 4 (Blueprint + Asset + Material + Actor Tool Catalog): 5 (ACT-01, ACT-02, ACT-03, ACT-04, ACT-05)
+- Phase 5 (External Tool Integrations): 3 (GEN-01, GEN-02, GEN-03)
+- Phase 6 (Image-to-Scene, Fallback Demo): 2 (SCENE-01, DEMO-01)
+- Phase 7 (Video-to-Matched-Shot, LAUNCH DEMO): 2 (SCENE-02, DEMO-02)
+- Phase 8 (Fab Launch Prep): 4 (DIST-01, DIST-02, DIST-03, DIST-04)
 
 ---
 *Requirements defined: 2026-04-21*
-*Last updated: 2026-04-21 after research synthesis + founder decisions*
+*Last updated: 2026-04-21 after roadmapper mapped all 34 v1 requirements to 9 phases*
