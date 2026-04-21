@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.6",
+	"Category": "",
+	"Description": "NYRA test host project",
+	"Modules": [
+		{
+			"Name": "TestProject",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "NYRA",
+			"Enabled": true
+		}
+	]
+}

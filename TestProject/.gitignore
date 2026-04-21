@@ -1,0 +1,20 @@
+# UE build artefacts
+/Binaries/
+/Intermediate/
+/DerivedDataCache/
+/Saved/
+*.sln
+*.VC.db
+*.opendb
+*.suo
+.vs/
+
+# Plugin binary artefacts (fetched by prebuild.ps1, NOT committed)
+/Plugins/NYRA/Binaries/Win64/NyraHost/cpython/
+/Plugins/NYRA/Binaries/Win64/NyraHost/wheels/
+/Plugins/NYRA/Binaries/Win64/NyraInfer/
+
+# Plugin-build outputs (compiled DLLs)
+/Plugins/NYRA/Binaries/Win64/UnrealEditor-*.dll
+/Plugins/NYRA/Binaries/Win64/UnrealEditor-*.pdb
+/Plugins/NYRA/Intermediate/
