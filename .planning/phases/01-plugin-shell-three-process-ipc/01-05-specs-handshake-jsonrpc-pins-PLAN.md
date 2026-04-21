@@ -133,6 +133,8 @@ Phase 1 method surface (D-10) — six methods exactly:
 | chat/stream | NyraHost -> UE (notification) | params: `{conversation_id, req_id, delta, done, cancelled?, usage?, error?}` | Token delta (one frame per model chunk) |
 | chat/cancel | UE -> NyraHost (notification) | params: `{conversation_id, req_id}` | Idempotent cancel |
 | shutdown | UE -> NyraHost (notification) | params: `{}` | Graceful close |
+| sessions/list | UE -> NyraHost (request) | params: `{limit?: int}` → result: `{conversations: [{id, title, updated_at, message_count}, …]}` | History drawer list (CD-05, Plan 12b) |
+| sessions/load | UE -> NyraHost (request) | params: `{conversation_id, limit?: int}` → result: `{conversation_id, messages: [{id, role, content, created_at, attachments}, …]}` | Load a past conversation (CD-05, Plan 12b) |
 
 Plus one ADDITIONAL notification (resolves Open Question 7):
 
@@ -410,13 +412,45 @@ Error codes (D-11):
     `status=="error"`, an `error` field is present with the same shape as
     chat/stream's error field.
 
+    ### 3.8 `sessions/list` — Request (UE → NyraHost)
+
+    Returns recent conversations for the history drawer (CD-05).
+
+    Request:
+    ```json
+    {"jsonrpc":"2.0","id":4,"method":"sessions/list","params":{"limit":50}}
+    ```
+    Response (`params.limit` optional, default 50; sorted by `updated_at` DESC):
+    ```json
+    {"jsonrpc":"2.0","id":4,"result":{"conversations":[
+      {"id":"<uuid>","title":"Fix lighting","updated_at":1713690000000,"message_count":12}
+    ]}}
+    ```
+
+    ### 3.9 `sessions/load` — Request (UE → NyraHost)
+
+    Loads the last N messages for a conversation (default N=200).
+
+    Request:
+    ```json
+    {"jsonrpc":"2.0","id":5,"method":"sessions/load","params":{"conversation_id":"<uuid>","limit":200}}
+    ```
+    Response:
+    ```json
+    {"jsonrpc":"2.0","id":5,"result":{
+      "conversation_id":"<uuid>",
+      "messages":[
+        {"id":"<uuid>","role":"user","content":"hi","created_at":1713689999000,"attachments":[]},
+        {"id":"<uuid>","role":"assistant","content":"hello","created_at":1713690000000,"attachments":[]}
+      ]
+    }}
+    ```
+
     ## 4. Reserved (not in Phase 1)
 
     - `diagnostics/tail` — log tailing. **Phase 2 addition.** Phase 1 panel
       reads `Saved/NYRA/logs/nyrahost-YYYY-MM-DD.log` directly via
       `FFileHelper::LoadFileToStringArray`.
-    - `chat/list`, `chat/load` — history drawer SQLite read. Phase 2 wires
-      SQLiteCore in UE; Phase 1 renders only the current session.
 
     ## 5. Error codes
 
@@ -473,6 +507,8 @@ Error codes (D-11):
       - `grep -c "chat/cancel" docs/JSONRPC.md` >= 2
       - `grep -c "shutdown" docs/JSONRPC.md` >= 2
       - `grep -c "diagnostics/download-progress" docs/JSONRPC.md` >= 2
+      - `grep -c "sessions/list" docs/JSONRPC.md` >= 2
+      - `grep -c "sessions/load" docs/JSONRPC.md` >= 2
       - `grep -c "^| -32001" docs/ERROR_CODES.md` equals 1
       - `grep -c "^| -32002" docs/ERROR_CODES.md` equals 1
       - `grep -c "^| -32003" docs/ERROR_CODES.md` equals 1
@@ -489,6 +525,7 @@ Error codes (D-11):
     - File docs/HANDSHAKE.md contains literal text `FFileHelper::LoadFileToString`
     - File docs/JSONRPC.md contains literal text `## Method: session/authenticate` OR `### 3.1 \`session/authenticate\``
     - File docs/JSONRPC.md contains all 6 locked method names: `session/authenticate`, `session/hello`, `chat/send`, `chat/stream`, `chat/cancel`, `shutdown`
+    - File docs/JSONRPC.md contains literal text `sessions/list` and `sessions/load` (history drawer methods, per Plan 12b)
     - File docs/JSONRPC.md contains literal text `diagnostics/download-progress`
     - File docs/JSONRPC.md contains literal text `close code 4401`
     - File docs/JSONRPC.md contains literal text `{"jsonrpc":"2.0"`
@@ -656,6 +693,10 @@ Error codes (D-11):
     - File ModelPins.cpp exists and `#include "ModelPins.h"`
     - File assets-manifest.json is valid JSON (parses with python json.load)
     - File assets-manifest.json contains top-level keys `python_build_standalone`, `llama_server_cuda`, `llama_server_vulkan`, `llama_server_cpu`
+    - File assets-manifest.json entry `python_build_standalone.dest` equals the literal string `Binaries/Win64/NyraHost/cpython/` (trailing slash included)
+    - File assets-manifest.json entry `llama_server_cuda.dest` equals the literal string `Binaries/Win64/NyraInfer/cuda/` (trailing slash included)
+    - File assets-manifest.json entry `llama_server_vulkan.dest` equals the literal string `Binaries/Win64/NyraInfer/vulkan/` (trailing slash included)
+    - File assets-manifest.json entry `llama_server_cpu.dest` equals the literal string `Binaries/Win64/NyraInfer/cpu/` (trailing slash included)
     - File assets-manifest.json contains the literal text `gemma-3-4b-it-qat-q4_0.gguf`
     - Either: (a) all `TODO_RESOLVE_AT_BUILD` replaced with real values in both files, OR (b) SUMMARY.md documents network-offline blocker and lists the curl commands needed to resolve
   </acceptance_criteria>

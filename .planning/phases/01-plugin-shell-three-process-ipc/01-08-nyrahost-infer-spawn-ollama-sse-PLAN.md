@@ -36,6 +36,7 @@ must_haves:
     - "chat/send with backend=gemma-local + req_id triggers lazy NyraInfer spawn if not running; first token arrives via chat/stream notification within the test timeout"
     - "chat/cancel {conversation_id, req_id} closes the in-flight HTTP stream and emits final chat/stream with done=true, cancelled=true"
     - "NyraInfer is SIGTERMed if idle >10 minutes (background task every 60s tracks last_infer_request_ts)"
+    - "chat/send with params.attachments=[path, path, …] calls Storage.ingest_attachment for each path (content-addressed hardlink/copy per Plan 07) BEFORE streaming and binds the returned Attachment rows to the persisted user message (CD-04)"
     - "pytest tests/test_infer_spawn.py + test_ollama_detect.py + test_sse_parser.py all pass"
   artifacts:
     - path: TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/infer/llama_server.py
@@ -999,6 +1000,7 @@ Backend base URLs (router returns one):
     class ChatHandlers:
         storage: Storage
         router: InferRouter
+        project_saved: Path  # <ProjectDir>/Saved — needed for attachments.ingest_attachment (CD-04)
         # Map of req_id -> cancel Event (so chat/cancel can find the right stream)
         _inflight: dict[str, asyncio.Event] = field(default_factory=dict)
 
@@ -1026,7 +1028,32 @@ Backend base URLs (router returns one):
                      int(asyncio.get_event_loop().time() * 1000)),
                 )
                 self.storage.conn.commit()
-            self.storage.append_message(conversation_id=conv_id, role="user", content=content)
+            # Attachment ingestion (CD-04). `params.attachments` (optional) is a list
+            # of absolute file path strings forwarded from UE. For each path, call
+            # `attachments.ingest_attachment(Path(p), project_saved=<ProjectSaved>)`
+            # (Plan 07) BEFORE streaming tokens. The returned AttachmentRef is then
+            # bound to the persisted user-message row via `storage.link_attachment`.
+            ingested_refs: list = []
+            raw_attachments = params.get("attachments") or []
+            user_msg = self.storage.append_message(
+                conversation_id=conv_id, role="user", content=content,
+            )
+            if isinstance(raw_attachments, list) and raw_attachments:
+                from pathlib import Path as _Path
+                from ..attachments import ingest_attachment as _ingest_attachment  # Plan 07 export
+                project_saved = self.project_saved
+                for pth in raw_attachments:
+                    if not isinstance(pth, str) or not pth:
+                        continue
+                    try:
+                        ref = _ingest_attachment(_Path(pth), project_saved=project_saved)
+                        self.storage.link_attachment(
+                            message_id=user_msg.id, kind=ref.kind, path=ref.path,
+                            size_bytes=ref.size_bytes, sha256=ref.sha256,
+                        )
+                        ingested_refs.append(ref)
+                    except Exception as _e:  # noqa: BLE001
+                        log.warning("attachment_ingest_failed", path=pth, err=str(_e))
 
             cancel = asyncio.Event()
             self._inflight[req_id] = cancel
@@ -1157,7 +1184,7 @@ Backend base URLs (router returns one):
         )
         await router.start()
 
-        handlers = ChatHandlers(storage=storage, router=router)
+        handlers = ChatHandlers(storage=storage, router=router, project_saved=project_dir / "Saved")
 
         def register(server: NyraServer) -> None:
             # chat/send needs the websocket to emit streaming notifications;
@@ -1279,6 +1306,7 @@ Backend base URLs (router returns one):
       - `grep -c "class ChatHandlers" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/handlers/chat.py` equals 1
       - `grep -c "class GemmaNotInstalledError" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/handlers/chat.py` equals 1
       - `grep -c "build_notification(\"chat/stream\"" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/handlers/chat.py` >= 2
+      - `grep -c "ingest_attachment" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/handlers/chat.py` >= 1
       - `grep -c "def gemma_gguf_path" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/app.py` equals 1
       - `grep -c "build_and_run" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/app.py` >= 1
       - `grep -c "--project-dir" TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/__main__.py` equals 1
@@ -1292,6 +1320,8 @@ Backend base URLs (router returns one):
     - handlers/chat.py exports `GemmaNotInstalledError` exception
     - handlers/chat.py contains literal text `build_notification("chat/stream"` at least twice (per-delta + final)
     - handlers/chat.py `on_chat_send` returns `{"req_id": req_id, "streaming": True}` immediately after spawning the async stream task
+    - handlers/chat.py `on_chat_send`, when `params.attachments` is a non-empty list of strings, iterates and calls `attachments.ingest_attachment(Path(p), project_saved=<project_saved>)` for each path BEFORE streaming tokens; the returned `AttachmentRef` is bound to the persisted user-message row via `storage.link_attachment(message_id=..., kind=..., path=..., size_bytes=..., sha256=...)` (CD-04)
+    - `grep -n "ingest_attachment" NyraHost/src/nyrahost/handlers/chat.py` (or the equivalent `TestProject/.../handlers/chat.py`) returns at least one hit
     - handlers/chat.py `on_chat_cancel` sets the cancel event matching req_id (idempotent if req_id not found)
     - handlers/chat.py `_run_stream` handles: cancelled, usage, error cases; always emits a final frame with `done:true`
     - handlers/chat.py persists assistant reply to storage after stream completes (even if cancelled/error)

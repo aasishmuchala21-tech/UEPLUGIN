@@ -3,7 +3,7 @@ phase: 01-plugin-shell-three-process-ipc
 plan: 10
 type: execute
 wave: 2
-depends_on: [01, 03, 05, 06]
+depends_on: [01, 03, 04, 05, 06]
 autonomous: true
 requirements: [PLUG-02]
 files_modified:

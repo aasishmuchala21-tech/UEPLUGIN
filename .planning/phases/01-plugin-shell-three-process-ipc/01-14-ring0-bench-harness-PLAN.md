@@ -31,6 +31,7 @@ must_haves:
     - "Captures max editor tick time during each round's streaming window via a ticker that samples FApp::GetDeltaTime()"
     - "If Gemma is not installed, prints a clear diagnostic and exits without crashing"
     - "Command accepts N (default 100) and prompt (default 'Reply with OK.') as positional args"
+    - "If N < 100, FormatReport prepends a [NON-COMPLIANT: requires N>=100 per ROADMAP Phase 1 SC#3] header and marks overall PASS=false regardless of individual threshold results"
   artifacts:
     - path: TestProject/Plugins/NYRA/Source/NyraEditor/Public/Dev/FNyraDevTools.h
       provides: "Static class registering and running the RoundTripBench console command"
@@ -212,7 +213,17 @@ FTSTicker::FDelegateHandle Handle = FTSTicker::GetCoreTicker().AddTicker(
 
     FString FNyraBenchResult::FormatReport() const
     {
-        return FString::Printf(
+        // Per ROADMAP Phase 1 SC#3, compliance requires N>=100. When the operator
+        // ran the bench with fewer rounds, mark the report NON-COMPLIANT and force
+        // every overall PASS verdict to FAIL regardless of individual thresholds.
+        const bool bCompliant = N >= 100;
+        const TCHAR* FirstTokenVerdict = (bCompliant && bPassedFirstToken) ? TEXT("PASS") : TEXT("FAIL");
+        const TCHAR* EditorTickVerdict = (bCompliant && bPassedEditorTick) ? TEXT("PASS") : TEXT("FAIL");
+        const TCHAR* NoErrorsVerdict   = (bCompliant && bPassedNoErrors)   ? TEXT("PASS") : TEXT("FAIL");
+        const FString NonCompliantHeader = bCompliant
+            ? FString()
+            : FString(TEXT("[NON-COMPLIANT: requires N>=100 per ROADMAP Phase 1 SC#3]\n"));
+        return NonCompliantHeader + FString::Printf(
             TEXT("\n[NyraDevTools] RoundTripBench results (N=%d):\n")
             TEXT("  first_token  p50=%7.1fms  p95=%7.1fms  p99=%7.1fms\n")
             TEXT("  total        p50=%7.1fms  p95=%7.1fms  p99=%7.1fms\n")
@@ -228,9 +239,9 @@ FTSTicker::FDelegateHandle Handle = FTSTicker::GetCoreTicker().AddTicker(
             TokensPerSecP50, TokensPerSecP95, TokensPerSecP99,
             EditorTickMaxP50, EditorTickMaxP95, EditorTickMaxP99,
             Errors,
-            bPassedFirstToken ? TEXT("PASS") : TEXT("FAIL"),
-            bPassedEditorTick ? TEXT("PASS") : TEXT("FAIL"),
-            bPassedNoErrors ? TEXT("PASS") : TEXT("FAIL"));
+            FirstTokenVerdict,
+            EditorTickVerdict,
+            NoErrorsVerdict);
     }
 
     // --------- Per-round state ---------
@@ -430,6 +441,7 @@ FTSTicker::FDelegateHandle Handle = FTSTicker::GetCoreTicker().AddTicker(
       - `grep -c "FApp::GetDeltaTime" TestProject/Plugins/NYRA/Source/NyraEditor/Private/Dev/FNyraDevTools.cpp` >= 0
       - `grep -c "bPassedFirstToken = Result.FirstTokenP95 < 500.0" TestProject/Plugins/NYRA/Source/NyraEditor/Private/Dev/FNyraDevTools.cpp` equals 1
       - `grep -c "bPassedEditorTick = Result.EditorTickMaxP95 < 33.0" TestProject/Plugins/NYRA/Source/NyraEditor/Private/Dev/FNyraDevTools.cpp` equals 1
+      - `grep -c "NON-COMPLIANT" TestProject/Plugins/NYRA/Source/NyraEditor/Private/Dev/FNyraDevTools.cpp` >= 1
       - `grep -c 'Sup->SendRequest(TEXT("chat/send")' TestProject/Plugins/NYRA/Source/NyraEditor/Private/Dev/FNyraDevTools.cpp` equals 1
       - TestProject compiles cleanly
     </automated>
@@ -445,6 +457,8 @@ FTSTicker::FDelegateHandle Handle = FTSTicker::GetCoreTicker().AddTicker(
     - FNyraDevTools.cpp pumps GameThread via `FTSTicker::Tick(0.016f) + FPlatformProcess::Sleep(0.001f)` until done or deadline
     - FNyraDevTools.cpp asserts: `bPassedFirstToken = FirstTokenP95 < 500.0`, `bPassedEditorTick = EditorTickMaxP95 < 33.0`, `bPassedNoErrors = Errors == 0`
     - FNyraDevTools.cpp `FormatReport` emits human-readable output matching RESEARCH §3.6 reporting format
+    - FNyraDevTools.cpp `FormatReport` prepends `[NON-COMPLIANT: requires N>=100 per ROADMAP Phase 1 SC#3]` header AND forces overall PASS verdicts to FAIL when N < 100
+    - `grep -n "NON-COMPLIANT" TestProject/Plugins/NYRA/Source/NyraEditor/Private/Dev/FNyraDevTools.cpp` returns a hit
     - NyraEditorModule.cpp includes `Dev/FNyraDevTools.h` and logs registration confirmation on StartupModule
     - Plugin compiles; typing `Nyra.Dev.RoundTripBench 10` in UE 5.6 editor console runs 10 rounds and prints results
   </acceptance_criteria>

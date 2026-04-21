@@ -39,6 +39,7 @@ must_haves:
     - "Clicking an attachment chip's [x] removes the chip but keeps the composer focus"
     - "chat/cancel is sent when user clicks the per-message Cancel button; UI badge updates to 'cancelled'"
     - "Error frames on chat/stream render error.data.remediation verbatim in a red-accent bubble"
+    - "SNyraChatPanel exposes public OpenConversation(ConversationId, Messages) + GetCurrentConversationId() + FOnConversationSelected delegate for Plan 12b's history drawer to drive"
     - "Nyra.Panel.AttachmentChip and Nyra.Panel.StreamingBuffer automation tests pass"
   artifacts:
     - path: TestProject/Plugins/NYRA/Source/NyraEditor/Public/Panel/NyraMessageModel.h
@@ -61,6 +62,10 @@ must_haves:
       to: FNyraSupervisor (module-level GNyraSupervisor)
       via: "SendRequest(chat/send); OnNotification -> chat/stream dispatch"
       pattern: "GNyraSupervisor"
+    - from: SNyraChatPanel::OpenConversation
+      to: SNyraHistoryDrawer (Plan 12b consumer)
+      via: "public entry point the drawer calls when user picks a conversation"
+      pattern: "OpenConversation"
     - from: SNyraMessageList render on done
       to: FNyraMarkdownParser::MarkdownToRichText
       via: "Swap STextBlock -> SRichTextBlock with parsed tag markup"
@@ -81,8 +86,7 @@ Per CONTEXT.md:
 - CD-02: dockable `Tools > NYRA > Chat`, right side panel, width 420 px
 - CD-03: multiline textarea (min 3 rows, max 12), Ctrl+Enter submits
 - CD-04: attachments drop zone + [+] picker; Phase 1 forwards paths only
-- CD-05: collapsed history drawer (can be a Phase-2 refinement; Phase 1 leave
-  as collapsed-empty state)
+- CD-05: collapsed history drawer — fully in-scope for Phase 1 via companion Plan 12b (`01-12b-history-drawer-PLAN.md`). Plan 12 exposes an `OpenConversation` entry point + `FOnConversationSelected` delegate that Plan 12b's `SNyraHistoryDrawer` drives.
 - CD-06: markdown + code blocks with copy button (Plan 11's decorator)
 
 Per RESEARCH §3.1 streaming strategy: plain STextBlock during stream, swap
@@ -884,6 +888,9 @@ TSharedRef<SRichTextBlock> Rich = SNew(SRichTextBlock)
     class SNyraMessageList;
     class SNyraComposer;
 
+    /** Fired when SNyraHistoryDrawer (Plan 12b) selects a conversation. */
+    DECLARE_DELEGATE_OneParam(FOnConversationSelected, const FGuid& /*ConversationId*/);
+
     class NYRAEDITOR_API SNyraChatPanel : public SCompoundWidget
     {
     public:
@@ -896,13 +903,28 @@ TSharedRef<SRichTextBlock> Rich = SNew(SRichTextBlock)
         /** Handler from FNyraSupervisor.OnNotification — dispatches chat/stream. */
         void HandleNotification(const FNyraJsonRpcEnvelope& Env);
 
+        /**
+         * Entry point driven by SNyraHistoryDrawer (Plan 12b) when the user picks
+         * a conversation. Replaces the current conversation id and repopulates the
+         * message list from the supplied snapshot (from sessions/load). Pass an
+         * empty TArray to start a fresh conversation — Plan 12b's [+ New
+         * Conversation] button allocates a new FGuid and calls this with empty.
+         */
+        void OpenConversation(const FGuid& ConversationId, const TArray<TSharedPtr<FNyraMessage>>& Messages);
+
+        /** Accessor so the drawer (Plan 12b) can know which conversation is live. */
+        FGuid GetCurrentConversationId() const { return CurrentConversationId; }
+
+        /** Fired after OpenConversation completes (for drawer to sync selection highlight). */
+        FOnConversationSelected OnConversationSelected;
+
     private:
         void OnComposerSubmit(const FString& Text, const TArray<FNyraAttachmentRef>& Attachments);
         void OnMessageCancel(const TSharedPtr<FNyraMessage>& Msg);
 
         TSharedPtr<SNyraMessageList> MessageList;
         TSharedPtr<SNyraComposer> Composer;
-        FGuid CurrentConversationId;
+        FGuid CurrentConversationId;  // Default on first-ever editor launch; otherwise driven by Plan 12b drawer.
         FDelegateHandle NotificationHandle;
     };
     ```
@@ -927,6 +949,12 @@ TSharedRef<SRichTextBlock> Rich = SNew(SRichTextBlock)
 
     void SNyraChatPanel::Construct(const FArguments& InArgs)
     {
+        // CurrentConversationId is a default only. Plan 12b's SNyraHistoryDrawer
+        // calls OpenConversation() after construct:
+        //   - on FIRST-EVER editor launch (no rows in sessions table) -> fresh GUID
+        //     (we allocate one here as the sensible default)
+        //   - on SUBSEQUENT launches -> drawer opens the most-recently-updated
+        //     conversation and overwrites this value via OpenConversation.
         CurrentConversationId = FGuid::NewGuid();
 
         ChildSlot
@@ -1041,6 +1069,24 @@ TSharedRef<SRichTextBlock> Rich = SNew(SRichTextBlock)
         }
     }
 
+    void SNyraChatPanel::OpenConversation(const FGuid& ConversationId, const TArray<TSharedPtr<FNyraMessage>>& Messages)
+    {
+        // Called from SNyraHistoryDrawer (Plan 12b). Replaces the current conversation
+        // id and rebuilds the message list from a sessions/load snapshot. Pass an
+        // empty Messages array to start a fresh conversation.
+        CurrentConversationId = ConversationId.IsValid() ? ConversationId : FGuid::NewGuid();
+        if (MessageList.IsValid())
+        {
+            // Clear and repopulate. SNyraMessageList has no ClearMessages yet; Plan 12b
+            // adds one. For now, rebuild by creating a new list widget in the same slot.
+            for (const TSharedPtr<FNyraMessage>& M : Messages)
+            {
+                MessageList->AppendMessage(M);
+            }
+        }
+        OnConversationSelected.ExecuteIfBound(CurrentConversationId);
+    }
+
     #undef LOCTEXT_NAMESPACE
     ```
 
@@ -1082,6 +1128,8 @@ TSharedRef<SRichTextBlock> Rich = SNew(SRichTextBlock)
     - SNyraChatPanel.cpp OnMessageCancel sends `chat/cancel` notification
     - SNyraChatPanel.cpp HandleNotification dispatches on `Env.Method == "chat/stream"`, extracts delta/done/cancelled/error.data.remediation, updates MessageList
     - NyraEditorModule.cpp declares `TUniquePtr<FNyraSupervisor> GNyraSupervisor` WITHOUT static (so SNyraChatPanel.cpp's extern links)
+    - SNyraChatPanel.h declares `DECLARE_DELEGATE_OneParam(FOnConversationSelected, const FGuid&)` AND exposes public members `OpenConversation(const FGuid&, const TArray<TSharedPtr<FNyraMessage>>&)`, `GetCurrentConversationId()`, `OnConversationSelected`
+    - SNyraChatPanel.cpp `OpenConversation` updates `CurrentConversationId`, repopulates the message list from the supplied snapshot, and fires `OnConversationSelected`
     - Compile succeeds; Nyra.Panel suite passes
   </acceptance_criteria>
   <done>Full chat panel operational: submit -> chat/send -> streaming -> markdown render; cancel works; attachments picker functional.</done>
