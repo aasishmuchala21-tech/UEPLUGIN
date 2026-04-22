@@ -108,6 +108,13 @@ class NyraServer:
             log.warning("auth_token_mismatch")
             return
         session.authenticated = True
+        # Attach the websocket to the session so request handlers (e.g.
+        # Plan 08's chat/send) can emit chat/stream notifications on the
+        # same connection without re-plumbing the dispatch signature.
+        # See app.py::_wrap_send for the reader side. Plan 06's tests
+        # don't exercise this field, so the wire behaviour is unchanged
+        # for session/hello callers.
+        session._ws = ws  # type: ignore[attr-defined]
         await ws.send(
             build_response(
                 env.id,
