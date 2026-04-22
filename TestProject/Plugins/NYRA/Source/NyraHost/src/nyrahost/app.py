@@ -16,12 +16,15 @@ listener, writes the handshake file (D-06), and serves forever.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import structlog
 
 from .config import NyraConfig
+from .downloader.gemma import GEMMA_FILENAME, GemmaSpec
 from .handlers.chat import ChatHandlers, GemmaNotInstalledError
+from .handlers.download import DownloadHandlers
 from .infer.router import InferRouter
 from .server import NyraServer, run_server
 from .session import SessionState
@@ -41,7 +44,41 @@ def gemma_gguf_path(project_dir: Path) -> Path:
         / "Saved"
         / "NYRA"
         / "models"
-        / "gemma-3-4b-it-qat-q4_0.gguf"
+        / GEMMA_FILENAME
+    )
+
+
+def _load_gemma_spec(manifest_path: Path) -> GemmaSpec:
+    """Load GemmaSpec from assets-manifest.json with hard-coded fallbacks.
+
+    Plan 05's manifest stores a free-form ``gemma_model_note`` rather
+    than a structured block. Phase 1 defaults to the well-known HF URL
+    + GitHub mirror; Plan 05's ModelPins.h is the single source of
+    truth for SHA256 / revision (see comments there).
+    """
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    gemma = data.get("gemma") or {}
+    return GemmaSpec(
+        primary_url=gemma.get(
+            "url",
+            (
+                "https://huggingface.co/google/"
+                "gemma-3-4b-it-qat-q4_0-gguf/resolve/main/"
+                "gemma-3-4b-it-qat-q4_0.gguf"
+            ),
+        ),
+        mirror_url=gemma.get(
+            "mirror_url",
+            (
+                "https://github.com/nyra-ai/nyra/releases/download/"
+                "models-v1/gemma-3-4b-it-qat-q4_0.gguf"
+            ),
+        ),
+        expected_sha256=gemma.get("sha256", ""),
+        total_bytes_hint=int(gemma.get("total_bytes", 3_391_733_760)),
     )
 
 
@@ -110,11 +147,32 @@ async def build_and_run(
         project_saved=project_dir / "Saved",
     )
 
+    # Plan 09 — download handler. assets-manifest.json lives alongside
+    # the NyraHost package source; plugin_binaries_dir is
+    # <Plugin>/Binaries/Win64, so the manifest is three levels up under
+    # Source/NyraHost/.
+    manifest_path = (
+        plugin_binaries_dir.parent.parent
+        / "Source"
+        / "NyraHost"
+        / "assets-manifest.json"
+    )
+    download_handlers = DownloadHandlers(
+        project_dir=project_dir,
+        spec=_load_gemma_spec(manifest_path),
+    )
+
     def register(server: NyraServer) -> None:
         # chat/send uses the per-session websocket attached via session._ws
         # in server._handle_connection.
         server.register_request("chat/send", _wrap_send(handlers))
         server.register_notification("chat/cancel", handlers.on_chat_cancel)
+        # Plan 09 — the download-gemma request kicks off a background
+        # download; progress streams via diagnostics/download-progress
+        # notifications on the same session.
+        server.register_request(
+            "diagnostics/download-gemma", download_handlers.on_download_gemma,
+        )
 
     await run_server(
         config, nyrahost_pid=nyrahost_pid, register_handlers=register,
