@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: 6
+current_plan: "7 complete (next = Wave 2 continuation: Plan 08)"
 status: executing
-last_updated: "2026-04-22T05:42:50Z"
+last_updated: "2026-04-22T10:39:43.162Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 6
-  percent: 37
+  completed_plans: 7
+  percent: 44
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-22 (Plan 01-06 completed)
+**Last Updated:** 2026-04-22 (Plan 01-07 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 6 of 16 (next to execute)
+Plan: 8 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 6 complete (next = Wave 2 continuation: Plan 07)
-**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 IN PROGRESS (Plan 06 done; Plans 07–10 next)
+**Current Plan:** 7 complete (next = Wave 2 continuation: Plan 08)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 IN PROGRESS (Plans 06, 07 done; Plans 08–10 next)
 
 **Progress (v1):**
 
 ```text
-[████░░░░░░] 37% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1+Plan 06 shipped (6/16 plans: 01 + 02 + 03 + 04 + 05 + 06)
+[████░░░░░░] 44% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07 shipped (7/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07)
 ```
 
 **Plans completed in Phase 01:**
@@ -58,7 +58,8 @@ Plan: 6 of 16 (next to execute)
 - [x] Plan 04 — Nomad tab placeholder panel (Wave 1, 3 tasks, 3 commits, SUMMARY on disk — Nyra::NyraChatTabId + SNyraChatPanel placeholder + Tools > NYRA > Chat menu wiring + Nyra.Panel.TabSpawner automation It block closing VALIDATION 1-04-01)
 - [x] Plan 05 — Specs handshake + JSON-RPC + model pins (Wave 1, 2 tasks, 2 commits, SUMMARY on disk — docs/HANDSHAKE.md + docs/JSONRPC.md + docs/ERROR_CODES.md canonical wire specs; ModelPins.h/.cpp + assets-manifest.json with live-resolved python-build-standalone + Gemma 3 4B GGUF + llama.cpp b8870 pins)
 - [x] Plan 06 — NyraHost core WS + auth + handshake (Wave 2, 3 tasks TDD=true, 6 commits [3 RED + 3 GREEN], SUMMARY on disk — 8-module `nyrahost` Python package [`bootstrap`, `config`, `logging_setup`, `handshake`, `jsonrpc`, `server`, `session`, `__main__`] + `requirements.lock` + `TestProject/Plugins/NYRA/prebuild.ps1` + 8 real passing pytest tests [3 auth + 3 handshake + 2 bootstrap] upgrading Plan 02's Wave 0 stubs; `python -m nyrahost` binds `127.0.0.1:<ephemeral-port>`, writes atomic handshake, enforces first-frame `session/authenticate` gate with WS close 4401 on token mismatch; `NyraServer.register_request` / `register_notification` extension points land for Plans 07/08/09)
-- [ ] Plan 07 onwards (Wave 2 continuation)
+- [x] Plan 07 — NyraHost storage + attachments (Wave 2, 2 tasks TDD=true, 4 commits [2 RED + 2 GREEN], SUMMARY on disk — `nyrahost.storage` [Storage + Conversation/Message dataclasses + SCHEMA_V1 DDL + CURRENT_SCHEMA_VERSION=1 + db_path_for_project] and `nyrahost.attachments` [ingest_attachment + AttachmentRef + ALLOWED_EXTENSIONS + os.link-with-shutil.copy2-fallback] modules + 9 real pytest tests [4 storage + 5 attachments] upgrading Plan 02's last 2 Wave 0 persistence stubs; SQLite per-project sessions.db at `<ProjectDir>/Saved/NYRA/sessions.db` in WAL + foreign_keys=ON with CHECK role IN ('user','assistant','system','tool'); attachments content-addressed to `Saved/NYRA/attachments/<sha[:2]>/<sha>.<ext>` per CD-08; full pytest suite 17 passed / 4 skipped on macOS Darwin Python 3.13.5)
+- [ ] Plan 08 onwards (Wave 2 continuation — infer spawn + Ollama detect + SSE parser)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -97,6 +98,7 @@ Populated as phases complete. Tracks:
 | 01    | 04   | nomad-tab-placeholder-panel      | 3     | 5     | ~8min    | 224ffa7 · 628de82 · cf3ab9c                       |
 | 01    | 05   | specs-handshake-jsonrpc-pins     | 2     | 6     | ~21min   | 7aa83af · fa2d8f9                                 |
 | 01    | 06   | nyrahost-core-ws-auth-handshake  | 3     | 15    | ~42min   | 4400ae0 · e890a52 · 9cef418 · ef91a6f · bbea561 · 125ce46 |
+| 01    | 07   | nyrahost-storage-attachments     | 2     | 4     | ~15min   | 5cb4c8f · f6c29b5 · 89e1c49 · 861aa35             |
 
 ---
 
@@ -142,6 +144,15 @@ Populated as phases complete. Tracks:
 - `websockets.server.ServerConnection` import path preserved — works on both pinned `websockets==12.0` and the test-time installed 16.0. If a future bump removes it, fallback is `websockets.asyncio.server.ServerConnection`.
 - `*.egg-info/` + `build/` + `dist/` appended to `TestProject/.gitignore` — `pip install -e .` (required so `from nyrahost.X import ...` resolves during pytest) writes the egg-info dir; Plans 07/08/09 also need editable installs.
 
+### Decisions from Plan 07 (nyrahost-storage-attachments, 2026-04-22)
+
+- Re-asserted `PRAGMA foreign_keys=ON` + `PRAGMA synchronous=NORMAL` on every new `Storage()` connection inside `_migrate` (not just first-open). WAL persists in the DB file header, but FK + synchronous are per-connection runtime state; silent FK-off on a reconnect would disable CASCADE delete and corrupt the message/conversation relationship without any error surface. `test_schema_v1_idempotent` exercises the reconnect path implicitly (second `Storage(db_path)` call on the same file).
+- `AttachmentRef.path` is absolute (`str(dest.resolve())`) NOT project-relative. UE C++ readers (FFileHelper::LoadFileToString, FMediaTexture) expect absolute paths when the working directory is the editor's binary dir; making path resolution the responsibility of `ingest_attachment` (not every caller) eliminates a class of "who resolves the path?" bugs in Plan 12 chat panel code. If a user moves their UE project directory later, a Plan 12b repair action will fix up stale absolute paths.
+- Enabled `detect_types=sqlite3.PARSE_DECLTYPES` at day one even though schema v1 uses no custom types. Plan 12b's future FTS tsvector BLOB column will need this flag; enabling it now avoids a schema v2 migration later just to flip the Connection constructor flag. Zero cost today, one future migration saved.
+- `os.link`-first-with-`shutil.copy2`-fallback pattern locked for attachment ingestion (CD-08). Hardlink is O(1) metadata on NTFS/APFS/ext4 (common case); copy2 is the escape hatch for cross-device, FAT32, network mount, or CI runner without hardlink perms. Tested via `patch("nyrahost.attachments.os.link", side_effect=OSError)`. This same pattern re-applies to any future file-ingest surface (Plan 12b attachment-archive export, e.g.).
+- `SCHEMA_V1` lives as a single triple-quoted string constant passed to `executescript` (not split into separate `CREATE TABLE` calls or a `migrations/` directory). Future schema v2 adds a parallel `SCHEMA_V1_TO_V2` constant and branches on `user_version` inside `_migrate` (`elif version == 1: conn.executescript(SCHEMA_V1_TO_V2)`). Simpler than a migrations framework for 3 tables; keeps the shape grep-able for the UE C++ audit tools in Phase 2 when SQLiteCore links.
+- `AttachmentKind` Literal duplicated (3 lines) in both `storage.py` and `attachments.py` rather than imported from one into the other. Avoids an import cycle risk when Plan 10 mounts `sessions/load` handlers that reach into both modules. The duplication is 3 words; drift would be caught by either the `CHECK(role IN (...))` constraint or the `_classify` ValueError raise.
+
 ### Decisions from Plan 04 (nomad-tab-placeholder-panel, 2026-04-21)
 
 - Accepted UE 5.6 nomad-tab floating-default dock over explicit right-side 420px placement. UE 5.6 FTabSpawnerEntry does not expose a stable `SetDefaultDockArea` API; enforcing right-side placement requires `FTabManager::FLayout` which needs a saved layout to already exist (chicken-and-egg at StartupModule time). Plan 12 revisits via `FLayoutExtender` when the panel gains persistent layout config.
@@ -175,6 +186,8 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Plan 06 positive result:** All 8 real tests (3 auth + 3 handshake + 2 bootstrap) ran LIVE on macOS Darwin Python 3.13.5 against production code (`python -m nyrahost` entrypoint with `asyncio` WS server, `secrets.compare_digest` token gate, `os.replace` atomic handshake write, `os.kill(pid, 0)` orphan detection). 8 passed / 0 failed / 0 errors. Plan 02's 6 downstream-owned Wave 0 stubs preserved skipped.
 
+**Plan 07 (nyrahost-storage-attachments): ZERO platform-gap deferrals.** Pure Python stdlib (sqlite3 + hashlib + os + shutil + pathlib + dataclasses + typing) with zero new runtime deps beyond Plan 06's. 9 new tests (4 storage + 5 attachments) + Plan 06's 8 tests all run LIVE on macOS Darwin Python 3.13.5 → final full-suite state: 17 passed / 4 skipped / 0 failed / 0 errors in ~9 seconds. The cross-device-fallback path in `ingest_attachment` is exercised via `patch("nyrahost.attachments.os.link", side_effect=OSError("cross-device"))` — no second volume required. `os.link` + `shutil.copy2` both work natively on macOS APFS and Windows NTFS. Windows-specific caveat for later: `os.link` requires SeCreateSymbolicLinkPrivilege on some policies; `shutil.copy2` fallback handles it.
+
 ### Phase 1 pre-start checks (awaiting orchestrator or user)
 
 - [ ] Confirm granularity=standard acceptance of 9 phases (Phase 0 is non-code; 8 code phases within standard band)
@@ -186,7 +199,16 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Last session handoff:**
 
-- Plan 01-06 (nyrahost-core-ws-auth-handshake) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-07 (nyrahost-storage-attachments) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 4 atomic commits (TDD RED→GREEN pairs, one per task): 5cb4c8f (test) · f6c29b5 (feat) · 89e1c49 (test) · 861aa35 (feat)
+  - 2 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/ (storage.py, attachments.py)
+  - 2 files modified: tests/test_storage.py and tests/test_attachments.py — both upgraded from Plan 02's Wave 0 @pytest.mark.skip stubs to real test bodies (4 + 5 = 9 new passing tests)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-07-nyrahost-storage-attachments-SUMMARY.md
+  - ZERO Rule-1/2/3/4 deviations — plan content was followed exactly (storage.py + attachments.py match PLAN.md `<action>` blocks verbatim; test bodies match PLAN.md spec verbatim)
+  - ZERO platform-gap deferrals — pure Python stdlib, full pytest verification live on macOS Darwin Python 3.13.5. Full suite final state: 17 passed / 4 skipped / 0 failed / 0 errors (9 new P07 tests + 8 preserved P06 tests; 4 Wave 0 stubs for Plans 08/09 remain skipped)
+  - CHAT-01 requirement satisfied on the Python side (sessions.db per-project persistence + content-addressed attachment store). UE-side CHAT-01 completion (chat panel reading/writing via WS) lands in Plans 10 + 12
+
+- Plan 01-06 (nyrahost-core-ws-auth-handshake) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 6 atomic commits (TDD RED→GREEN pairs, one per task): 4400ae0 (test) · e890a52 (feat) · 9cef418 (test) · ef91a6f (feat) · bbea561 (test) · 125ce46 (feat)
   - 11 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/ + TestProject/Plugins/NYRA/Source/NyraHost/requirements.lock + TestProject/Plugins/NYRA/prebuild.ps1
   - 4 files modified: pyproject.toml (appended [project].dependencies + [tool.setuptools.packages.find]), 3 test files upgraded from @pytest.mark.skip stubs to real tests, TestProject/.gitignore (added *.egg-info/, build/, dist/)
@@ -226,8 +248,8 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 ### Next session
 
-1. Execute Plan 01-07 (nyrahost-storage-attachments) — SQLite sessions.db schema + migrations, attachments hash-and-hardlink, sessions/list + sessions/load method handlers mounted via NyraServer.register_request. Wave 0 stubs for test_storage.py + test_attachments.py upgrade in place per the Plan 06 TDD RED/GREEN pattern.
-2. Continue through Phase 01 Wave 2/3 plans (01-08 infer spawn + Ollama detect + SSE parser, 01-09 gemma downloader, 01-10 cpp supervisor + ws/jsonrpc, 01-11 markdown parser, 01-12 chat panel streaming, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
+1. Execute Plan 01-08 (nyrahost-infer-spawn-ollama-sse) — subprocess spawn of `llama-server.exe` (bundled path per assets-manifest.json), Ollama auto-detect via `GET http://127.0.0.1:11434/api/tags` with `httpx.MockTransport` fixture from Plan 02, SSE parser for `/v1/chat/completions stream:true` responses, `chat/send` request handler + `chat/stream` notification emitter mounted via Plan 06's NyraServer.register_request / register_notification extension points, Storage.append_message calls on every successful round-trip. Wave 0 stubs for test_infer_spawn.py + test_ollama_detect.py + test_sse_parser.py upgrade in place per the TDD RED/GREEN pattern (3 stubs → 3 RED + 3 GREEN commits).
+2. Continue through Phase 01 Wave 2/3 plans (01-09 gemma downloader, 01-10 cpp supervisor + ws/jsonrpc, 01-11 markdown parser, 01-12 chat panel streaming, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
 
 **Files-on-disk checkpoint (all present):**
 
@@ -245,4 +267,4 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-21 after Plan 01-04 execution*
+*Last update: 2026-04-22 after Plan 01-07 execution*

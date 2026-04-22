@@ -11,7 +11,7 @@
 ## Phases
 
 - [ ] **Phase 0: Legal & Brand Gate** - Clear Anthropic/Epic/Fab ToS and trademark before any subscription-driving code ships (runs in parallel with Phase 1 plugin-shell work)
-- [ ] **Phase 1: Plugin Shell + Three-Process IPC** - UE C++ plugin + NyraHost Python sidecar + NyraInfer llama.cpp + Slate chat panel skeleton; Ring 0 "it can talk" (6/16 plans complete — Wave 1 DONE: 01-03, 01-01, 01-02, 01-04, 01-05 shipped 2026-04-21; Wave 2 IN PROGRESS: 01-06 nyrahost-core-ws-auth-handshake shipped 2026-04-22, 01-07 next)
+- [ ] **Phase 1: Plugin Shell + Three-Process IPC** - UE C++ plugin + NyraHost Python sidecar + NyraInfer llama.cpp + Slate chat panel skeleton; Ring 0 "it can talk" (7/16 plans complete — Wave 1 DONE: 01-03, 01-01, 01-02, 01-04, 01-05 shipped 2026-04-21; Wave 2 IN PROGRESS: 01-06 nyrahost-core-ws-auth-handshake + 01-07 nyrahost-storage-attachments shipped 2026-04-22, 01-08 next)
 - [ ] **Phase 2: Subscription Bridge + Four-Version CI Matrix** - Claude CLI subprocess driving with Gemma fallback, transactional safety, safe-mode, console/log tools, EV code-signing, and UE 5.4/5.5/5.6/5.7 CI from day one
 - [ ] **Phase 3: UE5 Knowledge RAG** - Bundled LanceDB index with version-tagged citations, symbol validation, Epic-release auto-updater, and Gemma multimodal offline fallback
 - [ ] **Phase 4: Blueprint + Asset + Material + Actor Tool Catalog** - Deep UE-native Tool Catalog targeting Aura's Blueprint error-reduction benchmark; every tool transactional, every action post-condition-verified
@@ -141,7 +141,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Legal & Brand Gate | 0/? | Not started | - |
-| 1. Plugin Shell + Three-Process IPC | 5/16 | In progress | 01-03 (2026-04-21), 01-01 (2026-04-21), 01-02 (2026-04-21), 01-04 (2026-04-21), 01-05 (2026-04-21) |
+| 1. Plugin Shell + Three-Process IPC | 7/16 | In progress | 01-03 (2026-04-21), 01-01 (2026-04-21), 01-02 (2026-04-21), 01-04 (2026-04-21), 01-05 (2026-04-21), 01-06 (2026-04-22), 01-07 (2026-04-22) |
 | 2. Subscription Bridge + Four-Version CI Matrix | 0/? | Not started | - |
 | 3. UE5 Knowledge RAG | 0/? | Not started | - |
 | 4. Blueprint + Asset + Material + Actor Tool Catalog | 0/? | Not started | - |

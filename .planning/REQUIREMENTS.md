@@ -16,7 +16,7 @@
 
 ### Chat UI & Session
 
-- [ ] **CHAT-01**: Dockable in-editor Slate chat panel with streaming tokens, markdown rendering, code blocks, image/video/file attachments, and per-conversation history persisted under project `Saved/NYRA/`
+- [x] **CHAT-01**: Dockable in-editor Slate chat panel with streaming tokens, markdown rendering, code blocks, image/video/file attachments, and per-conversation history persisted under project `Saved/NYRA/`
 - [ ] **CHAT-02**: Subscription connection status UI surfacing which backends are active (Claude Code, Gemma local, computer-use) and which features each unlocks
 - [ ] **CHAT-03**: Every agent mutation wrapped in `FScopedTransaction` so Ctrl+Z works; in-flight task cancellable and computer-use subprocesses cleanly unwound
 - [ ] **CHAT-04**: Safe-mode / dry-run — agent outputs its planned tool-call sequence before execution; user can approve, edit, or reject
@@ -143,7 +143,7 @@ Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for pha
 | PLUG-03 | Phase 1 | Pending |
 | PLUG-04 | Phase 2 | Pending |
 | PLUG-05 | Phase 0 | Pending |
-| CHAT-01 | Phase 1 | Pending |
+| CHAT-01 | Phase 1 | Complete |
 | CHAT-02 | Phase 2 | Pending |
 | CHAT-03 | Phase 2 | Pending |
 | CHAT-04 | Phase 2 | Pending |
