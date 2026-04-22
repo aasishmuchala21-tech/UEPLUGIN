@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "7 complete (next = Wave 2 continuation: Plan 08)"
+current_plan: "8 complete (next = Wave 2 continuation: Plan 09)"
 status: executing
-last_updated: "2026-04-22T10:39:43.162Z"
+last_updated: "2026-04-22T13:15:08Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 7
-  percent: 44
+  completed_plans: 8
+  percent: 50
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-22 (Plan 01-07 completed)
+**Last Updated:** 2026-04-22 (Plan 01-08 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 8 of 16 (next to execute)
+Plan: 9 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 7 complete (next = Wave 2 continuation: Plan 08)
-**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 IN PROGRESS (Plans 06, 07 done; Plans 08–10 next)
+**Current Plan:** 8 complete (next = Wave 2 continuation: Plan 09)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 IN PROGRESS (Plans 06, 07, 08 done; Plans 09–10 next)
 
 **Progress (v1):**
 
 ```text
-[████░░░░░░] 44% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07 shipped (7/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07)
+[█████░░░░░] 50% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08 shipped (8/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08)
 ```
 
 **Plans completed in Phase 01:**
@@ -59,7 +59,8 @@ Plan: 8 of 16 (next to execute)
 - [x] Plan 05 — Specs handshake + JSON-RPC + model pins (Wave 1, 2 tasks, 2 commits, SUMMARY on disk — docs/HANDSHAKE.md + docs/JSONRPC.md + docs/ERROR_CODES.md canonical wire specs; ModelPins.h/.cpp + assets-manifest.json with live-resolved python-build-standalone + Gemma 3 4B GGUF + llama.cpp b8870 pins)
 - [x] Plan 06 — NyraHost core WS + auth + handshake (Wave 2, 3 tasks TDD=true, 6 commits [3 RED + 3 GREEN], SUMMARY on disk — 8-module `nyrahost` Python package [`bootstrap`, `config`, `logging_setup`, `handshake`, `jsonrpc`, `server`, `session`, `__main__`] + `requirements.lock` + `TestProject/Plugins/NYRA/prebuild.ps1` + 8 real passing pytest tests [3 auth + 3 handshake + 2 bootstrap] upgrading Plan 02's Wave 0 stubs; `python -m nyrahost` binds `127.0.0.1:<ephemeral-port>`, writes atomic handshake, enforces first-frame `session/authenticate` gate with WS close 4401 on token mismatch; `NyraServer.register_request` / `register_notification` extension points land for Plans 07/08/09)
 - [x] Plan 07 — NyraHost storage + attachments (Wave 2, 2 tasks TDD=true, 4 commits [2 RED + 2 GREEN], SUMMARY on disk — `nyrahost.storage` [Storage + Conversation/Message dataclasses + SCHEMA_V1 DDL + CURRENT_SCHEMA_VERSION=1 + db_path_for_project] and `nyrahost.attachments` [ingest_attachment + AttachmentRef + ALLOWED_EXTENSIONS + os.link-with-shutil.copy2-fallback] modules + 9 real pytest tests [4 storage + 5 attachments] upgrading Plan 02's last 2 Wave 0 persistence stubs; SQLite per-project sessions.db at `<ProjectDir>/Saved/NYRA/sessions.db` in WAL + foreign_keys=ON with CHECK role IN ('user','assistant','system','tool'); attachments content-addressed to `Saved/NYRA/attachments/<sha[:2]>/<sha>.<ext>` per CD-08; full pytest suite 17 passed / 4 skipped on macOS Darwin Python 3.13.5)
-- [ ] Plan 08 onwards (Wave 2 continuation — infer spawn + Ollama detect + SSE parser)
+- [x] Plan 08 — NyraHost infer spawn + Ollama detect + SSE (Wave 2, 3 tasks [Task 1+2 TDD=true, Task 3 type=auto], 5 commits [2 RED + 2 GREEN + 1 feat], SUMMARY on disk — `nyrahost.infer` subpackage [sse.py + ollama_probe.py + gpu_probe.py + llama_server.py + router.py] + `nyrahost.handlers.chat` [ChatHandlers + GemmaNotInstalledError + on_chat_send + on_chat_cancel] + `nyrahost.app` [build_and_run + gemma_gguf_path + _wrap_send adapter] + extended `__main__.py` with --project-dir + --plugin-binaries-dir + one-line `session._ws = ws` addition to server.py; InferRouter picks Ollama fast path else spawns bundled llama-server.exe with CUDA→Vulkan→CPU fallback + 10-min idle shutdown watchdog; chat/send persists user msg + ingests attachments via Plan 07 CD-04 BEFORE streaming then emits per-delta chat/stream notifications + final done:true frame; 13 real pytest tests [5 SSE + 5 Ollama + 3 infer_spawn] upgrading 3 Wave 0 stubs; full pytest suite 30 passed / 1 skipped [Plan 09 test_gemma_download stub remains])
+- [ ] Plan 09 onwards (Wave 2 continuation — Gemma downloader with SHA256+Range resume)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -99,6 +100,7 @@ Populated as phases complete. Tracks:
 | 01    | 05   | specs-handshake-jsonrpc-pins     | 2     | 6     | ~21min   | 7aa83af · fa2d8f9                                 |
 | 01    | 06   | nyrahost-core-ws-auth-handshake  | 3     | 15    | ~42min   | 4400ae0 · e890a52 · 9cef418 · ef91a6f · bbea561 · 125ce46 |
 | 01    | 07   | nyrahost-storage-attachments     | 2     | 4     | ~15min   | 5cb4c8f · f6c29b5 · 89e1c49 · 861aa35             |
+| 01    | 08   | nyrahost-infer-spawn-ollama-sse  | 3     | 14    | ~143min  | 1dfd3bb · 477950c · ff4d87e · c83d57d · 9588d41   |
 
 ---
 
@@ -144,6 +146,18 @@ Populated as phases complete. Tracks:
 - `websockets.server.ServerConnection` import path preserved — works on both pinned `websockets==12.0` and the test-time installed 16.0. If a future bump removes it, fallback is `websockets.asyncio.server.ServerConnection`.
 - `*.egg-info/` + `build/` + `dist/` appended to `TestProject/.gitignore` — `pip install -e .` (required so `from nyrahost.X import ...` resolves during pytest) writes the egg-info dir; Plans 07/08/09 also need editable installs.
 
+### Decisions from Plan 08 (nyrahost-infer-spawn-ollama-sse, 2026-04-22)
+
+- Python-script mock llama-server shim locked for test harness. Plan 08's runtime constraint is that `llama-server.exe` is Windows-only and cannot run on the macOS dev host. Tests write a local `mock_llama.py` that prints the canonical `"server listening at http://127.0.0.1:NNNN"` line and blocks; a platform-specific wrapper (`.bat` on Windows, shebang `bash` on POSIX) dispatches `sys.executable`. This exercises `spawn_llama_server`'s contract (launch exe, parse port, start drain task) on both platforms without bundling real `llama-server.exe` in test fixtures. Real llama-server integration lives at Plan 14 Ring 0 bench on Windows.
+- `GemmaNotInstalledError` maps to `-32001 subprocess_failed` via NyraServer._dispatch's generic handler catch in Plan 08, NOT to `-32005 gemma_not_installed` per docs/ERROR_CODES.md. Rationale: the Plan 06 dispatcher already routes handler exceptions to -32001, and adding dedicated exception-to-code mapping would push Plan 08 beyond its file scope (would need to modify server.py's _dispatch). Plan 09 (Gemma downloader) is the natural owner of the -32005 upgrade because (a) the downloader provides the remediation surface, (b) the -32005 remediation string references downloader UI. `app.py._wrap_send` carries an explicit comment documenting the Plan 09 upgrade path.
+- `session._ws` attached as a **runtime attribute** (not a `SessionState` dataclass field). Rationale: adding `websocket: ServerConnection` to the Plan 06 dataclass would force all callers including test_auth.py's in-process `SessionState()` construction to know about the websockets import, bloat the typing chain with `Optional[ServerConnection]`, and break tests that instantiate SessionState without a socket. Runtime attribute via `session._ws = ws  # type: ignore[attr-defined]` (in server.py after auth success) + `getattr(session, "_ws", None)` (in app.py._wrap_send) is the minimum-invasive footprint that keeps Plan 06 auth tests green and Plan 07 storage tests decoupled. Plan 10 may promote this to a proper field when `sessions/load` arrives.
+- Attachment ingestion (CD-04) happens BEFORE streaming starts, with **best-effort per-file error handling**. on_chat_send persists the user message, then iterates `params.attachments` calling `ingest_attachment` + `storage.link_attachment` for each path; failures (unsupported extension, missing source) log `attachment_ingest_failed` and continue. Rationale: the UE panel (CD-04) is the primary validator (it enforces image/video/text at drag-drop); the server is a backstop and shouldn't reject an entire conversation because one path in a batch of three has an unsupported extension.
+- `PORT_RE = re.compile(r"listening at http://[^:]+:(\d+)")` is **suffix-tolerant** — the capture group closes at `\d+`, not at end-of-line. Matches both classic llama.cpp startup (`server listening at http://127.0.0.1:NNNN`) and the b8870+ variant (`server listening at http://127.0.0.1:NNNN for embeddings`). `test_port_regex_matches_expected_llama_line` validates the longer form.
+- Backend fallback order is **preferred-first-then-rest**. `_spawn_bundled_with_fallback(preferred)` constructs `[preferred] + [b for b in _BACKEND_FALLBACK if b != preferred]`. If CUDA is preferred the order is `[CUDA, VULKAN, CPU]`; if Vulkan (AMD users), the order is `[VULKAN, CUDA, CPU]`. Everyone's actual HW gets first shot, then tries the other discrete-GPU backend, then falls through to CPU. Matches RESEARCH §3.10 P1.5 CUDA DLL fallback intent.
+- `InferRouter.gemma_not_installed()` returns True iff **GGUF is absent AND Ollama fast path is also unavailable**. This makes dev-machine chat smoke-testable on macOS without the 3.16 GB download: if Ollama is running with `gemma3:4b-it-qat`, chat/send works end-to-end. On Windows production with neither path available, this short-circuits chat/send to raise GemmaNotInstalledError before any subprocess spawn.
+- `httpx.Timeout(connect=5, read=None, write=None, pool=None)` on `InferRouter.stream_chat`'s AsyncClient. Streaming responses stay open for the entire model-generation duration; a read timeout would abort mid-token. `connect=5` matches the llama-server TCP-accept expectation; other limits are unbounded because streaming must not respect them. `detect_ollama` uses a separate `timeout=1.0` because `/api/tags` is a point lookup, not a stream.
+- Module-superset pattern locked for Python plans (mirrors Plan 04's NyraEditorModule.cpp precedent). `__main__.py` existed from Plan 06; Plan 08 appended CLI args and re-pointed `main_async` to `app.build_and_run` while preserving every Plan 06 line (`argparse.ArgumentParser(prog="nyrahost")`, `configure_logging`, `cleanup_orphan_handshakes`) verbatim. `server.py` gained exactly ONE line (`session._ws = ws`) at the documented location. Plan 09 inherits — gemma downloader will add `diagnostics/download-progress` notification emission without touching the Plan 06 auth gate or the Plan 08 chat wiring.
+
 ### Decisions from Plan 07 (nyrahost-storage-attachments, 2026-04-22)
 
 - Re-asserted `PRAGMA foreign_keys=ON` + `PRAGMA synchronous=NORMAL` on every new `Storage()` connection inside `_migrate` (not just first-open). WAL persists in the DB file header, but FK + synchronous are per-connection runtime state; silent FK-off on a reconnect would disable CASCADE delete and corrupt the message/conversation relationship without any error surface. `test_schema_v1_idempotent` exercises the reconnect path implicitly (second `Storage(db_path)` call on the same file).
@@ -188,6 +202,18 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Plan 07 (nyrahost-storage-attachments): ZERO platform-gap deferrals.** Pure Python stdlib (sqlite3 + hashlib + os + shutil + pathlib + dataclasses + typing) with zero new runtime deps beyond Plan 06's. 9 new tests (4 storage + 5 attachments) + Plan 06's 8 tests all run LIVE on macOS Darwin Python 3.13.5 → final full-suite state: 17 passed / 4 skipped / 0 failed / 0 errors in ~9 seconds. The cross-device-fallback path in `ingest_attachment` is exercised via `patch("nyrahost.attachments.os.link", side_effect=OSError("cross-device"))` — no second volume required. `os.link` + `shutil.copy2` both work natively on macOS APFS and Windows NTFS. Windows-specific caveat for later: `os.link` requires SeCreateSymbolicLinkPrivilege on some policies; `shutil.copy2` fallback handles it.
 
+**Plan 08 (nyrahost-infer-spawn-ollama-sse): ZERO platform-gap deferrals.** All Plan 08 code paths exercised live on macOS Darwin Python 3.13.5:
+
+- SSE parser (sse.py): pure-Python; zero platform deps.
+- Ollama probe (ollama_probe.py): httpx.MockTransport drives all 5 detect cases deterministically, no running Ollama required.
+- GPU probe (gpu_probe.py): `asyncio.create_subprocess_exec("nvidia-smi", "-L")` + `("vulkaninfo", "--summary")` both raise FileNotFoundError on macOS (caught silently) so `probe_gpu_backend()` returns `GpuBackend.CPU` — correct behaviour for the macOS dev host.
+- llama-server spawn (llama_server.py): Windows-only `llama-server.exe` is mocked via a Python-script shim (`mock_llama.py` prints the canonical port-announcement line + blocks) wrapped by a platform-conditional `.bat` (Windows) or shebang-bash (POSIX) executable. Subprocess spawn + port capture via `PORT_RE` regex + pipe drain via background task all exercised identically to Windows.
+- InferRouter.stream_chat: not directly exercised by a test (no end-to-end HTTP stream test in Plan 08); production integration lands at Plan 14 Ring 0 bench on Windows with real `llama-server.exe` + real Gemma GGUF.
+- chat/send + chat/cancel handlers (handlers/chat.py): asyncio + `websockets.server.ServerConnection` — same wire path as Plan 06's auth tests, which already run LIVE on macOS. No new websocket test in Plan 08; end-to-end wire integration deferred to Plan 14.
+- Full suite: 30 passed / 1 skipped / 0 failed / 0 errors (17 P06/P07 + 13 new P08 tests; Plan 09's test_gemma_download stub remains).
+
+Windows-specific caveats for downstream plans: `llama-server.exe` path resolution via `llama_server_executable_path(plugin_binaries_dir, backend)` expects `<Plugin>/Binaries/Win64/NyraInfer/<cuda|vulkan|cpu>/llama-server.exe` — Plan 02's `prebuild.ps1` + assets-manifest.json populate these folders. `asyncio.subprocess.Process.terminate()` on Windows maps to TerminateProcess (not SIGTERM); `kill()` maps to the same API. `InferHandle.terminate`'s 5s-wait-then-kill contract works identically on both platforms. Windows Defender can scan the Gemma GGUF on first load, extending cold start to ~30s; `STARTUP_TIMEOUT_S = 60.0` gives headroom.
+
 ### Phase 1 pre-start checks (awaiting orchestrator or user)
 
 - [ ] Confirm granularity=standard acceptance of 9 phases (Phase 0 is non-code; 8 code phases within standard band)
@@ -199,7 +225,17 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Last session handoff:**
 
-- Plan 01-07 (nyrahost-storage-attachments) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-08 (nyrahost-infer-spawn-ollama-sse) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 5 atomic commits: 1dfd3bb (test Task1 RED) · 477950c (feat Task1 GREEN) · ff4d87e (test Task2 RED) · c83d57d (feat Task2 GREEN) · 9588d41 (feat Task3)
+  - 9 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/: infer/__init__.py, infer/sse.py, infer/ollama_probe.py, infer/gpu_probe.py, infer/llama_server.py, infer/router.py, handlers/__init__.py, handlers/chat.py, app.py
+  - 5 files modified: src/nyrahost/__main__.py (CLI args + build_and_run entry), src/nyrahost/server.py (session._ws = ws one-liner), tests/test_sse_parser.py + tests/test_ollama_detect.py + tests/test_infer_spawn.py (Wave 0 stubs → full test bodies)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-08-nyrahost-infer-spawn-ollama-sse-SUMMARY.md
+  - ZERO Rule-1/2/3/4 deviations — plan content followed exactly (every module / test body / CLI arg / session wiring matches PLAN.md `<action>` blocks verbatim); 2 PLAN.md-mandated additive supersets landed cleanly (__main__.py appends --project-dir + --plugin-binaries-dir while preserving Plan 06's argparse + logging + cleanup_orphan_handshakes call ordering verbatim; server.py adds exactly ONE line `session._ws = ws` at the documented location)
+  - ZERO platform-gap deferrals — Python-script mock llama shim + httpx.MockTransport + platform-conditional _wrapper_bat means every code path runs live on macOS; Plan 14 Ring 0 bench validates real llama-server.exe + real Gemma GGUF on Windows
+  - 13 real passing pytest tests (5 SSE + 5 Ollama + 3 infer_spawn) upgrade Plan 02's last 3 infer Wave 0 stubs; full pytest suite 30 passed / 1 skipped (Plan 09's test_gemma_download remains) / 0 failed / 0 errors in ~18s on macOS Darwin Python 3.13.5
+  - PLUG-03 requirement satisfied on the Python side (chat/send + chat/cancel + chat/stream wiring through InferRouter → llama-server or Ollama). UE-side PLUG-03 completion (cpp supervisor spawning nyrahost + ws/jsonrpc client) lands in Plan 10.
+
+- Plan 01-07 (nyrahost-storage-attachments) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 4 atomic commits (TDD RED→GREEN pairs, one per task): 5cb4c8f (test) · f6c29b5 (feat) · 89e1c49 (test) · 861aa35 (feat)
   - 2 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/ (storage.py, attachments.py)
   - 2 files modified: tests/test_storage.py and tests/test_attachments.py — both upgraded from Plan 02's Wave 0 @pytest.mark.skip stubs to real test bodies (4 + 5 = 9 new passing tests)
@@ -248,8 +284,8 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 ### Next session
 
-1. Execute Plan 01-08 (nyrahost-infer-spawn-ollama-sse) — subprocess spawn of `llama-server.exe` (bundled path per assets-manifest.json), Ollama auto-detect via `GET http://127.0.0.1:11434/api/tags` with `httpx.MockTransport` fixture from Plan 02, SSE parser for `/v1/chat/completions stream:true` responses, `chat/send` request handler + `chat/stream` notification emitter mounted via Plan 06's NyraServer.register_request / register_notification extension points, Storage.append_message calls on every successful round-trip. Wave 0 stubs for test_infer_spawn.py + test_ollama_detect.py + test_sse_parser.py upgrade in place per the TDD RED/GREEN pattern (3 stubs → 3 RED + 3 GREEN commits).
-2. Continue through Phase 01 Wave 2/3 plans (01-09 gemma downloader, 01-10 cpp supervisor + ws/jsonrpc, 01-11 markdown parser, 01-12 chat panel streaming, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
+1. Execute Plan 01-09 (gemma-downloader) — SHA256+Range-resume download of `gemma-3-4b-it-qat-q4_0.gguf` (3.16 GB) from HuggingFace CDN into `<ProjectDir>/Saved/NYRA/models/` per D-17; pinned SHA256 from Plan 05's assets-manifest.json; `diagnostics/download-progress` notification emitter mounted on Plan 06's NyraServer.register_notification; upgrade `GemmaNotInstalledError` → `-32005 gemma_not_installed` mapping in app.py._wrap_send now that the downloader provides the remediation surface. Wave 0 stub test_gemma_download.py upgrades in place per the TDD RED/GREEN pattern.
+2. Continue through Phase 01 Wave 2/3 plans (01-10 cpp supervisor + ws/jsonrpc UE client [spawns `python -m nyrahost --editor-pid N --log-dir ... --project-dir ... --plugin-binaries-dir ...`], 01-11 markdown parser, 01-12 chat panel streaming integration, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
 
 **Files-on-disk checkpoint (all present):**
 
@@ -267,4 +303,4 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-22 after Plan 01-07 execution*
+*Last update: 2026-04-22 after Plan 01-08 execution*
