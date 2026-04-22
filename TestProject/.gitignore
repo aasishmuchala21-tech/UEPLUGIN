@@ -26,3 +26,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .venv-dev/
+
+# Python packaging build outputs (NOT shipped; Plan 06 `pip install -e .` artefact)
+*.egg-info/
+build/
+dist/
