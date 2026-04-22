@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: 5
+current_plan: 6
 status: executing
-last_updated: "2026-04-21T19:08:00Z"
+last_updated: "2026-04-22T05:42:50Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 5
-  percent: 31
+  completed_plans: 6
+  percent: 37
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-21 (Plan 01-05 completed)
+**Last Updated:** 2026-04-22 (Plan 01-06 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 5 of 16 (next to execute)
+Plan: 6 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 5 complete (next = Wave 2 start: Plan 06)
-**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 (Plans 06–10) next
+**Current Plan:** 6 complete (next = Wave 2 continuation: Plan 07)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 IN PROGRESS (Plan 06 done; Plans 07–10 next)
 
 **Progress (v1):**
 
 ```text
-[███░░░░░░░] 31% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 complete (5/16 plans shipped: 01 + 02 + 03 + 04 + 05)
+[████░░░░░░] 37% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1+Plan 06 shipped (6/16 plans: 01 + 02 + 03 + 04 + 05 + 06)
 ```
 
 **Plans completed in Phase 01:**
@@ -57,7 +57,8 @@ Plan: 5 of 16 (next to execute)
 - [x] Plan 02 — Python pytest scaffold (Wave 0, 2 tasks, 2 commits, SUMMARY on disk — pyproject.toml + requirements-dev.lock + conftest.py with 4 fixtures + 9 @pytest.mark.skip test shells + README; pytest verified live on macOS host 9 skipped/0 failed/0 errors)
 - [x] Plan 04 — Nomad tab placeholder panel (Wave 1, 3 tasks, 3 commits, SUMMARY on disk — Nyra::NyraChatTabId + SNyraChatPanel placeholder + Tools > NYRA > Chat menu wiring + Nyra.Panel.TabSpawner automation It block closing VALIDATION 1-04-01)
 - [x] Plan 05 — Specs handshake + JSON-RPC + model pins (Wave 1, 2 tasks, 2 commits, SUMMARY on disk — docs/HANDSHAKE.md + docs/JSONRPC.md + docs/ERROR_CODES.md canonical wire specs; ModelPins.h/.cpp + assets-manifest.json with live-resolved python-build-standalone + Gemma 3 4B GGUF + llama.cpp b8870 pins)
-- [ ] Plan 06 onwards (Wave 2)
+- [x] Plan 06 — NyraHost core WS + auth + handshake (Wave 2, 3 tasks TDD=true, 6 commits [3 RED + 3 GREEN], SUMMARY on disk — 8-module `nyrahost` Python package [`bootstrap`, `config`, `logging_setup`, `handshake`, `jsonrpc`, `server`, `session`, `__main__`] + `requirements.lock` + `TestProject/Plugins/NYRA/prebuild.ps1` + 8 real passing pytest tests [3 auth + 3 handshake + 2 bootstrap] upgrading Plan 02's Wave 0 stubs; `python -m nyrahost` binds `127.0.0.1:<ephemeral-port>`, writes atomic handshake, enforces first-frame `session/authenticate` gate with WS close 4401 on token mismatch; `NyraServer.register_request` / `register_notification` extension points land for Plans 07/08/09)
+- [ ] Plan 07 onwards (Wave 2 continuation)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -95,6 +96,7 @@ Populated as phases complete. Tracks:
 | 01    | 02   | python-pytest-scaffold           | 2     | 14    | ~9min    | 1465d8d · 0cbfe95                                 |
 | 01    | 04   | nomad-tab-placeholder-panel      | 3     | 5     | ~8min    | 224ffa7 · 628de82 · cf3ab9c                       |
 | 01    | 05   | specs-handshake-jsonrpc-pins     | 2     | 6     | ~21min   | 7aa83af · fa2d8f9                                 |
+| 01    | 06   | nyrahost-core-ws-auth-handshake  | 3     | 15    | ~42min   | 4400ae0 · e890a52 · 9cef418 · ef91a6f · bbea561 · 125ce46 |
 
 ---
 
@@ -130,6 +132,16 @@ Populated as phases complete. Tracks:
 - Did NOT silence pytest-asyncio's `asyncio_default_fixture_loop_scope` deprecation warning — PLAN.md's `<interfaces>` specifies EXACT contents and the key is Optional per Context7 docs. Plan 06 (first real async test writer) is the right place to pick a fixture loop scope.
 - Kept `mock_llama_server` async-signatured with a `None`-returning body (instead of making it sync) — locks the callsite shape `await mock_llama_server` for all Plan 06/07 callers today; Plan 08 swaps the body without breaking any caller.
 
+### Decisions from Plan 06 (nyrahost-core-ws-auth-handshake, 2026-04-22)
+
+- TDD RED/GREEN commit pattern locked for Phase 1 Python plans: `test(NN-NN): upgrade test_X.py from Wave 0 skip to real ...` for failing test, then `feat(NN-NN): add nyrahost.X ...` for the implementation that makes it pass. Each Wave 0 @pytest.mark.skip stub is upgraded in its own RED commit; the implementation module lands in a follow-on GREEN commit. Plans 07/08/09 inherit this exact sequence.
+- `NyraServer.register_request(method, handler)` / `register_notification(method, handler)` extension-point pattern locked. Downstream plans (07/08/09/10) NEVER modify `_handle_connection` or `_dispatch` directly — they register their method surfaces by name. Default handler `session/hello` stays owned by `server.py`; phase-specific handlers live in phase-specific modules. Keeps the auth gate as a single source of truth.
+- Handshake write sequence (hard order, RESEARCH §3.10 P1.1): `websockets.serve` → capture port via `ws_server.sockets[0].getsockname()[1]` → `write_handshake` → `ws_server.serve_forever()`. The port MUST be known before the file appears or the UE poller races and reads zero/stale data.
+- Runtime-vs-dev lockfile split: runtime deps in `requirements.lock` (D-14 wheel cache bundles these), dev deps in `requirements-dev.lock` (dev machines only). Any future runtime dep bump touches `pyproject.toml [project].dependencies` + `requirements.lock` in the same commit; version drift between the two is a Rule 1 bug.
+- Caught `OverflowError` alongside `OSError` in `handshake._pid_running` POSIX branch — macOS `os.kill(pid, 0)` raises `OverflowError` (not `OSError`) for pid > 2^31-1 (32-bit `pid_t`). Such a PID cannot be alive, so returning False is correct; `test_handshake_cleanup_orphans` deliberately exercises this with pid=3,999,999,999. Rule 1 fix; landed in Task 2 GREEN (`ef91a6f`).
+- `websockets.server.ServerConnection` import path preserved — works on both pinned `websockets==12.0` and the test-time installed 16.0. If a future bump removes it, fallback is `websockets.asyncio.server.ServerConnection`.
+- `*.egg-info/` + `build/` + `dist/` appended to `TestProject/.gitignore` — `pip install -e .` (required so `from nyrahost.X import ...` resolves during pytest) writes the egg-info dir; Plans 07/08/09 also need editable installs.
+
 ### Decisions from Plan 04 (nomad-tab-placeholder-panel, 2026-04-21)
 
 - Accepted UE 5.6 nomad-tab floating-default dock over explicit right-side 420px placement. UE 5.6 FTabSpawnerEntry does not expose a stable `SetDefaultDockArea` API; enforcing right-side placement requires `FTabManager::FLayout` which needs a saved layout to already exist (chicken-and-egg at StartupModule time). Plan 12 revisits via `FLayoutExtender` when the panel gains persistent layout config.
@@ -155,6 +167,14 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Plan 02 (python-pytest-scaffold): ZERO platform-gap deferrals.** Full pytest verification (`pytest tests/ -v` 9 skipped / 0 failed / 0 errors) was executed live on macOS Darwin with Python 3.13.5 and a dev venv pinned to pytest 8.3.3 + pytest-asyncio 0.24.0 + pytest-httpx 0.32.0 + httpx.
 
+**Plan 06 (nyrahost-core-ws-auth-handshake): 3 platform-gap deferrals (all Windows-only):**
+
+- `prebuild.ps1` authored and grep-verified for the required literals (`Get-Content $ManifestPath`, `ConvertFrom-Json`, `Get-FileHash $Path -Algorithm SHA256`, `Invoke-WebRequest`), but actually downloading python-build-standalone + llama.cpp zips + extracting to `Binaries/Win64/` is deferred to Windows dev machine or CI (PowerShell is not natively runnable on macOS).
+- Runtime wheel cache population (`pip download -r requirements.lock -d Binaries/Win64/NyraHost/wheels/`) deferred to Windows dev machine; `ensure_venv` is unit-tested with empty wheels dir + empty requirements.lock to exercise idempotency + version-rebuild logic without depending on an actual wheel cache.
+- Windows DACL lockdown in `handshake._apply_owner_only_dacl` is best-effort try/except wrapped with pywin32 import — runtime verification (actual SetFileSecurity on NTFS) deferred to Windows.
+
+**Plan 06 positive result:** All 8 real tests (3 auth + 3 handshake + 2 bootstrap) ran LIVE on macOS Darwin Python 3.13.5 against production code (`python -m nyrahost` entrypoint with `asyncio` WS server, `secrets.compare_digest` token gate, `os.replace` atomic handshake write, `os.kill(pid, 0)` orphan detection). 8 passed / 0 failed / 0 errors. Plan 02's 6 downstream-owned Wave 0 stubs preserved skipped.
+
 ### Phase 1 pre-start checks (awaiting orchestrator or user)
 
 - [ ] Confirm granularity=standard acceptance of 9 phases (Phase 0 is non-code; 8 code phases within standard band)
@@ -166,7 +186,17 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Last session handoff:**
 
-- Plan 01-04 (nomad-tab-placeholder-panel) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-06 (nyrahost-core-ws-auth-handshake) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 6 atomic commits (TDD RED→GREEN pairs, one per task): 4400ae0 (test) · e890a52 (feat) · 9cef418 (test) · ef91a6f (feat) · bbea561 (test) · 125ce46 (feat)
+  - 11 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/ + TestProject/Plugins/NYRA/Source/NyraHost/requirements.lock + TestProject/Plugins/NYRA/prebuild.ps1
+  - 4 files modified: pyproject.toml (appended [project].dependencies + [tool.setuptools.packages.find]), 3 test files upgraded from @pytest.mark.skip stubs to real tests, TestProject/.gitignore (added *.egg-info/, build/, dist/)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-06-nyrahost-core-ws-auth-handshake-SUMMARY.md
+  - 2 auto-fixed deviations: Rule 1 (OverflowError in _pid_running on macOS for test-deliberate huge PID) + Rule 3 (egg-info/build/dist gitignore — matches Plan 02 Python cache-ignore discipline)
+  - 3 platform-gap deferrals logged (all Windows-only): prebuild.ps1 execution, wheel cache population, DACL lockdown runtime verification
+  - 8 real pytest tests pass live on macOS Darwin Python 3.13.5 + websockets 16.0 + structlog 25.4.0 + pydantic 2.12.4 (dev machine resolves latest compatible; requirements.lock pins production at 12.0/24.1.0/2.7.4)
+  - NyraServer.register_request / register_notification extension points land — Plans 07/08/09/10 can now bind their method surfaces without modifying the first-frame auth gate
+
+- Plan 01-04 (nomad-tab-placeholder-panel) executed end-to-end on main branch (sequential, prior session). [shipped previous session]
   - 3 atomic commits: 224ffa7 · 628de82 · cf3ab9c
   - 3 files created (NyraChatTabNames.h, SNyraChatPanel.h, SNyraChatPanel.cpp) + 2 modified (NyraEditorModule.cpp additive superset of Plan 03, NyraPanelSpec.cpp additive superset of Plan 01)
   - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-04-nomad-tab-placeholder-panel-SUMMARY.md
@@ -196,8 +226,8 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 ### Next session
 
-1. Execute Plan 01-05 (specs-handshake-jsonrpc-pins) — lands the JSON-RPC 2.0 envelope specification, D-06 handshake file schema pins, and supervisor fault-injection clock pins. Pure spec + fixture work; does not touch NyraEditorModule.cpp.
-2. Continue through Phase 01 Wave 2/3 plans (01-06 nyrahost-core, 01-07 storage/attachments, 01-08 infer spawn + Ollama detect, 01-09 gemma downloader, 01-10 cpp supervisor + ws/jsonrpc, 01-11 markdown parser, 01-12 chat panel streaming, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
+1. Execute Plan 01-07 (nyrahost-storage-attachments) — SQLite sessions.db schema + migrations, attachments hash-and-hardlink, sessions/list + sessions/load method handlers mounted via NyraServer.register_request. Wave 0 stubs for test_storage.py + test_attachments.py upgrade in place per the Plan 06 TDD RED/GREEN pattern.
+2. Continue through Phase 01 Wave 2/3 plans (01-08 infer spawn + Ollama detect + SSE parser, 01-09 gemma downloader, 01-10 cpp supervisor + ws/jsonrpc, 01-11 markdown parser, 01-12 chat panel streaming, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
 
 **Files-on-disk checkpoint (all present):**
 
