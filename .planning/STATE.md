@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "8 complete (next = Wave 2 continuation: Plan 09)"
+current_plan: "9 complete (next = Wave 2/3: Plan 10 cpp-supervisor + ws-jsonrpc UE client)"
 status: executing
-last_updated: "2026-04-22T13:15:08Z"
+last_updated: "2026-04-22T17:11:54Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 8
-  percent: 50
+  completed_plans: 9
+  percent: 56
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-22 (Plan 01-08 completed)
+**Last Updated:** 2026-04-22 (Plan 01-09 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 9 of 16 (next to execute)
+Plan: 10 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 8 complete (next = Wave 2 continuation: Plan 09)
-**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 IN PROGRESS (Plans 06, 07, 08 done; Plans 09–10 next)
+**Current Plan:** 9 complete (next = Wave 2/3: Plan 10 cpp-supervisor + ws-jsonrpc UE client)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE; Wave 2 Python-side COMPLETE (Plans 06, 07, 08, 09 done); Wave 2 UE-side + Wave 3 NEXT (Plans 10-15)
 
 **Progress (v1):**
 
 ```text
-[█████░░░░░] 50% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08 shipped (8/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08)
+[██████░░░░] 56% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09 shipped (9/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09)
 ```
 
 **Plans completed in Phase 01:**
@@ -60,7 +60,8 @@ Plan: 9 of 16 (next to execute)
 - [x] Plan 06 — NyraHost core WS + auth + handshake (Wave 2, 3 tasks TDD=true, 6 commits [3 RED + 3 GREEN], SUMMARY on disk — 8-module `nyrahost` Python package [`bootstrap`, `config`, `logging_setup`, `handshake`, `jsonrpc`, `server`, `session`, `__main__`] + `requirements.lock` + `TestProject/Plugins/NYRA/prebuild.ps1` + 8 real passing pytest tests [3 auth + 3 handshake + 2 bootstrap] upgrading Plan 02's Wave 0 stubs; `python -m nyrahost` binds `127.0.0.1:<ephemeral-port>`, writes atomic handshake, enforces first-frame `session/authenticate` gate with WS close 4401 on token mismatch; `NyraServer.register_request` / `register_notification` extension points land for Plans 07/08/09)
 - [x] Plan 07 — NyraHost storage + attachments (Wave 2, 2 tasks TDD=true, 4 commits [2 RED + 2 GREEN], SUMMARY on disk — `nyrahost.storage` [Storage + Conversation/Message dataclasses + SCHEMA_V1 DDL + CURRENT_SCHEMA_VERSION=1 + db_path_for_project] and `nyrahost.attachments` [ingest_attachment + AttachmentRef + ALLOWED_EXTENSIONS + os.link-with-shutil.copy2-fallback] modules + 9 real pytest tests [4 storage + 5 attachments] upgrading Plan 02's last 2 Wave 0 persistence stubs; SQLite per-project sessions.db at `<ProjectDir>/Saved/NYRA/sessions.db` in WAL + foreign_keys=ON with CHECK role IN ('user','assistant','system','tool'); attachments content-addressed to `Saved/NYRA/attachments/<sha[:2]>/<sha>.<ext>` per CD-08; full pytest suite 17 passed / 4 skipped on macOS Darwin Python 3.13.5)
 - [x] Plan 08 — NyraHost infer spawn + Ollama detect + SSE (Wave 2, 3 tasks [Task 1+2 TDD=true, Task 3 type=auto], 5 commits [2 RED + 2 GREEN + 1 feat], SUMMARY on disk — `nyrahost.infer` subpackage [sse.py + ollama_probe.py + gpu_probe.py + llama_server.py + router.py] + `nyrahost.handlers.chat` [ChatHandlers + GemmaNotInstalledError + on_chat_send + on_chat_cancel] + `nyrahost.app` [build_and_run + gemma_gguf_path + _wrap_send adapter] + extended `__main__.py` with --project-dir + --plugin-binaries-dir + one-line `session._ws = ws` addition to server.py; InferRouter picks Ollama fast path else spawns bundled llama-server.exe with CUDA→Vulkan→CPU fallback + 10-min idle shutdown watchdog; chat/send persists user msg + ingests attachments via Plan 07 CD-04 BEFORE streaming then emits per-delta chat/stream notifications + final done:true frame; 13 real pytest tests [5 SSE + 5 Ollama + 3 infer_spawn] upgrading 3 Wave 0 stubs; full pytest suite 30 passed / 1 skipped [Plan 09 test_gemma_download stub remains])
-- [ ] Plan 09 onwards (Wave 2 continuation — Gemma downloader with SHA256+Range resume)
+- [x] Plan 09 — Gemma downloader (Wave 2, 2 tasks [Task 1 TDD=true, Task 2 type=auto], 3 commits [1 RED + 1 GREEN + 1 feat], SUMMARY on disk — `nyrahost.downloader` subpackage [__init__.py + progress.py with ProgressReporter + RATE_LIMIT_MS=500 + RATE_LIMIT_BYTES=10*1024*1024 + gemma.py with GemmaSpec + GemmaDownloader + download_gemma async helper + GEMMA_FILENAME constant] + `nyrahost.handlers.download.DownloadHandlers` + additive superset of app.py [_load_gemma_spec helper + DownloadHandlers instantiation + one extra server.register_request("diagnostics/download-gemma", ...) call]; GemmaDownloader streams HuggingFace CDN with HTTP Range-resume [206 Partial Content + 200 OK restart fallback] + pre-hashes existing .partial bytes + atomic Path.replace rename + SHA256 verify against ModelPins-pinned hash + GitHub Releases mirror fallback on primary failure; on_download_gemma fire-and-forget asyncio.Task emits diagnostics/download-progress per docs/JSONRPC.md §3.7 notifications; one Rule 1 auto-fix during GREEN [httpx.Timeout default param required on httpx 0.32]; 4 real pytest tests upgrading Plan 02's LAST Wave 0 stub [test_sha256_verify_and_range_resume + test_fallback_to_mirror_on_primary_404 + test_both_urls_fail_raises_and_emits_error_progress + test_progress_rate_limited]; full pytest suite 34 passed / 0 skipped — Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED)
+- [ ] Plan 10 onwards (Wave 2 UE-side: cpp supervisor + ws/jsonrpc UE client; Wave 3: markdown parser, chat panel streaming integration, history drawer, first-run UX, Ring 0 harness + run)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -101,6 +102,7 @@ Populated as phases complete. Tracks:
 | 01    | 06   | nyrahost-core-ws-auth-handshake  | 3     | 15    | ~42min   | 4400ae0 · e890a52 · 9cef418 · ef91a6f · bbea561 · 125ce46 |
 | 01    | 07   | nyrahost-storage-attachments     | 2     | 4     | ~15min   | 5cb4c8f · f6c29b5 · 89e1c49 · 861aa35             |
 | 01    | 08   | nyrahost-infer-spawn-ollama-sse  | 3     | 14    | ~143min  | 1dfd3bb · 477950c · ff4d87e · c83d57d · 9588d41   |
+| 01    | 09   | gemma-downloader                 | 2     | 6     | ~209min  | c1d8b37 · 4c5eac1 · 269c251                       |
 
 ---
 
@@ -145,6 +147,18 @@ Populated as phases complete. Tracks:
 - Caught `OverflowError` alongside `OSError` in `handshake._pid_running` POSIX branch — macOS `os.kill(pid, 0)` raises `OverflowError` (not `OSError`) for pid > 2^31-1 (32-bit `pid_t`). Such a PID cannot be alive, so returning False is correct; `test_handshake_cleanup_orphans` deliberately exercises this with pid=3,999,999,999. Rule 1 fix; landed in Task 2 GREEN (`ef91a6f`).
 - `websockets.server.ServerConnection` import path preserved — works on both pinned `websockets==12.0` and the test-time installed 16.0. If a future bump removes it, fallback is `websockets.asyncio.server.ServerConnection`.
 - `*.egg-info/` + `build/` + `dist/` appended to `TestProject/.gitignore` — `pip install -e .` (required so `from nyrahost.X import ...` resolves during pytest) writes the egg-info dir; Plans 07/08/09 also need editable installs.
+
+### Decisions from Plan 09 (gemma-downloader, 2026-04-22)
+
+- Rule 1 auto-fix: `httpx.Timeout(connect=10, read=60)` raises `ValueError: httpx.Timeout must either include a default, or set all four parameters explicitly.` on httpx 0.32. Plan 08's `InferRouter.stream_chat` uses `httpx.Timeout(connect=5, read=None, write=None, pool=None)` which is legal (all four explicit with None meaning unbounded). Plan 09's GemmaDownloader needs finite read/write/pool timeouts for the CDN transfer; fix is `httpx.Timeout(HTTP_READ_TIMEOUT, connect=..., read=..., write=..., pool=...)` — provides default AND all four explicit. Folded into Task 1 GREEN commit `4c5eac1`.
+- GemmaSpec is independent of assets-manifest.json structure (Plan 05's manifest stores `gemma_model_note` as free-form only because Gemma is a runtime-download artefact, NOT a prebuild). `_load_gemma_spec(manifest_path)` reads a structured `gemma` block if present (future-proofing) and otherwise falls back to compile-time constants matching `ModelPins::GemmaGgufUrl` / `GemmaGgufMirrorUrl` shapes. Plan 13's first-run UX is the right place to wire the real ModelPins-sourced URL + pinned SHA via a manifest writer.
+- Hard-coded default URLs in `_load_gemma_spec` use the qat-prefixed filename per `ModelPins::GemmaGgufFilename` acceptance literal, NOT the ACTUAL HF filename `ModelPins::GemmaGgufActualFilename` (which lacks `-qat-`). This will 404 against real HF without a manifest, which is ACCEPTABLE because (a) tests use `httpx.MockTransport`, (b) Plan 13 writes a proper manifest with the real URL before the UE panel invokes `diagnostics/download-gemma`, (c) production users' `prebuild.ps1` populates the manifest. Plan 13 closes the loop.
+- Rate-limit policy (500ms OR 10MB) gates ONLY `downloading` frames. Terminal frames (`verifying`, `done`, `error`) always emit regardless of state. Rationale: a 'stuck at 100%' UX bug would occur if the last downloading frame and the done frame fell in the same 500ms window — the panel would dismiss progress only when the next chat arrived.
+- 200 OK with Range header → restart hasher + truncate `.partial`. Some CDNs ignore Range and return the full body with status 200; `_download_from` branches on `resp.status_code`: if 206, parses Content-Range for total + appends; if 200, resets `hashlib.sha256()`, sets offset=0, opens the partial in `'wb'` (truncate) mode. Degenerate case — user 'wastes' already-downloaded bytes — but SHA correctness demands restart-from-zero.
+- `DownloadHandlers._inflight` is `Optional[asyncio.Task]`, not a dict. At most 1 concurrent download per server instance; re-invoking during an in-flight download returns `{started:false, already_running:true}`. Rationale: 3.16 GB × 2 concurrent downloads would double disk I/O and network bandwidth, and both would race to write the same `.partial` file. Generalizes to a dict when Phase 2+ adds LanceDB index + computer-use tool asset downloads.
+- Shallow `dest.exists()` short-circuit in `on_download_gemma` (NOT full SHA verify). Hashing 3.16 GB takes ~10s; doing so on every panel 'Is Gemma ready?' probe would be painfully slow. Full SHA verify only runs inside `GemmaDownloader.download()` when the user EXPLICITLY invokes `download-gemma` AND the file exists (the 'retry corrupt GGUF' path). Plan 13's UI surfaces a 'Re-download' button for the recovery case.
+- Best-effort emit in `on_download_gemma`'s closure. `emit(params)` wraps `ws.send` in try/except and silently drops on failure. Rationale: download runs in a background asyncio.Task; if the WS session dies, there's no back-channel to surface the error (the original request already returned `{started:true}`). Silent drop is the correct UX — user reconnects, re-invokes `download-gemma`, gets `{already_present:true}` once the download completes.
+- Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED with Plan 09. `test_gemma_download.py` was the LAST `@pytest.mark.skip` in the NyraHost test suite. Full pytest 34 passed / 0 skipped / 0 failed. Phase 1 Wave 2 Python-side complete; Wave 2/3 UE-side work begins in Plan 10.
 
 ### Decisions from Plan 08 (nyrahost-infer-spawn-ollama-sse, 2026-04-22)
 
@@ -202,6 +216,16 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Plan 07 (nyrahost-storage-attachments): ZERO platform-gap deferrals.** Pure Python stdlib (sqlite3 + hashlib + os + shutil + pathlib + dataclasses + typing) with zero new runtime deps beyond Plan 06's. 9 new tests (4 storage + 5 attachments) + Plan 06's 8 tests all run LIVE on macOS Darwin Python 3.13.5 → final full-suite state: 17 passed / 4 skipped / 0 failed / 0 errors in ~9 seconds. The cross-device-fallback path in `ingest_attachment` is exercised via `patch("nyrahost.attachments.os.link", side_effect=OSError("cross-device"))` — no second volume required. `os.link` + `shutil.copy2` both work natively on macOS APFS and Windows NTFS. Windows-specific caveat for later: `os.link` requires SeCreateSymbolicLinkPrivilege on some policies; `shutil.copy2` fallback handles it.
 
+**Plan 09 (gemma-downloader): ZERO platform-gap deferrals.** All Plan 09 code paths exercised live on macOS Darwin Python 3.13.5:
+
+- Downloader core (`downloader/progress.py` + `downloader/gemma.py`): pure-Python using `hashlib`, `pathlib`, `asyncio.to_thread`, and `httpx.AsyncClient` streaming. `Path.replace()` is atomic on both NTFS (Windows) and APFS (macOS) + ext4 (Linux).
+- Tests (`tests/test_gemma_download.py`): `httpx.MockTransport` for deterministic 200/206/404/500 responses + Range-header parsing — NO real HuggingFace call. Pre-existing `.partial` file synthesized via `Path.write_bytes`; SHA256 verification uses stdlib `hashlib`. All 4 tests pass in ~0.07s.
+- Download handler (`handlers/download.py`): asyncio + `websockets.server.ServerConnection` — same wire path as Plan 06's auth tests.
+- app.py wiring: pure Python import + instantiation; no runtime behavioural change unless `build_and_run` is invoked (which requires a live WS server — covered by Plan 06's auth tests indirectly).
+- Full suite: 34 passed / 0 skipped / 0 failed / 0 errors in ~16 seconds. Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED — `test_gemma_download.py` was the last `@pytest.mark.skip`.
+
+Windows-specific runtime caveats: `Path.replace()` on Windows fails with `PermissionError` if the destination is open in another process (unlikely for the .gguf but possible with antivirus); `GemmaDownloader.download` catches `OSError` in its outer loop. Windows Defender can scan the 3.16 GB GGUF on write, extending download+verify by ~30s. HuggingFace CDN returns 302→cloudfront.net; `follow_redirects=True` handles this. Gemma repo is gated (per ModelPins.h note) — Plan 13's UX surfaces the HF token remediation for the 401 path.
+
 **Plan 08 (nyrahost-infer-spawn-ollama-sse): ZERO platform-gap deferrals.** All Plan 08 code paths exercised live on macOS Darwin Python 3.13.5:
 
 - SSE parser (sse.py): pure-Python; zero platform deps.
@@ -225,7 +249,17 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 **Last session handoff:**
 
-- Plan 01-08 (nyrahost-infer-spawn-ollama-sse) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-09 (gemma-downloader) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 3 atomic commits: c1d8b37 (test Task1 RED) · 4c5eac1 (feat Task1 GREEN) · 269c251 (feat Task2)
+  - 4 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/: downloader/__init__.py, downloader/progress.py, downloader/gemma.py, handlers/download.py
+  - 2 files modified: src/nyrahost/app.py (additive superset — imports json + GEMMA_FILENAME + GemmaSpec + DownloadHandlers; adds _load_gemma_spec helper; routes gemma_gguf_path through GEMMA_FILENAME constant; wires DownloadHandlers + register_request("diagnostics/download-gemma", ...) into build_and_run alongside Plan 08's chat/send + chat/cancel) + tests/test_gemma_download.py (Plan 02's LAST Wave 0 @pytest.mark.skip stub → 4 real passing tests)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-09-gemma-downloader-SUMMARY.md
+  - ONE Rule 1 auto-fix: httpx.Timeout(connect=10, read=60) raises ValueError on httpx 0.32 — fix provides both default + all four explicit. Folded into Task 1 GREEN commit 4c5eac1.
+  - ZERO platform-gap deferrals — httpx.MockTransport pattern (inherited from Plan 08) means every code path runs live on macOS without any real HuggingFace CDN or GitHub mirror call. Real 3.16 GB download integration validates at Plan 14 Ring 0 bench on Windows.
+  - 4 real passing pytest tests (test_sha256_verify_and_range_resume + test_fallback_to_mirror_on_primary_404 + test_both_urls_fail_raises_and_emits_error_progress + test_progress_rate_limited) upgrade Plan 02's LAST Wave 0 stub; full pytest suite 34 passed / 0 skipped (!!!) / 0 failed / 0 errors in ~16s. Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED.
+  - PLUG-03 requirement further reinforced on the Python side (download path now provides the first-run UX gate for chat/send when neither GGUF nor Ollama is present). UE-side consumption lands in Plan 13 (first-run UX banners + diagnostics).
+
+- Plan 01-08 (nyrahost-infer-spawn-ollama-sse) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 5 atomic commits: 1dfd3bb (test Task1 RED) · 477950c (feat Task1 GREEN) · ff4d87e (test Task2 RED) · c83d57d (feat Task2 GREEN) · 9588d41 (feat Task3)
   - 9 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/: infer/__init__.py, infer/sse.py, infer/ollama_probe.py, infer/gpu_probe.py, infer/llama_server.py, infer/router.py, handlers/__init__.py, handlers/chat.py, app.py
   - 5 files modified: src/nyrahost/__main__.py (CLI args + build_and_run entry), src/nyrahost/server.py (session._ws = ws one-liner), tests/test_sse_parser.py + tests/test_ollama_detect.py + tests/test_infer_spawn.py (Wave 0 stubs → full test bodies)
@@ -284,8 +318,8 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 ### Next session
 
-1. Execute Plan 01-09 (gemma-downloader) — SHA256+Range-resume download of `gemma-3-4b-it-qat-q4_0.gguf` (3.16 GB) from HuggingFace CDN into `<ProjectDir>/Saved/NYRA/models/` per D-17; pinned SHA256 from Plan 05's assets-manifest.json; `diagnostics/download-progress` notification emitter mounted on Plan 06's NyraServer.register_notification; upgrade `GemmaNotInstalledError` → `-32005 gemma_not_installed` mapping in app.py._wrap_send now that the downloader provides the remediation surface. Wave 0 stub test_gemma_download.py upgrades in place per the TDD RED/GREEN pattern.
-2. Continue through Phase 01 Wave 2/3 plans (01-10 cpp supervisor + ws/jsonrpc UE client [spawns `python -m nyrahost --editor-pid N --log-dir ... --project-dir ... --plugin-binaries-dir ...`], 01-11 markdown parser, 01-12 chat panel streaming integration, 01-12b history drawer, 01-13 first-run UX, 01-14 ring0 harness, 01-15 ring0 run + commit).
+1. Execute Plan 01-10 (cpp-supervisor + ws-jsonrpc UE client) — UE C++ `NyraHostSupervisor` that spawns `python -m nyrahost --editor-pid N --log-dir ... --project-dir ... --plugin-binaries-dir ...` at FNyraEditorModule::StartupModule, monitors the handshake file for the port+token, connects via LibWebSockets (or minimal WS client), sends session/authenticate as the first frame, then session/hello. Respawns on crash per D-08 (3 restarts in 60s). Wires chat/send + chat/cancel + diagnostics/download-gemma outbound JSON-RPC calls from the UE side. Closes the UE-side PLUG-03 gate.
+2. Continue through Phase 01 Wave 2/3 plans (01-11 markdown parser, 01-12 chat panel streaming integration, 01-12b history drawer, 01-13 first-run UX banners + diagnostics [consumes Plan 09's diagnostics/download-gemma surface], 01-14 ring0 harness, 01-15 ring0 run + commit).
 
 **Files-on-disk checkpoint (all present):**
 

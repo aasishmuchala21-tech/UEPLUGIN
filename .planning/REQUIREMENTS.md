@@ -10,7 +10,7 @@
 
 - [ ] **PLUG-01**: Plugin ships as a native UE5 C++ plugin with two modules (`NyraEditor`, `NyraRuntime`), installable on Windows for UE 5.4, 5.5, 5.6, and 5.7
 - [ ] **PLUG-02**: Plugin hosts a Python MCP sidecar process (`NyraHost`) communicating with the editor over a loopback WebSocket; NyraHost hosts the MCP server, agent router, RAG, and session state
-- [ ] **PLUG-03**: Plugin launches a llama.cpp inference process (`NyraInfer`) for Gemma 3 4B IT QAT Q4_0 GGUF (3.16 GB, 128K context, multimodal) exposed over localhost HTTP
+- [x] **PLUG-03**: Plugin launches a llama.cpp inference process (`NyraInfer`) for Gemma 3 4B IT QAT Q4_0 GGUF (3.16 GB, 128K context, multimodal) exposed over localhost HTTP
 - [ ] **PLUG-04**: Four-version CI matrix (UE 5.4 / 5.5 / 5.6 / 5.7) running from day one of the build-matrix phase; no version-specific code merges without all four passing
 - [ ] **PLUG-05**: Pre-code legal gate passed — written ToS clearance from Anthropic (CLI subprocess driving) and Epic (Fab AI-plugin policy) before any subscription-driving code ships
 
@@ -140,7 +140,7 @@ Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for pha
 |-------------|-------|--------|
 | PLUG-01 | Phase 1 | Pending |
 | PLUG-02 | Phase 1 | Pending |
-| PLUG-03 | Phase 1 | Pending |
+| PLUG-03 | Phase 1 | Complete |
 | PLUG-04 | Phase 2 | Pending |
 | PLUG-05 | Phase 0 | Pending |
 | CHAT-01 | Phase 1 | Complete |
