@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: 4
+current_plan: 5
 status: executing
-last_updated: "2026-04-21T17:58:36Z"
+last_updated: "2026-04-21T19:08:00Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 4
-  percent: 25
+  completed_plans: 5
+  percent: 31
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-21 (Plan 01-04 completed)
+**Last Updated:** 2026-04-21 (Plan 01-05 completed)
 
 ---
 
@@ -41,13 +41,13 @@ Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
 Plan: 5 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 4 (incrementing toward 05-specs-handshake-jsonrpc-pins)
-**Status:** Executing Phase 01 (Plans 01, 02, 03, 04 complete — Wave 0 C++ + Python test scaffolds, two-module scaffold, and Wave 1 nomad-tab-placeholder-panel all on disk; Plan 05 specs/handshake next)
+**Current Plan:** 5 complete (next = Wave 2 start: Plan 06)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE (Plans 01, 02, 03, 04, 05); Wave 2 (Plans 06–10) next
 
 **Progress (v1):**
 
 ```text
-[██▌░░░░░░░] 25% — 0/9 phases complete (Phases 0-8), Phase 01 in progress (4/16 plans complete, Plans 01 + 02 + 03 + 04 shipped)
+[███░░░░░░░] 31% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 complete (5/16 plans shipped: 01 + 02 + 03 + 04 + 05)
 ```
 
 **Plans completed in Phase 01:**
@@ -56,7 +56,8 @@ Plan: 5 of 16 (next to execute)
 - [x] Plan 01 — C++ automation scaffold (Wave 0, 2 tasks, 2 commits, SUMMARY on disk — upgraded Plan 03 Rule-3 NyraTestFixtures.h stub to full Nyra::Tests namespace; added 4 new spec shells + README)
 - [x] Plan 02 — Python pytest scaffold (Wave 0, 2 tasks, 2 commits, SUMMARY on disk — pyproject.toml + requirements-dev.lock + conftest.py with 4 fixtures + 9 @pytest.mark.skip test shells + README; pytest verified live on macOS host 9 skipped/0 failed/0 errors)
 - [x] Plan 04 — Nomad tab placeholder panel (Wave 1, 3 tasks, 3 commits, SUMMARY on disk — Nyra::NyraChatTabId + SNyraChatPanel placeholder + Tools > NYRA > Chat menu wiring + Nyra.Panel.TabSpawner automation It block closing VALIDATION 1-04-01)
-- [ ] Plan 05 onwards
+- [x] Plan 05 — Specs handshake + JSON-RPC + model pins (Wave 1, 2 tasks, 2 commits, SUMMARY on disk — docs/HANDSHAKE.md + docs/JSONRPC.md + docs/ERROR_CODES.md canonical wire specs; ModelPins.h/.cpp + assets-manifest.json with live-resolved python-build-standalone + Gemma 3 4B GGUF + llama.cpp b8870 pins)
+- [ ] Plan 06 onwards (Wave 2)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -93,6 +94,7 @@ Populated as phases complete. Tracks:
 | 01    | 01   | cpp-automation-scaffold          | 2     | 7     | ~34min   | 35ed37d · ca182ba                                 |
 | 01    | 02   | python-pytest-scaffold           | 2     | 14    | ~9min    | 1465d8d · 0cbfe95                                 |
 | 01    | 04   | nomad-tab-placeholder-panel      | 3     | 5     | ~8min    | 224ffa7 · 628de82 · cf3ab9c                       |
+| 01    | 05   | specs-handshake-jsonrpc-pins     | 2     | 6     | ~21min   | 7aa83af · fa2d8f9                                 |
 
 ---
 
