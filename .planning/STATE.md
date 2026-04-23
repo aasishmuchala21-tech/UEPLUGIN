@@ -3,20 +3,24 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "14 complete (next = Wave 5: Plan 15 ring0-run-and-commit-results)"
-status: executing
-last_updated: "2026-04-23T15:36:00.000Z"
+current_plan: "15 complete at docs layer (Phase 1 COMPLETE at source+docs; pending_manual_verification=true for Plan 15 ring0 empirical bench run on Windows)"
+status: phase-1-complete-pending-windows-empirical-gate
+last_updated: "2026-04-23T15:55:00.000Z"
+pending_manual_verification: true
+phase_01_empirical_gate: "deferred_to_windows_operator (see ring0-run-instructions.md + ring0-bench-results.md)"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 15
-  percent: 94
+  completed_plans: 16
+  percent: 100
+  phase_01_source_docs_complete: true
+  phase_01_empirical_sc3_complete: false
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-23 (Plan 01-14 completed)
+**Last Updated:** 2026-04-23 (Plan 01-15 completed at docs layer -- Phase 1 closed at source+documentation; Phase 1 empirical SC#3 architectural gate pending Windows operator run of `ring0-run-instructions.md`)
 
 ---
 
@@ -37,17 +41,17 @@ progress:
 
 ## Current Position
 
-Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 15 of 16 (next to execute)
+Phase: 01 (plugin-shell-three-process-ipc) — COMPLETE at source+docs layer; Phase 1 architectural SC#3 empirical bench gate PENDING Windows operator run of `ring0-run-instructions.md`
+Plan: 15 of 16 COMPLETE at docs layer (pending_manual_verification=true)
 **Milestone:** v1 (Fab launch)
-**Current Phase:** 01
-**Current Plan:** 14 complete (next = Wave 5: Plan 15 ring0-run-and-commit-results)
-**Status:** Ready to execute
+**Current Phase:** 01 (closure pending operator empirical gate) / next = Phase 02 planning (may start in parallel)
+**Current Plan:** 15 complete (16/16); Phase 1 architectural gate closure pending Windows bench run
+**Status:** phase-1-complete-pending-windows-empirical-gate
 
 **Progress (v1):**
 
 ```text
-[█████████▍] 94% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11/12/12b/13/14 shipped (15/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11 + 12 + 12b + 13 + 14)
+[██████████] 100% — 0/9 phases fully complete (Phases 0-8); Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15). Phase 1 architectural gate SC#3 empirical measurement pending Windows operator run of ring0-run-instructions.md (see ring0-bench-results.md placeholder + pending_manual_verification:true flag). Phase 2 planning may proceed in parallel; Phase 2 execution waits on SC#3 empirical close + Phase 0 legal clearance.
 ```
 
 **Plans completed in Phase 01:**
@@ -67,7 +71,7 @@ Plan: 15 of 16 (next to execute)
 - [x] Plan 12b — History drawer (Wave 3 UE+Python, 3 tasks [Task 1 TDD=true], 4 commits [1 RED + 3 feat], SUMMARY on disk — nyrahost.handlers.sessions.SessionHandlers dataclass with on_sessions_list (ORDER BY c.updated_at DESC + message_count subquery + clamped limit DEFAULT_LIST_LIMIT=50/MAX=200) and on_sessions_load (latest N by DESC then reversed to ASC + bulk attachment IN-lookup + empty-on-unknown-id); app.py register_request("sessions/list" + "sessions/load"); SNyraHistoryDrawer Slate widget (SBox width-override 24/220 px collapsed, SListView of FNyraConversationSummary, toggle + [+ New Conversation] buttons, per-rpc-id TMap<int64, TFunction<>> response dispatch avoiding Plan 10 multicast upgrade) mounted in SNyraChatPanel via SHorizontalBox two-column layout (drawer AutoWidth | existing VBox FillWidth) + OnOpenConversation/OnNewConversation lambda bridges + Refresh() call at Construct end; first-launch-ever keeps default fresh FGuid, subsequent launches auto-open most-recently-updated; 4 real pytest tests upgrading test_sessions_list_ordering.py from scratch [ordering + limit + load ASC + unknown-id empty]; NyraPanelSpec.cpp HistoryDrawerSelect + NewConversationButton Describe blocks closing VALIDATION 1-12b-01 + 1-12b-02; full pytest suite 38 passed / 0 failed on macOS Darwin Python 3.13.5)
 - [x] Plan 13 — First-run UX banners + diagnostics (Wave 4 UE-side, 2 tasks, 2 commits, SUMMARY on disk — SNyraBanner widget with ENyraBannerKind {Hidden, Info, Warning, Error} + SetState overloads (message-only + message+buttons) + Hide + indeterminate SProgressBar for Info kind + blue/yellow/red BorderBackgroundColor_Lambda + FOnBannerRestartClicked/FOnBannerOpenLogClicked delegates; SNyraDownloadModal widget consuming diagnostics/download-progress notifications (status downloading/verifying/done/error with D-11 error.data.remediation rendering) via SProgressBar Percent_Lambda on BytesDone/BytesTotal + centred SOverlay mount; SNyraDiagnosticsDrawer SExpandableArea InitiallyCollapsed(true) + static LogFilePath() helper + FFileHelper::LoadFileToStringArray last-100-line tail into read-only monospace SMultiLineEditableTextBox + graceful "(log file not yet written)" fallback; SNyraChatPanel additively extended (Plan 12+12b content preserved verbatim): new 4-slot right-column VBox [Banner | SOverlay(MessageList + DownloadModal) | Composer | Diagnostics], OnStateChanged lambda mapping per RESEARCH §3.9 table (Spawning/WaitingForHandshake/Connecting/Authenticating -> Info, Ready -> Hide, Crashed -> Warning), OnUnstable lambda with Error banner + [Restart] (RequestShutdown + Reset + fresh SpawnAndConnect mirroring StartupModule) + [Open log] (FPlatformProcess::ExploreFolder on logs dir); HandleNotification dispatches diagnostics/download-progress to DownloadModal BEFORE chat/stream branch; destructor unbinds OnStateChanged + OnUnstable + OnNotification; RESEARCH Open Q 6 resolved at source level — no diagnostics/tail WS method in Phase 1)
 - [x] Plan 14 — Ring 0 bench harness (Wave 4 UE-side, 1 task, 1 commit, SUMMARY on disk — FNyraDevTools static class + FNyraBenchSample per-round struct + FNyraBenchResult aggregate with p50/p95/p99 per metric + 3 pass flags + FormatReport() emitting RESEARCH §3.6 Output Log block; file-scope FAutoConsoleCommand registering Nyra.Dev.RoundTripBench with default N=100 prompt="Reply with OK." (Count clamped 1..1000); RunRoundTripBench synchronous GameThread pump using FTSTicker::Tick(0.016f)+Sleep(1ms) bounded by PerRoundTimeoutS=60.0 with editor-tick sampler AddTicker lambda recording max DeltaTime*1000 into GCurrentRound.MaxTickMs; BenchHandleNotification bound via Sup->OnNotification.BindStatic filters chat/stream by req_id, records first_token on first non-empty delta + done+CompletionTokens+bErrored on done:true; pass thresholds p95 first_token<500ms + p95 editor_tick<33ms + Errors==0; NON-COMPLIANT compliance gate prepends [NON-COMPLIANT: requires N>=100 per ROADMAP Phase 1 SC#3] header AND forces all 3 PASS verdicts to FAIL when N<100 — prevents accidental commit of short-run results as Plan 15 deliverable; NyraEditorModule.cpp additively extended (Plans 03/04/10/13 preserved verbatim: IMPLEMENT_MODULE/RegisterNomadTabSpawner/GNyraSupervisor/SpawnAndConnect/RequestShutdown/D-04/D-05 intact; added one #include "Dev/FNyraDevTools.h" + one UE_LOG registration-confirmation line at end of StartupModule))
-- [ ] Plan 15 (Wave 5: Ring 0 run + commit results on Windows dev machine)
+- [x] Plan 15 — Ring 0 run and commit results (Wave 5 docs-only on macOS host, 3 tasks, 3 commits, SUMMARY on disk — PARTIAL-COMPLETION at documentation layer with `pending_manual_verification: true`: ring0-run-instructions.md operator runbook [4-item Preconditions Checklist + warm-up run + canonical `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."` invocation + output capture + dev machine spec capture + 5-failure-mode Troubleshooting + Appendix A alternate-invocations + Appendix B compliance-gate explainer] + ring0-bench-results.md STRUCTURED PLACEHOLDER [prominent multi-line ⚠ PLACEHOLDER banner at top + frontmatter `status: placeholder` + every numeric cell PENDING (awaiting first Windows run) + locked schema for Verdict table, Full Percentile Table, Dev Machine Spec, Raw Output fenced block, Remediation per-failure-mode templates, Re-run history table]; Phase 1 COMPLETE at source+docs layer (16/16 plans) but Phase 1 architectural SC#3 empirical bench measurement OWED by Windows operator following ring0-run-instructions.md)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -113,6 +117,7 @@ Populated as phases complete. Tracks:
 | 01    | 11   | cpp-markdown-parser              | 2     | 6     | ~9min    | 3371bc2 · fa2160e                                 |
 | 01    | 13   | first-run-ux-banners-diagnostics | 2     | 8     | ~6min    | 1995eea · b0ef8d1                                 |
 | 01    | 14   | ring0-bench-harness              | 1     | 3     | ~4min    | 7f479b2                                           |
+| 01    | 15   | ring0-run-and-commit-results     | 3     | 3     | ~10min   | d3731f2 · 6a50059 · (final metadata commit)       |
 
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
@@ -120,6 +125,7 @@ Populated as phases complete. Tracks:
 | Phase 01 P12b | ~10min | 3 tasks | 8 files |
 | Phase 01 P13 | ~6min | 2 tasks | 8 files |
 | Phase 01 P14 | ~4min | 1 task | 3 files |
+| Phase 01 P15 | ~10min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -175,6 +181,19 @@ Populated as phases complete. Tracks:
 - Widget composition locked per PLAN.md `<interfaces>`: SBorder(ToolPanel.GroupBorder brush, 8.f padding) wrapping a two-slot SVerticalBox — header SHorizontalBox[FillWidth STextBlock lang-label + AutoWidth SButton `[Copy]`] + body STextBlock(MonospacedText font, AutoWrapText) with 8.f top padding. Body is capture-by-value in the OnClicked lambda so `FPlatformApplicationMisc::ClipboardCopy(*BodyCopy)` remains valid for the full widget lifetime regardless of decorator destruction.
 - NyraMarkdownSpec 2-Describe layout (FencedCode + InlineFormatting) mirrors VALIDATION rows 1-04-02 + 1-04-03 one-to-one. 10 total It blocks (3 FencedCode + 7 InlineFormatting) — exceeds the PLAN.md acceptance floor of >=10 by exactly fitting the minimum.
 - Streaming-render integration contract for Plan 12 (recorded here so the decision doesn't drift): DO render plain STextBlock during `chat/stream` deltas, DO call FNyraMarkdownParser::MarkdownToRichText once on `done:true` and swap to SRichTextBlock. Incremental re-parse on every delta would thrash Slate layout (RESEARCH Sec 3.1). Incremental tail-paragraph parse is a Phase 2 polish item.
+
+### Decisions from Plan 15 (ring0-run-and-commit-results, 2026-04-23)
+
+**pending_manual_verification: true** — Phase 1 architectural SC#3 empirical bench run is OWED by a Windows operator following `ring0-run-instructions.md`. This plan closes Phase 1 at the documentation + source layer but explicitly defers the live `Nyra.Dev.RoundTripBench 100` measurement that empirically validates the architectural gate. The outstanding TODO for the Windows operator: "run bench and replace PENDING cells in ring0-bench-results.md; see ring0-run-instructions.md for step-by-step procedure."
+
+- Partial-completion policy for `autonomous: false` plans on mismatched host platform: when PLAN.md requires a live run on a platform not available to the current executor, bifurcate the plan into (a) a documentation-layer close that authors the operator runbook + structured placeholder with schema locked + all numeric cells PENDING, and (b) an operator-layer close that replaces PENDING cells + flips frontmatter flags. Rationale: preserves Phase forward-motion while honestly flagging the outstanding empirical step. Alternative "leave plan at 0 tasks" would block entire critical path on a manual operator step that can happen in parallel with Phase 2 planning.
+- Prominent multi-line ASCII-banner box at top of placeholder files (⚠ PLACEHOLDER warning with 15-line explanation). Rationale: frontmatter `status: placeholder` is invisible in most rendering paths; ASCII banner is visible at a glance + impossible to mistake the templated cells for real measurement data. Pattern generalises to any future placeholder deliverable (e.g., Phase 5 computer-use reliability spike results doc authored before the spike runs).
+- Canonical bench prompt locked to "Reply with the single word OK only." across all dev-machine runs. Rationale: results must be comparable across operators + dev machines. If each operator chose different prompts, `total_ms` and `tokens/sec` would diverge (different generation lengths) even when `first_token_ms` is stable. Runbook Appendix A lists alternative prompts as dev-iteration options that MUST NOT be committed to ring0-bench-results.md as the Phase 1 gate measurement.
+- Runbook warm-up step (`Nyra.Dev.RoundTripBench 3`) explicit + mandatory, output discarded. Rationale: Gemma 3 4B cold-load on llama-server.exe takes ~6-12s per RESEARCH §3.5. Without warm-up Round 1 of the real 100-round bench bears this cost and spuriously inflates p99 (potentially p95 on fast machines). Runbook instructs explicit discard of warm-up output so operators cannot accidentally commit the cold-start number as the gate measurement.
+- Troubleshooting section covers exactly 5 failure modes keyed to log lines + source files: command-not-found (plugin didn't compile), all-rounds-error (supervisor not Ready or NyraHost crashed), editor_tick p95 FAIL (known Phase 1 limit per RESEARCH §3.10 P1.6; Phase 2 fix), first_token p95 >> 500 ms (cold-start or CPU-only backend despite GPU), editor freezes (async task stuck). Rationale: operator may not have UE expertise; runbook must be self-contained for a Phase 2 engineer or a Fab pre-review contractor to follow without asking questions.
+- ring0-bench-results.md Re-run history table pattern (multi-row, 1 placeholder row, "append never delete" rule). Rationale: VALIDATION row 1-ring0 closes on the LAST PASS row; earlier attempts remain as audit trail. Pattern generalises to Phase 2's four-version CI matrix results (per UE version), Phase 5's computer-use reliability spike (20 scripted sessions), and Phase 7's cold-start release gate (three consecutive random clips).
+- Phase 2 gate status logic encoded in ring0-bench-results.md: PASS → proceed to Phase 2 execution (planning may already run in parallel); FAIL → Phase 2 BLOCKED pending remediation commit; PARTIAL (e.g., PASS on first-token + errors but marginal-FAIL on editor_tick p95 = 34-38 ms) → Phase 2 Wave 0 schedules the WS-thread refactor as its first deliverable per RESEARCH §3.10 P1.6. Rationale: makes the gate outcome actionable without a separate follow-up planning session.
+- ROADMAP.md Phase 1 row updated to 16/16 with a footnote documenting the Windows-only empirical bench deferral. STATE.md Session Continuity handoff carries the explicit operator TODO. Both surfaces are human-readable at a glance; machine-readable frontmatter flags (pending_manual_verification: true, phase_01_empirical_sc3_complete: false) are available for tooling.
 
 ### Decisions from Plan 13 (first-run-ux-banners-diagnostics, 2026-04-23)
 
@@ -319,7 +338,24 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 **Last session handoff:**
 
-- Plan 01-11 (cpp-markdown-parser) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-15 (ring0-run-and-commit-results) executed end-to-end on main branch (sequential, no worktree) — PARTIAL-COMPLETION at documentation layer with pending_manual_verification:true. [shipped this session]
+  - 3 atomic commits: d3731f2 (docs Task 1 ring0-run-instructions.md operator runbook) · 6a50059 (docs Task 2 ring0-bench-results.md STRUCTURED PLACEHOLDER with PENDING cells + prominent ⚠ banner) · (final metadata commit adds SUMMARY.md + this STATE.md update + ROADMAP.md footnote)
+  - 2 files created: .planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md (419 lines, Windows-operator runbook: 4-item Preconditions Checklist + canonical `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."` invocation + dev-spec capture + 5-failure-mode Troubleshooting + Appendix A alternate-invocations + Appendix B compliance-gate explainer) + .planning/phases/01-plugin-shell-three-process-ipc/ring0-bench-results.md (273 lines, structured placeholder: frontmatter `status: placeholder` + `pending_manual_verification: true` + prominent ⚠ PLACEHOLDER banner at top + all numeric cells reading `PENDING (awaiting first Windows run)` + Verdict table + Full Percentile Table + Dev Machine Spec table + Raw Output fenced block + Remediation per-failure-mode templates + Re-run history table + "Integrity notes" operator checklist)
+  - 1 file created in final metadata commit: .planning/phases/01-plugin-shell-three-process-ipc/01-15-ring0-run-and-commit-results-SUMMARY.md
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-15-ring0-run-and-commit-results-SUMMARY.md
+  - 3 Rule-2 deviations + 1 platform-gap deferral documented: (Rule 2) extended PLACEHOLDER banner beyond PLAN.md sketch + added Appendix A + Appendix B to runbook + bifurcated PLAN.md Task 3 into docs-layer close (Claude authors runbook + placeholder) vs operator-layer close (Windows operator runs bench + replaces PENDING cells). Rationale in SUMMARY.md "Partial-completion policy" section.
+  - **OPEN TODO for Windows operator:** follow ring0-run-instructions.md on a Windows 11 + UE 5.6 dev machine with Gemma 3 4B IT QAT Q4_0 GGUF downloaded (or Ollama gemma3:4b-it-qat installed). Run `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."`. Capture Output Log block + dev machine spec. Replace PENDING cells in ring0-bench-results.md with real values. Flip frontmatter `status: placeholder` → `measured` + `pending_manual_verification: true` → `false`. Remove the ⚠ PLACEHOLDER banner and the "Integrity notes" section. Commit with `feat(01-15): record ring0 bench results from Windows dev machine`. Update STATE.md `pending_manual_verification: true` → `false` and `phase_01_empirical_sc3_complete: false` → `true`. Remove ROADMAP.md Phase 1 footnote about the deferred empirical bench.
+  - Phase 1 COMPLETE at source + documentation layer (16/16 plans). Phase 2 planning may proceed in parallel with the operator bench run; Phase 2 execution waits on Phase 1 SC#3 empirical closure (via Windows operator) + Phase 0 legal clearance.
+  - ZERO code changes (docs-only plan); Phase 1 threat surface unchanged from Plan 14 SUMMARY.
+
+- Plan 01-14 (ring0-bench-harness) executed end-to-end on main branch. [shipped previous session]
+  - 1 atomic commit: 7f479b2 (FNyraDevTools + Nyra.Dev.RoundTripBench console command with NON-COMPLIANT compliance gate when N<100)
+  - 2 files created: Public/Dev/FNyraDevTools.h + Private/Dev/FNyraDevTools.cpp
+  - 1 file modified: NyraEditorModule.cpp (additive: #include "Dev/FNyraDevTools.h" + one UE_LOG registration-confirmation line)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-14-ring0-bench-harness-SUMMARY.md
+  - Plan 15 consumes this as the surface being run empirically on Windows.
+
+- Plan 01-11 (cpp-markdown-parser) executed end-to-end on main branch (sequential, no worktree). [shipped earlier]
   - 2 atomic commits: 3371bc2 (feat Task 1 FNyraMarkdownParser + NyraMarkdownSpec upgrade) · fa2160e (feat Task 2 UNyraCodeBlockDecorator + UMG dep)
   - 4 files created under TestProject/Plugins/NYRA/Source/NyraEditor/: Public/Markdown/FNyraMarkdownParser.h + Private/Markdown/FNyraMarkdownParser.cpp + Public/Markdown/FNyraCodeBlockDecorator.h + Private/Markdown/FNyraCodeBlockDecorator.cpp
   - 2 files modified: NyraMarkdownSpec.cpp (upgraded from Plan 01 Wave 0 stub to 10 It() blocks across Describe("FencedCode") + Describe("InlineFormatting")) + NyraEditor.Build.cs (appended "UMG" after "ApplicationCore" in PublicDependencyModuleNames — purely additive, Plan 03-locked dependency order preserved)
@@ -406,16 +442,22 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 ### Next session
 
-1. Execute Plan 01-11 (cpp-markdown-parser) — FNyraMarkdown UE C++ incremental streaming markdown renderer (Slate widgets) that consumes chat/stream delta text and produces renderable blocks (paragraphs, fenced code, bullets, emphasis). Closes VALIDATION 1-03-* (Nyra.Markdown.* spec).
-2. Continue through Phase 01 Wave 3 plans (01-12 chat panel streaming integration [wires SNyraChatPanel to GNyraSupervisor OnNotification + SendRequest], 01-12b history drawer [Saved/NYRA/sessions.db reader from Plan 07], 01-13 first-run UX banners + diagnostics [consumes Plan 09's diagnostics/download-gemma surface], 01-14 ring0 harness, 01-15 ring0 run + commit).
+1. **Windows operator path (architectural gate closure, asynchronous):** On a Windows 11 + UE 5.6 dev machine with the Phase 1 stack fully assembled (Gemma GGUF downloaded OR Ollama gemma3:4b-it-qat installed), follow `.planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md` step by step. Run `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."`. Capture Output Log block + dev machine spec. Edit `ring0-bench-results.md` in place: replace all `PENDING (awaiting first Windows run)` cells with real values, flip `status: placeholder` → `measured`, flip `pending_manual_verification: true` → `false`, add `measured_date_utc` + `measured_commit_hash` + `measured_operator` frontmatter fields, remove the ⚠ PLACEHOLDER banner, remove the "Integrity notes" section, collapse the Raw Output "Expected shape" template to the real verbatim Output Log block. Commit with message `feat(01-15): record ring0 bench results from Windows dev machine`. Update STATE.md flags + ROADMAP.md footnote. If Verdict = PASS: Phase 1 architectural gate CLOSED, Phase 2 execution unblocked. If Verdict = FAIL: plan a remediation (most likely "Plan 01-16 move WS I/O to dedicated thread" per RESEARCH §3.10 P1.6) and execute before re-running the bench.
+
+2. **Phase 2 planning path (can run in parallel with the Windows operator bench run):** Start `/gsd:discuss-phase 2` for Phase 2 (Subscription Bridge + Four-Version CI Matrix). Phase 2 has 9 requirements (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) spanning Claude Code CLI subprocess driving, graceful Gemma fallback, four-version CI matrix (UE 5.4/5.5/5.6/5.7), EV code-signing, safe-mode/dry-run plan-preview, FScopedTransaction session super-transactions, console/log tool surfaces. Phase 2 planning does not depend on SC#3 empirical closure; only Phase 2 EXECUTION waits on it.
+
+3. **Phase 0 legal gate (can run in parallel too):** Send the written-clarification emails to Anthropic (subscription-subprocess driving ToS confirmation) and Epic (Fab AI-plugin policy pre-clearance). Phase 2 execution also depends on Phase 0 legal clearance.
 
 **Files-on-disk checkpoint (all present):**
 
 - `.planning/PROJECT.md`
 - `.planning/REQUIREMENTS.md`
-- `.planning/ROADMAP.md` ← written in this session
-- `.planning/STATE.md` ← written in this session
+- `.planning/ROADMAP.md` ← Phase 1 row updated to 16/16 with Windows-operator-empirical-bench footnote in this session
+- `.planning/STATE.md` ← Plan 15 completion + pending_manual_verification flag + Windows-operator TODO recorded in this session
 - `.planning/config.json`
+- `.planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md` ← new this session (Plan 15 Task 1)
+- `.planning/phases/01-plugin-shell-three-process-ipc/ring0-bench-results.md` ← new this session (Plan 15 Task 2; PLACEHOLDER with PENDING cells)
+- `.planning/phases/01-plugin-shell-three-process-ipc/01-15-ring0-run-and-commit-results-SUMMARY.md` ← new this session (Plan 15 Task 3)
 - `.planning/research/SUMMARY.md`
 - `.planning/research/STACK.md`
 - `.planning/research/FEATURES.md`
@@ -425,4 +467,4 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-22 after Plan 01-08 execution*
+*Last update: 2026-04-23 after Plan 01-15 docs-layer closure — Phase 1 COMPLETE at source+docs (16/16 plans); architectural SC#3 empirical bench measurement pending Windows operator run of ring0-run-instructions.md*
