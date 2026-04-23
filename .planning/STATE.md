@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "11 complete (next = Wave 3: Plan 12 chat-panel-streaming-integration)"
+current_plan: "12b complete (next = Wave 3: Plan 13 first-run-ux-banners-diagnostics)"
 status: executing
-last_updated: "2026-04-23T14:56:24.640Z"
+last_updated: "2026-04-23T15:14:09.141Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 12
-  percent: 75
+  completed_plans: 13
+  percent: 81
 ---
 
 # Project State: NYRA
@@ -41,13 +41,13 @@ Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
 Plan: 13 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 11 complete (next = Wave 3: Plan 12 chat-panel-streaming-integration)
+**Current Plan:** 12b complete (next = Wave 3: Plan 13 first-run-ux-banners-diagnostics)
 **Status:** Ready to execute
 
 **Progress (v1):**
 
 ```text
-[███████░░░] 69% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11 shipped (11/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11)
+[████████░░] 81% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11/12/12b shipped (13/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11 + 12 + 12b)
 ```
 
 **Plans completed in Phase 01:**
@@ -63,7 +63,9 @@ Plan: 13 of 16 (next to execute)
 - [x] Plan 09 — Gemma downloader (Wave 2, 2 tasks [Task 1 TDD=true, Task 2 type=auto], 3 commits [1 RED + 1 GREEN + 1 feat], SUMMARY on disk — `nyrahost.downloader` subpackage [__init__.py + progress.py with ProgressReporter + RATE_LIMIT_MS=500 + RATE_LIMIT_BYTES=10*1024*1024 + gemma.py with GemmaSpec + GemmaDownloader + download_gemma async helper + GEMMA_FILENAME constant] + `nyrahost.handlers.download.DownloadHandlers` + additive superset of app.py [_load_gemma_spec helper + DownloadHandlers instantiation + one extra server.register_request("diagnostics/download-gemma", ...) call]; GemmaDownloader streams HuggingFace CDN with HTTP Range-resume [206 Partial Content + 200 OK restart fallback] + pre-hashes existing .partial bytes + atomic Path.replace rename + SHA256 verify against ModelPins-pinned hash + GitHub Releases mirror fallback on primary failure; on_download_gemma fire-and-forget asyncio.Task emits diagnostics/download-progress per docs/JSONRPC.md §3.7 notifications; one Rule 1 auto-fix during GREEN [httpx.Timeout default param required on httpx 0.32]; 4 real pytest tests upgrading Plan 02's LAST Wave 0 stub [test_sha256_verify_and_range_resume + test_fallback_to_mirror_on_primary_404 + test_both_urls_fail_raises_and_emits_error_progress + test_progress_rate_limited]; full pytest suite 34 passed / 0 skipped — Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED)
 - [x] Plan 10 — C++ supervisor + WS + JSON-RPC (Wave 2 UE-side, 3 tasks, 3 commits, SUMMARY on disk — FNyraJsonRpc encode/decode [10 It block EnvelopeRoundtrip spec, VALIDATION 1-02-02] + FNyraHandshake polling [50ms x1.5 backoff, 2s cap, 30s budget, partial-read tolerant, CleanupOrphans for P1.2] + FNyraWsClient [FWebSocketsModule wrap, session/authenticate first frame, 4401 close-code OnAuthFailed, NextId monotonic from 1 per P1.7] + FNyraSupervisor [FMonitoredProcess bHidden+bCreatePipes, CLI args matching nyrahost/__main__.py parse_args exactly, INyraClock injectable via FNyraSystemClock/FTestClockAdapter, 3-in-60s restart policy with window eviction, in-flight replay with fresh id, RequestShutdown -> shutdown notif -> 2s grace -> Cancel(bKillTree=true)] + NyraEditorModule.cpp additive superset (Plans 03+04 symbols/log lines preserved verbatim; GNyraSupervisor TUniquePtr wired into StartupModule after tab registration [D-04] and ShutdownModule BEFORE tab unregister [D-05]) + NyraSupervisorSpec.cpp RestartPolicy 2-It block [3-in-60s trips / 3-outside-60s does NOT, VALIDATION 1-02-03] + NyraIntegrationSpec.cpp guarded HandshakeAuth LatentIt [VALIDATION 1-02-01 opt-in])
 - [x] Plan 11 — C++ markdown parser (Wave 3 UE-side, 2 tasks, 2 commits, SUMMARY on disk — FNyraMarkdownParser::MarkdownToRichText covering Phase-1 markdown subset (headings H1-H3, **bold**, *italic*, `inline code`, fenced code blocks ```lang\n…\n```, [text](url) links, unordered lists with U+2022 bullet char) emitting Slate rich-text tag stream {<heading level="N">, <bold>, <italic>, <code>, <link url="…">, <nyra-code lang="…">} + FNyraMarkdownParser::EscapeRichText helper for <>& HTML-style escape; fenced-code body is escape-only (no recursive inline parse, backticks suppress further markdown) + italic guard against ** collision + URL attr escape; UNyraCodeBlockDecorator URichTextBlockDecorator subclass with FNyraCodeBlockDecoratorImpl::Supports gated on RunInfo.Name == TEXT("nyra-code") + Create extracting body/lang + FSlateWidgetRun anchored on U+200B zero-width space (baseline 16.f matching Epic tooltip sample) + MakeCodeBlockWidget building SBorder(ToolPanel.GroupBorder,8.f padding) > SVerticalBox{header SHorizontalBox[FillWidth lang label + AutoWidth SButton [Copy]], body STextBlock(MonospacedText font, AutoWrapText)} + OnClicked_Lambda invoking FPlatformApplicationMisc::ClipboardCopy(*BodyCopy) per CD-06 copy-button requirement; NyraEditor.Build.cs appends "UMG" after "ApplicationCore" in PublicDependencyModuleNames; NyraMarkdownSpec.cpp upgraded from Plan 01 Wave 0 stub to 10 It blocks (3 FencedCode + 7 InlineFormatting) closing VALIDATION 1-04-02 + 1-04-03 at source level)
-- [ ] Plan 12 onwards (Wave 3: chat panel streaming integration, history drawer, first-run UX, Ring 0 harness + run)
+- [x] Plan 12 — Chat panel streaming integration (Wave 3 UE-side, 2 tasks, 2 commits, SUMMARY on disk — SNyraChatPanel replaces Plan 04 placeholder with SVerticalBox(FillHeight SNyraMessageList + AutoHeight SNyraComposer) wired to GNyraSupervisor; FNyraMessage Slate model + SNyraAttachmentChip + SNyraMessageList (SListView virtualized, plain STextBlock→SRichTextBlock+MarkdownToRichText swap on Done, ClearMessages + protected virtual GenerateRow/MakeBodyWidget extension points) + SNyraComposer (SMultiLineEditableTextBox + Ctrl/Cmd+Enter + FDesktopPlatform picker); OnComposerSubmit emits chat/send with gemma-local backend, HandleNotification dispatches chat/stream deltas/done/cancelled/error-remediation, OnMessageCancel emits chat/cancel notification; OpenConversation + GetCurrentConversationId + OnConversationSelected entry points for Plan 12b; extern link pattern promotes GNyraSupervisor from static to non-static in NyraEditorModule.cpp; FNyraCodeBlockDecoratorImpl promoted to public NYRAEDITOR_API header (Plan 11 Rule 2 superset); NyraPanelSpec.cpp AttachmentChip + StreamingBuffer Describe blocks closing VALIDATION 1-04-04 + 1-04-05; 5 new It blocks [1 AttachmentChip + 4 StreamingBuffer])
+- [x] Plan 12b — History drawer (Wave 3 UE+Python, 3 tasks [Task 1 TDD=true], 4 commits [1 RED + 3 feat], SUMMARY on disk — nyrahost.handlers.sessions.SessionHandlers dataclass with on_sessions_list (ORDER BY c.updated_at DESC + message_count subquery + clamped limit DEFAULT_LIST_LIMIT=50/MAX=200) and on_sessions_load (latest N by DESC then reversed to ASC + bulk attachment IN-lookup + empty-on-unknown-id); app.py register_request("sessions/list" + "sessions/load"); SNyraHistoryDrawer Slate widget (SBox width-override 24/220 px collapsed, SListView of FNyraConversationSummary, toggle + [+ New Conversation] buttons, per-rpc-id TMap<int64, TFunction<>> response dispatch avoiding Plan 10 multicast upgrade) mounted in SNyraChatPanel via SHorizontalBox two-column layout (drawer AutoWidth | existing VBox FillWidth) + OnOpenConversation/OnNewConversation lambda bridges + Refresh() call at Construct end; first-launch-ever keeps default fresh FGuid, subsequent launches auto-open most-recently-updated; 4 real pytest tests upgrading test_sessions_list_ordering.py from scratch [ordering + limit + load ASC + unknown-id empty]; NyraPanelSpec.cpp HistoryDrawerSelect + NewConversationButton Describe blocks closing VALIDATION 1-12b-01 + 1-12b-02; full pytest suite 38 passed / 0 failed on macOS Darwin Python 3.13.5)
+- [ ] Plan 13 onwards (Wave 3: first-run UX + banners + diagnostics, Ring 0 bench harness, Ring 0 run + commit results)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -111,6 +113,7 @@ Populated as phases complete. Tracks:
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
 | Phase 01 P12 | 12min | 2 tasks | 14 files |
+| Phase 01 P12b | ~10min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
