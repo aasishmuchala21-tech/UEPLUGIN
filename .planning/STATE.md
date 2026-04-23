@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "10 complete (next = Wave 3: Plan 11 cpp-markdown-parser)"
+current_plan: "11 complete (next = Wave 3: Plan 12 chat-panel-streaming-integration)"
 status: executing
-last_updated: "2026-04-22T23:00:00Z"
+last_updated: "2026-04-23T12:16:41.632Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 10
-  percent: 62
+  completed_plans: 11
+  percent: 69
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-22 (Plan 01-10 completed)
+**Last Updated:** 2026-04-23 (Plan 01-11 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 11 of 16 (next to execute)
+Plan: 12 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 10 complete (next = Wave 3: Plan 11 cpp-markdown-parser)
-**Status:** Executing Phase 01 — Wave 1 COMPLETE; Wave 2 Python-side COMPLETE (Plans 06, 07, 08, 09); Wave 2 UE-side COMPLETE (Plan 10); Wave 3 NEXT (Plans 11, 12, 12b, 13, 14, 15)
+**Current Plan:** 11 complete (next = Wave 3: Plan 12 chat-panel-streaming-integration)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE; Wave 2 Python-side COMPLETE (Plans 06, 07, 08, 09); Wave 2 UE-side COMPLETE (Plan 10); Wave 3 IN PROGRESS (Plan 11 markdown parser complete; next: Plans 12, 12b, 13, 14, 15)
 
 **Progress (v1):**
 
 ```text
-[██████░░░░] 62% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10 shipped (10/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10)
+[███████░░░] 69% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11 shipped (11/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11)
 ```
 
 **Plans completed in Phase 01:**
@@ -62,7 +62,8 @@ Plan: 11 of 16 (next to execute)
 - [x] Plan 08 — NyraHost infer spawn + Ollama detect + SSE (Wave 2, 3 tasks [Task 1+2 TDD=true, Task 3 type=auto], 5 commits [2 RED + 2 GREEN + 1 feat], SUMMARY on disk — `nyrahost.infer` subpackage [sse.py + ollama_probe.py + gpu_probe.py + llama_server.py + router.py] + `nyrahost.handlers.chat` [ChatHandlers + GemmaNotInstalledError + on_chat_send + on_chat_cancel] + `nyrahost.app` [build_and_run + gemma_gguf_path + _wrap_send adapter] + extended `__main__.py` with --project-dir + --plugin-binaries-dir + one-line `session._ws = ws` addition to server.py; InferRouter picks Ollama fast path else spawns bundled llama-server.exe with CUDA→Vulkan→CPU fallback + 10-min idle shutdown watchdog; chat/send persists user msg + ingests attachments via Plan 07 CD-04 BEFORE streaming then emits per-delta chat/stream notifications + final done:true frame; 13 real pytest tests [5 SSE + 5 Ollama + 3 infer_spawn] upgrading 3 Wave 0 stubs; full pytest suite 30 passed / 1 skipped [Plan 09 test_gemma_download stub remains])
 - [x] Plan 09 — Gemma downloader (Wave 2, 2 tasks [Task 1 TDD=true, Task 2 type=auto], 3 commits [1 RED + 1 GREEN + 1 feat], SUMMARY on disk — `nyrahost.downloader` subpackage [__init__.py + progress.py with ProgressReporter + RATE_LIMIT_MS=500 + RATE_LIMIT_BYTES=10*1024*1024 + gemma.py with GemmaSpec + GemmaDownloader + download_gemma async helper + GEMMA_FILENAME constant] + `nyrahost.handlers.download.DownloadHandlers` + additive superset of app.py [_load_gemma_spec helper + DownloadHandlers instantiation + one extra server.register_request("diagnostics/download-gemma", ...) call]; GemmaDownloader streams HuggingFace CDN with HTTP Range-resume [206 Partial Content + 200 OK restart fallback] + pre-hashes existing .partial bytes + atomic Path.replace rename + SHA256 verify against ModelPins-pinned hash + GitHub Releases mirror fallback on primary failure; on_download_gemma fire-and-forget asyncio.Task emits diagnostics/download-progress per docs/JSONRPC.md §3.7 notifications; one Rule 1 auto-fix during GREEN [httpx.Timeout default param required on httpx 0.32]; 4 real pytest tests upgrading Plan 02's LAST Wave 0 stub [test_sha256_verify_and_range_resume + test_fallback_to_mirror_on_primary_404 + test_both_urls_fail_raises_and_emits_error_progress + test_progress_rate_limited]; full pytest suite 34 passed / 0 skipped — Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED)
 - [x] Plan 10 — C++ supervisor + WS + JSON-RPC (Wave 2 UE-side, 3 tasks, 3 commits, SUMMARY on disk — FNyraJsonRpc encode/decode [10 It block EnvelopeRoundtrip spec, VALIDATION 1-02-02] + FNyraHandshake polling [50ms x1.5 backoff, 2s cap, 30s budget, partial-read tolerant, CleanupOrphans for P1.2] + FNyraWsClient [FWebSocketsModule wrap, session/authenticate first frame, 4401 close-code OnAuthFailed, NextId monotonic from 1 per P1.7] + FNyraSupervisor [FMonitoredProcess bHidden+bCreatePipes, CLI args matching nyrahost/__main__.py parse_args exactly, INyraClock injectable via FNyraSystemClock/FTestClockAdapter, 3-in-60s restart policy with window eviction, in-flight replay with fresh id, RequestShutdown -> shutdown notif -> 2s grace -> Cancel(bKillTree=true)] + NyraEditorModule.cpp additive superset (Plans 03+04 symbols/log lines preserved verbatim; GNyraSupervisor TUniquePtr wired into StartupModule after tab registration [D-04] and ShutdownModule BEFORE tab unregister [D-05]) + NyraSupervisorSpec.cpp RestartPolicy 2-It block [3-in-60s trips / 3-outside-60s does NOT, VALIDATION 1-02-03] + NyraIntegrationSpec.cpp guarded HandshakeAuth LatentIt [VALIDATION 1-02-01 opt-in])
-- [ ] Plan 11 onwards (Wave 3: markdown parser, chat panel streaming integration, history drawer, first-run UX, Ring 0 harness + run)
+- [x] Plan 11 — C++ markdown parser (Wave 3 UE-side, 2 tasks, 2 commits, SUMMARY on disk — FNyraMarkdownParser::MarkdownToRichText covering Phase-1 markdown subset (headings H1-H3, **bold**, *italic*, `inline code`, fenced code blocks ```lang\n…\n```, [text](url) links, unordered lists with U+2022 bullet char) emitting Slate rich-text tag stream {<heading level="N">, <bold>, <italic>, <code>, <link url="…">, <nyra-code lang="…">} + FNyraMarkdownParser::EscapeRichText helper for <>& HTML-style escape; fenced-code body is escape-only (no recursive inline parse, backticks suppress further markdown) + italic guard against ** collision + URL attr escape; UNyraCodeBlockDecorator URichTextBlockDecorator subclass with FNyraCodeBlockDecoratorImpl::Supports gated on RunInfo.Name == TEXT("nyra-code") + Create extracting body/lang + FSlateWidgetRun anchored on U+200B zero-width space (baseline 16.f matching Epic tooltip sample) + MakeCodeBlockWidget building SBorder(ToolPanel.GroupBorder,8.f padding) > SVerticalBox{header SHorizontalBox[FillWidth lang label + AutoWidth SButton [Copy]], body STextBlock(MonospacedText font, AutoWrapText)} + OnClicked_Lambda invoking FPlatformApplicationMisc::ClipboardCopy(*BodyCopy) per CD-06 copy-button requirement; NyraEditor.Build.cs appends "UMG" after "ApplicationCore" in PublicDependencyModuleNames; NyraMarkdownSpec.cpp upgraded from Plan 01 Wave 0 stub to 10 It blocks (3 FencedCode + 7 InlineFormatting) closing VALIDATION 1-04-02 + 1-04-03 at source level)
+- [ ] Plan 12 onwards (Wave 3: chat panel streaming integration, history drawer, first-run UX, Ring 0 harness + run)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -105,8 +106,10 @@ Populated as phases complete. Tracks:
 | 01    | 08   | nyrahost-infer-spawn-ollama-sse  | 3     | 14    | ~143min  | 1dfd3bb · 477950c · ff4d87e · c83d57d · 9588d41   |
 | 01    | 09   | gemma-downloader                 | 2     | 6     | ~209min  | c1d8b37 · 4c5eac1 · 269c251                       |
 | 01    | 10   | cpp-supervisor-ws-jsonrpc        | 3     | 12    | ~23min   | 048d667 · 475f613 · f89d772                       |
+| 01    | 11   | cpp-markdown-parser              | 2     | 6     | ~9min    | 3371bc2 · fa2160e                                 |
 
 ---
+| Phase 01 P11 | ~9min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -149,6 +152,19 @@ Populated as phases complete. Tracks:
 - Caught `OverflowError` alongside `OSError` in `handshake._pid_running` POSIX branch — macOS `os.kill(pid, 0)` raises `OverflowError` (not `OSError`) for pid > 2^31-1 (32-bit `pid_t`). Such a PID cannot be alive, so returning False is correct; `test_handshake_cleanup_orphans` deliberately exercises this with pid=3,999,999,999. Rule 1 fix; landed in Task 2 GREEN (`ef91a6f`).
 - `websockets.server.ServerConnection` import path preserved — works on both pinned `websockets==12.0` and the test-time installed 16.0. If a future bump removes it, fallback is `websockets.asyncio.server.ServerConnection`.
 - `*.egg-info/` + `build/` + `dist/` appended to `TestProject/.gitignore` — `pip install -e .` (required so `from nyrahost.X import ...` resolves during pytest) writes the egg-info dir; Plans 07/08/09 also need editable installs.
+
+### Decisions from Plan 11 (cpp-markdown-parser, 2026-04-23)
+
+- Fenced-code body is escape-only (not re-parsed through ParseInline). Ensures `**not bold**` inside a ```...``` block stays literal; validated by the Nyra.Markdown.FencedCode third It block. Matches CommonMark spirit — backticks (inline + fenced) suppress further markdown interpretation.
+- Inline-code body is terminal (NOT recursively parsed) while bold / italic / link bodies ARE recursively parsed. Single rule: any content between backticks is final; anything inside `**...**` / `*...*` / `[...]` re-enters ParseInline so `[**bold link**](url)` produces `<link url="url"><bold>bold link</bold></link>`.
+- Italic guard: the `*` opens italic only when the prefix is NOT `**`, AND the closing `*` is NOT immediately followed by another `*`. Prevents `**bold**` being misread as two overlapping italics or producing `<italic><italic>`-wrapped garbage. Keeps the parser single-pass without a lookahead stack.
+- URL attribute value passes through EscapedSegment so ampersands in query strings (`?a=1&b=2`) don't collide with Slate tag parsing downstream. Bodies of `<bold>/<italic>/<link>/<code>` tags all use the same EscapedSegment/AppendEscaped path; no escape inconsistencies between wrap classes.
+- Bullet character emitted as the literal U+2022 glyph (`•`) rendered by the default Slate font. Appears twice in FNyraMarkdownParser.cpp (once in the `Out.Append(TEXT("• "))` body dispatch + once in the `// "•" = U+2022 BULLET` explanatory comment). Grep acceptance literal `•` count = 2.
+- UMG added to PublicDependencyModuleNames (not Private) because UNyraCodeBlockDecorator is NYRAEDITOR_API public-surface — Plan 12's SNyraChatPanel will reference its StaticClass() for SetDecorators, so consumers of NyraEditor need to see the full URichTextBlockDecorator vtable at link time. Placed after `ApplicationCore` per PLAN.md acceptance (additive-only, preserves the Plan 03-locked dependency order).
+- FSlateWidgetRun anchored on a zero-width space (U+200B) appended to the model text with baseline percent 16.f. Matches the Epic tooltip sample referenced in RESEARCH Sec 3.1 (`github.com/Nauja/ue4-richtextblocktooltip-sample`); the ZWS gives the rich-text layout a cursor position corresponding to the widget run without adding visible whitespace.
+- Widget composition locked per PLAN.md `<interfaces>`: SBorder(ToolPanel.GroupBorder brush, 8.f padding) wrapping a two-slot SVerticalBox — header SHorizontalBox[FillWidth STextBlock lang-label + AutoWidth SButton `[Copy]`] + body STextBlock(MonospacedText font, AutoWrapText) with 8.f top padding. Body is capture-by-value in the OnClicked lambda so `FPlatformApplicationMisc::ClipboardCopy(*BodyCopy)` remains valid for the full widget lifetime regardless of decorator destruction.
+- NyraMarkdownSpec 2-Describe layout (FencedCode + InlineFormatting) mirrors VALIDATION rows 1-04-02 + 1-04-03 one-to-one. 10 total It blocks (3 FencedCode + 7 InlineFormatting) — exceeds the PLAN.md acceptance floor of >=10 by exactly fitting the minimum.
+- Streaming-render integration contract for Plan 12 (recorded here so the decision doesn't drift): DO render plain STextBlock during `chat/stream` deltas, DO call FNyraMarkdownParser::MarkdownToRichText once on `done:true` and swap to SRichTextBlock. Incremental re-parse on every delta would thrash Slate layout (RESEARCH Sec 3.1). Incremental tail-paragraph parse is a Phase 2 polish item.
 
 ### Decisions from Plan 10 (cpp-supervisor-ws-jsonrpc, 2026-04-22)
 
@@ -239,6 +255,16 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Plan 10 positive result:** All 28 PLAN.md grep acceptance literals pass across the 3 tasks. Build.cs already had every required dependency (WebSockets, Json, JsonUtilities, Projects) from Plan 03 — no NyraEditor.Build.cs change required. Plan 01's Wave 0 NyraJsonRpcSpec.cpp + NyraSupervisorSpec.cpp placeholders upgraded in place to real assertion-carrying specs; Plan 03's FNyraPluginModulesLoadSpec in NyraIntegrationSpec.cpp preserved verbatim while Plan 10 added the guarded FNyraIntegrationSpec HandshakeAuth LatentIt. NyraEditorModule.cpp additive-only update carries Plan 03's IMPLEMENT_MODULE line, Plan 04's tab/menu registration, and Plan 04's ShutdownModule unregister sequence verbatim — Plan 10's 5 new StartupModule lines spawn GNyraSupervisor AFTER tab registration per D-04; 5 new ShutdownModule lines RequestShutdown BEFORE tab unregister per D-05. PLUG-02 closed end-to-end: UE side can now spawn NyraHost, poll handshake, connect via WS, authenticate with first-frame session/authenticate, receive session/hello responses and chat/stream notifications, and gracefully shut down with KillTree fallback.
 
+**Plan 11 (cpp-markdown-parser): 5 platform-gap deferrals (all Windows-only, consistent with Plans 01/03/04/05/10 posture):**
+
+- UE 5.6 compile of FNyraMarkdownParser.h/.cpp + FNyraCodeBlockDecorator.h/.cpp + NyraMarkdownSpec.cpp + NyraEditor.Build.cs UMG addition — deferred to Windows CI (macOS host cannot run UBT/MSVC).
+- `UnrealEditor-Cmd.exe TestProject/TestProject.uproject -ExecCmds="Automation RunTests Nyra.Markdown;Quit" -unattended -nopause -testexit="Automation Test Queue Empty"` exit 0 with 10 It blocks (3 FencedCode + 7 InlineFormatting) — VALIDATION 1-04-02 + 1-04-03 close on Windows CI.
+- Compile against UBT auto-generated NyraEditor include graph — deferred to Windows CI; all UE headers referenced by Plan 11 files exist in UE 5.6 per public docs (Components/RichTextBlockDecorator.h, Components/RichTextBlock.h, Framework/Text/ITextDecorator.h, Framework/Text/SlateTextRun.h, Framework/Text/SlateWidgetRun.h, Widgets/SBoxPanel.h, Widgets/Layout/SBorder.h, Widgets/Text/STextBlock.h, Widgets/Input/SButton.h, Styling/AppStyle.h, HAL/PlatformApplicationMisc.h).
+- Manual [Copy] button verification — launch editor, render a chat message with a fenced code block, click [Copy], paste into a text editor, verify clipboard contents match the raw fenced body exactly. Deferred to Windows dev-machine after Plan 12's panel lands.
+- Visual verification of the SBorder + monospace body rendering + header-row layout (FillWidth lang label + AutoWidth Copy button) — deferred to Windows dev-machine after Plan 12's panel lands.
+
+**Plan 11 positive result:** All 13 PLAN.md grep acceptance literals pass source-level across the 2 tasks. Plan 01's Wave 0 NyraMarkdownSpec.cpp stub (commit ca182ba) upgraded in place to real 10-It-block spec (3 FencedCode + 7 InlineFormatting) — BEGIN_DEFINE_SPEC symbol preserved, body replaced. NyraEditor.Build.cs UMG addition is purely additive (placed after ApplicationCore); all prior Plan 03-locked dependencies (Core, CoreUObject, Engine, InputCore, Slate, SlateCore, EditorStyle, EditorSubsystem, UnrealEd, ToolMenus, Projects, Json, JsonUtilities, WebSockets, HTTP, DesktopPlatform, ApplicationCore) remain in their original order. FNyraMarkdownParser covers the Phase-1 markdown subset (headings H1-H3, bold, italic, inline code, fenced code, links, unordered lists) emitting a Slate rich-text tag stream; UNyraCodeBlockDecorator renders <nyra-code> runs as SBorder+SVerticalBox code blocks with a [Copy] button wired to FPlatformApplicationMisc::ClipboardCopy per CONTEXT CD-06. CHAT-01 markdown-rendering + code-block-copy-button prerequisites satisfied for Plan 12's SNyraChatPanel to consume.
+
 **Plan 09 (gemma-downloader): ZERO platform-gap deferrals.** All Plan 09 code paths exercised live on macOS Darwin Python 3.13.5:
 
 - Downloader core (`downloader/progress.py` + `downloader/gemma.py`): pure-Python using `hashlib`, `pathlib`, `asyncio.to_thread`, and `httpx.AsyncClient` streaming. `Path.replace()` is atomic on both NTFS (Windows) and APFS (macOS) + ext4 (Linux).
@@ -272,7 +298,16 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 **Last session handoff:**
 
-- Plan 01-10 (cpp-supervisor-ws-jsonrpc) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-11 (cpp-markdown-parser) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 2 atomic commits: 3371bc2 (feat Task 1 FNyraMarkdownParser + NyraMarkdownSpec upgrade) · fa2160e (feat Task 2 UNyraCodeBlockDecorator + UMG dep)
+  - 4 files created under TestProject/Plugins/NYRA/Source/NyraEditor/: Public/Markdown/FNyraMarkdownParser.h + Private/Markdown/FNyraMarkdownParser.cpp + Public/Markdown/FNyraCodeBlockDecorator.h + Private/Markdown/FNyraCodeBlockDecorator.cpp
+  - 2 files modified: NyraMarkdownSpec.cpp (upgraded from Plan 01 Wave 0 stub to 10 It() blocks across Describe("FencedCode") + Describe("InlineFormatting")) + NyraEditor.Build.cs (appended "UMG" after "ApplicationCore" in PublicDependencyModuleNames — purely additive, Plan 03-locked dependency order preserved)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-11-cpp-markdown-parser-SUMMARY.md
+  - ZERO deviations — plan executed exactly as written. The only departure from PLAN.md `<action>` blocks was adding top-of-file banner comments and inline explanatory comments in source files; all additive, no behavioural change. All 13 PLAN.md grep acceptance literals pass verbatim.
+  - 5 platform-gap deferrals logged (all Windows-only, consistent with Plans 01/03/04/05/10): UE 5.6 UBT/MSVC compile + Automation test run (Nyra.Markdown for VALIDATION 1-04-02 + 1-04-03) + UBT auto-generated include-graph check + manual [Copy] button clipboard verification + visual SBorder/monospace body rendering check. Manual verifications depend on Plan 12's panel landing on Windows before they can run.
+  - CHAT-01 markdown-rendering + code-block-copy-button prerequisites satisfied: FNyraMarkdownParser converts the Phase-1 markdown subset (headings H1-H3, bold, italic, inline code, fenced code blocks, links, unordered lists) to Slate rich-text tags; UNyraCodeBlockDecorator renders <nyra-code> runs via SBorder > SVerticalBox{header[FillWidth lang + AutoWidth Copy button] + body monospace} with OnClicked_Lambda wired to FPlatformApplicationMisc::ClipboardCopy(*BodyCopy). Plan 12's SNyraChatPanel can now call `SNew(SRichTextBlock).Text(FText::FromString(FNyraMarkdownParser::MarkdownToRichText(final_buffer)))` on chat/stream done:true and register UNyraCodeBlockDecorator::StaticClass() for rich rendering. Plan 01 Wave 0 NyraMarkdownSpec.cpp stub is now fully populated — VALIDATION 1-04-02 (Nyra.Markdown.FencedCode) + 1-04-03 (Nyra.Markdown.InlineFormatting) close at source level; Windows-CI automation run closes them at execution level.
+
+- Plan 01-10 (cpp-supervisor-ws-jsonrpc) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 3 atomic commits: 048d667 (feat Task 1 JSON-RPC + spec) · 475f613 (feat Task 2 Handshake + WsClient) · f89d772 (feat Task 3 Supervisor + wiring + specs)
   - 8 files created under TestProject/Plugins/NYRA/Source/NyraEditor/: Public/WS/FNyraJsonRpc.h + Private/WS/FNyraJsonRpc.cpp + Public/WS/FNyraWsClient.h + Private/WS/FNyraWsClient.cpp + Public/Process/FNyraHandshake.h + Private/Process/FNyraHandshake.cpp + Public/Process/FNyraSupervisor.h + Private/Process/FNyraSupervisor.cpp
   - 4 files modified: NyraEditorModule.cpp (additive superset of Plans 03+04 — GNyraSupervisor TUniquePtr wired into StartupModule/ShutdownModule) + NyraJsonRpcSpec.cpp (upgraded from Plan 01 Wave 0 stub to 10 It() blocks) + NyraSupervisorSpec.cpp (upgraded from Plan 01 Wave 0 stub to 2 It() blocks via FTestClockAdapter→INyraClock) + NyraIntegrationSpec.cpp (preserved Plan 03's FNyraPluginModulesLoadSpec, added guarded FNyraIntegrationSpec HandshakeAuth LatentIt)
