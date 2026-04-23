@@ -16,6 +16,12 @@
 #include "Interfaces/IPluginManager.h"
 #include "Misc/Paths.h"
 
+// Plan 14: Ring 0 bench harness -- include makes the FNyraDevTools dependency
+// explicit. The file-scope FAutoConsoleCommand in FNyraDevTools.cpp registers
+// `Nyra.Dev.RoundTripBench` on module load automatically; the include here
+// documents the relationship and lets us log a confirmation line below.
+#include "Dev/FNyraDevTools.h"
+
 IMPLEMENT_MODULE(FNyraEditorModule, NyraEditor)
 
 // Plan 10: module-level singleton holding the NyraHost supervisor.
@@ -79,6 +85,11 @@ void FNyraEditorModule::StartupModule()
     const FString ProjectDir = FPaths::ProjectDir();
     const FString LogDir     = FPaths::Combine(ProjectDir, TEXT("Saved"), TEXT("NYRA"), TEXT("logs"));
     GNyraSupervisor->SpawnAndConnect(ProjectDir, PluginDir, LogDir);
+
+    // Plan 14: confirm the file-scope FAutoConsoleCommand in FNyraDevTools.cpp
+    // wired itself in via module-load static init. The command is usable from
+    // the UE 5.6 editor console as `Nyra.Dev.RoundTripBench [count=100] [prompt]`.
+    UE_LOG(LogNyra, Log, TEXT("[NYRA] Nyra.Dev.RoundTripBench console command registered"));
 }
 
 void FNyraEditorModule::ShutdownModule()
