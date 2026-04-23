@@ -11,7 +11,15 @@
 #include "ToolMenus.h"
 #include "Styling/AppStyle.h"
 
+// Plan 10: supervisor lifecycle (D-04 eager spawn + D-05 graceful shutdown).
+#include "Process/FNyraSupervisor.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/Paths.h"
+
 IMPLEMENT_MODULE(FNyraEditorModule, NyraEditor)
+
+// Plan 10: module-level singleton holding the NyraHost supervisor.
+static TUniquePtr<FNyraSupervisor> GNyraSupervisor;
 
 #define LOCTEXT_NAMESPACE "NyraEditor"
 
@@ -62,12 +70,25 @@ void FNyraEditorModule::StartupModule()
                 })));
         }));
 
-    // Plan 10: FNyraSupervisor::Get().SpawnNyraHost()
+    // Plan 10: D-04 eager spawn NyraHost on editor start (AFTER tab registration).
+    GNyraSupervisor = MakeUnique<FNyraSupervisor>();
+    const FString PluginDir  = IPluginManager::Get().FindPlugin(TEXT("NYRA"))->GetBaseDir();
+    const FString ProjectDir = FPaths::ProjectDir();
+    const FString LogDir     = FPaths::Combine(ProjectDir, TEXT("Saved"), TEXT("NYRA"), TEXT("logs"));
+    GNyraSupervisor->SpawnAndConnect(ProjectDir, PluginDir, LogDir);
 }
 
 void FNyraEditorModule::ShutdownModule()
 {
     UE_LOG(LogNyra, Log, TEXT("[NYRA] NyraEditor module shutting down"));
+
+    // Plan 10: D-05 clean shutdown -- send shutdown notif, wait 2s, TerminateProc(KillTree).
+    // Must run BEFORE the tab unregister below so any final WS frames can drain.
+    if (GNyraSupervisor.IsValid())
+    {
+        GNyraSupervisor->RequestShutdown();
+        GNyraSupervisor.Reset();
+    }
 
     if (FGlobalTabManager::Get())
     {
@@ -77,8 +98,6 @@ void FNyraEditorModule::ShutdownModule()
     {
         UToolMenus::UnregisterOwner(this);
     }
-
-    // Plan 10: FNyraSupervisor::Get().ShutdownNyraHost()
 }
 
 FNyraEditorModule& FNyraEditorModule::Get()
