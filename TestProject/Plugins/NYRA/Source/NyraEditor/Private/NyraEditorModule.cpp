@@ -19,7 +19,10 @@
 IMPLEMENT_MODULE(FNyraEditorModule, NyraEditor)
 
 // Plan 10: module-level singleton holding the NyraHost supervisor.
-static TUniquePtr<FNyraSupervisor> GNyraSupervisor;
+// Plan 12: non-static so SNyraChatPanel.cpp's `extern TUniquePtr<class
+// FNyraSupervisor> GNyraSupervisor;` link succeeds. Storage still lives
+// entirely in this translation unit; the panel only reads through the extern.
+TUniquePtr<FNyraSupervisor> GNyraSupervisor;
 
 #define LOCTEXT_NAMESPACE "NyraEditor"
 
