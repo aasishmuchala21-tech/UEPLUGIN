@@ -88,60 +88,57 @@ namespace
     }
 }  // anonymous namespace
 
-/**
- * Actual Slate ITextDecorator that the RichTextBlock parser hands parse
- * results to. Gates on RunInfo.Name == "nyra-code" and emits a
- * FSlateWidgetRun wrapping the code-block widget.
- */
-class FNyraCodeBlockDecoratorImpl : public ITextDecorator
+// -----------------------------------------------------------------------------
+// FNyraCodeBlockDecoratorImpl method bodies (class declaration now lives in
+// Public/Markdown/FNyraCodeBlockDecorator.h so Plan 12's SNyraMessageList.cpp
+// can construct it directly via MakeShared<FNyraCodeBlockDecoratorImpl>()).
+// -----------------------------------------------------------------------------
+
+bool FNyraCodeBlockDecoratorImpl::Supports(const FTextRunParseResults& RunInfo, const FString& Text) const
 {
-public:
-    virtual bool Supports(const FTextRunParseResults& RunInfo, const FString& Text) const override
+    return RunInfo.Name == TEXT("nyra-code");
+}
+
+TSharedRef<ISlateRun> FNyraCodeBlockDecoratorImpl::Create(
+    const TSharedRef<FTextLayout>& TextLayout,
+    const FTextRunParseResults& RunParseResult,
+    const FString& OriginalText,
+    const TSharedRef<FString>& InOutModelText,
+    const ISlateStyle* Style)
+{
+    // Extract raw fenced-code body (between the opening-tag '>' and
+    // the closing </nyra-code>).
+    const FString Body = OriginalText.Mid(
+        RunParseResult.ContentRange.BeginIndex,
+        RunParseResult.ContentRange.EndIndex - RunParseResult.ContentRange.BeginIndex);
+
+    // Extract the lang="..." meta attribute, if present.
+    FString Lang;
+    if (const FTextRange* Found = RunParseResult.MetaData.Find(TEXT("lang")))
     {
-        return RunInfo.Name == TEXT("nyra-code");
+        Lang = OriginalText.Mid(
+            Found->BeginIndex,
+            Found->EndIndex - Found->BeginIndex);
     }
 
-    virtual TSharedRef<ISlateRun> Create(
-        const TSharedRef<FTextLayout>& TextLayout,
-        const FTextRunParseResults& RunParseResult,
-        const FString& OriginalText,
-        const TSharedRef<FString>& InOutModelText,
-        const ISlateStyle* Style) override
-    {
-        // Extract raw fenced-code body (between the opening-tag '>' and
-        // the closing </nyra-code>).
-        const FString Body = OriginalText.Mid(
-            RunParseResult.ContentRange.BeginIndex,
-            RunParseResult.ContentRange.EndIndex - RunParseResult.ContentRange.BeginIndex);
+    // Assemble FRunInfo for the widget run.
+    FRunInfo RunInfo(RunParseResult.Name);
+    RunInfo.MetaData.Add(TEXT("lang"), Lang);
 
-        // Extract the lang="..." meta attribute, if present.
-        FString Lang;
-        if (const FTextRange* Found = RunParseResult.MetaData.Find(TEXT("lang")))
-        {
-            Lang = OriginalText.Mid(
-                Found->BeginIndex,
-                Found->EndIndex - Found->BeginIndex);
-        }
+    // Reserve one zero-width character in the model so the layout
+    // engine has a cursor position corresponding to the widget run.
+    InOutModelText->Append(TEXT("\x200B"));
+    const FTextRange ModelRange(InOutModelText->Len() - 1, InOutModelText->Len());
 
-        // Assemble FRunInfo for the widget run.
-        FRunInfo RunInfo(RunParseResult.Name);
-        RunInfo.MetaData.Add(TEXT("lang"), Lang);
-
-        // Reserve one zero-width character in the model so the layout
-        // engine has a cursor position corresponding to the widget run.
-        InOutModelText->Append(TEXT("\x200B"));
-        const FTextRange ModelRange(InOutModelText->Len() - 1, InOutModelText->Len());
-
-        return FSlateWidgetRun::Create(
-            TextLayout,
-            RunInfo,
-            InOutModelText,
-            FSlateWidgetRun::FWidgetRunInfo(
-                MakeCodeBlockWidget(Body, Lang),
-                /*InBaselinePercent=*/16.f),
-            ModelRange);
-    }
-};
+    return FSlateWidgetRun::Create(
+        TextLayout,
+        RunInfo,
+        InOutModelText,
+        FSlateWidgetRun::FWidgetRunInfo(
+            MakeCodeBlockWidget(Body, Lang),
+            /*InBaselinePercent=*/16.f),
+        ModelRange);
+}
 
 UNyraCodeBlockDecorator::UNyraCodeBlockDecorator() = default;
 

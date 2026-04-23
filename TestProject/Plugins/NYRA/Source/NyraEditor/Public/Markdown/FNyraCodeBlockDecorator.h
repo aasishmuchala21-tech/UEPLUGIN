@@ -23,7 +23,13 @@
 
 #include "CoreMinimal.h"
 #include "Components/RichTextBlockDecorator.h"
+#include "Framework/Text/ITextDecorator.h"
 #include "FNyraCodeBlockDecorator.generated.h"
+
+class FTextLayout;
+struct FTextRunParseResults;
+class ISlateStyle;
+class ISlateRun;
 
 /**
  * Decorator that handles <nyra-code lang="python">raw body</nyra-code>
@@ -38,4 +44,31 @@ public:
     UNyraCodeBlockDecorator();
 
     virtual TSharedPtr<ITextDecorator> CreateDecorator(URichTextBlock* InOwner) override;
+};
+
+/**
+ * ITextDecorator used by SRichTextBlock to materialise <nyra-code> tags
+ * into inline Slate widgets. Exposed via the public header so Plan 12's
+ * SNyraMessageList (using SRichTextBlock, not URichTextBlock) can add it
+ * directly to the Decorators array without going through the UCLASS
+ * wrapper:
+ *
+ *     TArray<TSharedRef<ITextDecorator>> Decorators;
+ *     Decorators.Add(MakeShared<FNyraCodeBlockDecoratorImpl>());
+ *     SRichTextBlock::Decorators(Decorators)
+ *
+ * The UNyraCodeBlockDecorator UCLASS wrapper remains the canonical path
+ * for URichTextBlock consumers (Plan 12b history-drawer UMG path).
+ */
+class NYRAEDITOR_API FNyraCodeBlockDecoratorImpl : public ITextDecorator
+{
+public:
+    virtual bool Supports(const FTextRunParseResults& RunInfo, const FString& Text) const override;
+
+    virtual TSharedRef<ISlateRun> Create(
+        const TSharedRef<FTextLayout>& TextLayout,
+        const FTextRunParseResults& RunParseResult,
+        const FString& OriginalText,
+        const TSharedRef<FString>& InOutModelText,
+        const ISlateStyle* Style) override;
 };
