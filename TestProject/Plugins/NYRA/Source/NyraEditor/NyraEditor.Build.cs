@@ -33,6 +33,7 @@ public class NyraEditor : ModuleRules
             "HTTP",
             "DesktopPlatform",
             "ApplicationCore",
+            "UMG",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
