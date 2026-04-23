@@ -44,6 +44,9 @@
 class SNyraMessageList;
 class SNyraComposer;
 class SNyraHistoryDrawer;
+class SNyraBanner;              // Plan 13: first-run UX banner states
+class SNyraDownloadModal;       // Plan 13: Gemma download progress modal
+class SNyraDiagnosticsDrawer;   // Plan 13: on-demand log tail drawer
 
 /** Fired after SNyraChatPanel::OpenConversation completes so the history
  *  drawer (Plan 12b) can sync its selection highlight. */
@@ -88,6 +91,9 @@ private:
     TSharedPtr<SNyraMessageList> MessageList;
     TSharedPtr<SNyraComposer> Composer;
     TSharedPtr<class SNyraHistoryDrawer> HistoryDrawer;  // Plan 12b CD-05
+    TSharedPtr<class SNyraBanner> Banner;                // Plan 13: first-run UX banner
+    TSharedPtr<class SNyraDownloadModal> DownloadModal;  // Plan 13: Gemma download progress
+    TSharedPtr<class SNyraDiagnosticsDrawer> Diagnostics;// Plan 13: log tail drawer
     FGuid CurrentConversationId;  // default on first-ever editor launch; Plan 12b drawer overwrites via OpenConversation
     FDelegateHandle NotificationHandle;
 };

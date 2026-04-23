@@ -1,5 +1,5 @@
 // =============================================================================
-// SNyraChatPanel.cpp  (Phase 1 Plan 12 -- chat panel streaming integration)
+// SNyraChatPanel.cpp  (Phase 1 Plans 12 + 12b + 13 -- superset)
 // =============================================================================
 //
 // REPLACES Plan 04's placeholder "NYRA -- not yet connected" widget with the
@@ -8,6 +8,17 @@
 // body hosted inside the already-registered nomad tab.
 //
 // Composition + wiring pattern documented at the top of SNyraChatPanel.h.
+//
+// Plan layering (all preserved verbatim below):
+//   - Plan 12  : SNyraMessageList + SNyraComposer + chat/send + chat/stream
+//                + chat/cancel + OpenConversation + GetCurrentConversationId
+//   - Plan 12b : SNyraHistoryDrawer left column via SHorizontalBox two-column
+//                layout + OnOpenConversation / OnNewConversation bridge lambdas
+//                + HistoryDrawer->Refresh() at end of Construct
+//   - Plan 13  : SNyraBanner above MessageList + SNyraDownloadModal overlay on
+//                MessageList + SNyraDiagnosticsDrawer below composer +
+//                FNyraSupervisor OnStateChanged + OnUnstable bindings +
+//                diagnostics/download-progress notification dispatch
 //
 // chat/send params shape (per docs/JSONRPC.md 3.3):
 //     {
@@ -32,19 +43,35 @@
 //       "cancelled": true|false,         // optional, true if chat/cancel delivered
 //       "error":     { "data": { "remediation": "..." } }   // optional error frame (D-11)
 //     }
+//
+// diagnostics/download-progress notification params (Plan 09, docs/JSONRPC.md 3.7):
+//     {
+//       "status":      "downloading"|"verifying"|"done"|"error",
+//       "bytes_done":  <number>,
+//       "bytes_total": <number>,
+//       "error":       { "data": { "remediation": "..." } }  // only when status=="error"
+//     }
 // =============================================================================
 
 #include "Panel/SNyraChatPanel.h"
 #include "Panel/SNyraMessageList.h"
 #include "Panel/SNyraComposer.h"
 #include "Panel/SNyraHistoryDrawer.h"
+#include "Panel/SNyraBanner.h"
+#include "Panel/SNyraDownloadModal.h"
+#include "Panel/SNyraDiagnosticsDrawer.h"
 #include "Process/FNyraSupervisor.h"
 #include "NyraLog.h"
 
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/Layout/SBox.h"
 #include "Dom/JsonObject.h"
 #include "Styling/AppStyle.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/Paths.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/PlatformApplicationMisc.h"
 
 // Module-level supervisor singleton owned by FNyraEditorModule (Plan 10).
 // Declared non-static in NyraEditorModule.cpp so this extern link succeeds.
@@ -62,10 +89,14 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
     //     conversation and overwrites this value via OpenConversation.
     CurrentConversationId = FGuid::NewGuid();
 
-    // Plan 12b layout: (drawer | existing VBox) in a SHorizontalBox. The
-    // drawer owns its own width management via SBox::SetWidthOverride, so
-    // the outer HBox just gives it AutoWidth and lets the message list +
-    // composer fill the remaining width.
+    // Plan 12b layout: (drawer | right-column VBox) in a SHorizontalBox.
+    // Plan 13 extends the right-column VBox to:
+    //   [Banner][SOverlay(MessageList + DownloadModal)][Composer][Diagnostics]
+    // so the banner is ABOVE the message list, the download modal floats
+    // centred over the list, and the diagnostics drawer is BELOW the composer.
+    // The drawer owns its own width management via SBox::SetWidthOverride, so
+    // the outer HBox just gives it AutoWidth and lets the right VBox fill the
+    // remaining width.
     ChildSlot
     [
         SNew(SHorizontalBox)
@@ -98,15 +129,42 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
         + SHorizontalBox::Slot().FillWidth(1.0f)
         [
             SNew(SVerticalBox)
+            // Plan 13: banner above the message list. Hidden by default
+            // (Construct of SNyraBanner starts in Hidden state).
+            + SVerticalBox::Slot().AutoHeight()
+            [
+                SAssignNew(Banner, SNyraBanner)
+            ]
+            // Message list + download-modal overlay occupy the main fill area.
             + SVerticalBox::Slot().FillHeight(1.0f)
             [
-                SAssignNew(MessageList, SNyraMessageList)
-                .OnCancel(FOnMessageCancel::CreateRaw(this, &SNyraChatPanel::OnMessageCancel))
+                SNew(SOverlay)
+                + SOverlay::Slot()
+                [
+                    SAssignNew(MessageList, SNyraMessageList)
+                    .OnCancel(FOnMessageCancel::CreateRaw(this, &SNyraChatPanel::OnMessageCancel))
+                ]
+                + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+                [
+                    SAssignNew(DownloadModal, SNyraDownloadModal)
+                    .OnCancelled(FOnDownloadCancelled::CreateLambda([]()
+                    {
+                        // Phase 1: Python side has no cancel endpoint for the
+                        // downloader; the modal simply closes. The background
+                        // asyncio.Task in NyraHost finishes or errors naturally.
+                        // Documented limitation in SUMMARY.md.
+                    }))
+                ]
             ]
             + SVerticalBox::Slot().AutoHeight().Padding(6)
             [
                 SAssignNew(Composer, SNyraComposer)
                 .OnSubmit(FOnComposerSubmit::CreateRaw(this, &SNyraChatPanel::OnComposerSubmit))
+            ]
+            // Plan 13: diagnostics drawer below composer. Collapsed by default.
+            + SVerticalBox::Slot().AutoHeight()
+            [
+                SAssignNew(Diagnostics, SNyraDiagnosticsDrawer)
             ]
         ]
     ];
@@ -118,6 +176,77 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
     if (GNyraSupervisor.IsValid())
     {
         GNyraSupervisor->OnNotification.BindRaw(this, &SNyraChatPanel::HandleNotification);
+
+        // Plan 13: state-machine banner wiring per RESEARCH §3.9 table.
+        // Spawning/WaitingForHandshake/Connecting/Authenticating -> Info
+        // Ready                                                   -> Hidden
+        // Crashed (under 3-in-60s restart policy)                 -> Warning
+        // (Unstable/OnUnstable handled separately below.)
+        GNyraSupervisor->OnStateChanged.BindLambda([this](ENyraSupervisorState NewState)
+        {
+            if (!Banner.IsValid()) return;
+            switch (NewState)
+            {
+            case ENyraSupervisorState::Spawning:
+            case ENyraSupervisorState::WaitingForHandshake:
+            case ENyraSupervisorState::Connecting:
+            case ENyraSupervisorState::Authenticating:
+                Banner->SetState(ENyraBannerKind::Info,
+                    FText::FromString(TEXT("Setting up NYRA (~30s)")));
+                break;
+            case ENyraSupervisorState::Ready:
+                Banner->Hide();
+                break;
+            case ENyraSupervisorState::Crashed:
+                Banner->SetState(ENyraBannerKind::Warning,
+                    FText::FromString(TEXT("NyraHost crashed -- restarting")));
+                break;
+            default:
+                break;
+            }
+        });
+
+        // Plan 13: unstable-banner wiring. OnUnstable fires after the 3-in-60s
+        // restart policy trips in FNyraSupervisor (Plan 10). Error kind banner
+        // with [Restart] + [Open log] buttons wired to module-level actions.
+        GNyraSupervisor->OnUnstable.BindLambda([this]()
+        {
+            if (!Banner.IsValid()) return;
+
+            FOnBannerRestartClicked RestartCb = FOnBannerRestartClicked::CreateLambda([]()
+            {
+                // Full restart: shut down + respawn via a freshly-constructed
+                // supervisor. Mirrors NyraEditorModule::StartupModule's spawn
+                // sequence so the new instance picks up the same paths.
+                if (!GNyraSupervisor.IsValid()) return;
+
+                GNyraSupervisor->RequestShutdown();
+                GNyraSupervisor.Reset();
+
+                TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("NYRA"));
+                if (!Plugin.IsValid()) return;
+                const FString PluginDir  = Plugin->GetBaseDir();
+                const FString ProjectDir = FPaths::ProjectDir();
+                const FString LogDir     = FPaths::Combine(ProjectDir, TEXT("Saved"), TEXT("NYRA"), TEXT("logs"));
+
+                GNyraSupervisor = MakeUnique<FNyraSupervisor>();
+                GNyraSupervisor->SpawnAndConnect(ProjectDir, PluginDir, LogDir);
+            });
+
+            FOnBannerOpenLogClicked OpenLogCb = FOnBannerOpenLogClicked::CreateLambda([]()
+            {
+                // Open the logs directory in Windows Explorer (or the host
+                // platform's file browser) so the user can inspect rotated
+                // nyrahost-YYYY-MM-DD.log files. Uses SNyraDiagnosticsDrawer's
+                // static LogFilePath() helper so path construction matches.
+                const FString LogPath = SNyraDiagnosticsDrawer::LogFilePath();
+                FPlatformProcess::ExploreFolder(*FPaths::GetPath(LogPath));
+            });
+
+            Banner->SetState(ENyraBannerKind::Error,
+                FText::FromString(TEXT("NyraHost is unstable -- see Saved/NYRA/logs/")),
+                RestartCb, OpenLogCb);
+        });
     }
 
     // Populate the history drawer from SQLite. On first-ever launch
@@ -138,9 +267,13 @@ SNyraChatPanel::~SNyraChatPanel()
 {
     // Break the notification binding on destruct so dangling TSharedRef to
     // this widget doesn't fire HandleNotification after the tab is closed.
+    // Also unbind the Plan 13 OnStateChanged + OnUnstable delegates so they
+    // don't fire into a dead Banner pointer during teardown.
     if (GNyraSupervisor.IsValid())
     {
         GNyraSupervisor->OnNotification.Unbind();
+        GNyraSupervisor->OnStateChanged.Unbind();
+        GNyraSupervisor->OnUnstable.Unbind();
     }
 }
 
@@ -190,7 +323,23 @@ void SNyraChatPanel::OnMessageCancel(const TSharedPtr<FNyraMessage>& Msg)
 
 void SNyraChatPanel::HandleNotification(const FNyraJsonRpcEnvelope& Env)
 {
-    if (Env.Method != TEXT("chat/stream") || !Env.Params.IsValid() || !MessageList.IsValid()) return;
+    if (!Env.Params.IsValid()) return;
+
+    // Plan 13: route diagnostics/download-progress frames to the download
+    // modal BEFORE the chat/stream branch so the modal can update progress
+    // without any dependency on MessageList being valid.
+    if (Env.Method == TEXT("diagnostics/download-progress"))
+    {
+        if (DownloadModal.IsValid())
+        {
+            DownloadModal->OnProgress(Env.Params);
+        }
+        return;
+    }
+
+    // Plan 12: chat-stream dispatch. Preserved verbatim apart from the early
+    // return for the diagnostics branch above.
+    if (Env.Method != TEXT("chat/stream") || !MessageList.IsValid()) return;
 
     FString ReqIdStr;
     if (!Env.Params->TryGetStringField(TEXT("req_id"), ReqIdStr)) return;
