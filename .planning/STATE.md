@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "9 complete (next = Wave 2/3: Plan 10 cpp-supervisor + ws-jsonrpc UE client)"
+current_plan: "10 complete (next = Wave 3: Plan 11 cpp-markdown-parser)"
 status: executing
-last_updated: "2026-04-22T17:11:54Z"
+last_updated: "2026-04-22T23:00:00Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 9
-  percent: 56
+  completed_plans: 10
+  percent: 62
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-22 (Plan 01-09 completed)
+**Last Updated:** 2026-04-22 (Plan 01-10 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 10 of 16 (next to execute)
+Plan: 11 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 9 complete (next = Wave 2/3: Plan 10 cpp-supervisor + ws-jsonrpc UE client)
-**Status:** Executing Phase 01 — Wave 1 COMPLETE; Wave 2 Python-side COMPLETE (Plans 06, 07, 08, 09 done); Wave 2 UE-side + Wave 3 NEXT (Plans 10-15)
+**Current Plan:** 10 complete (next = Wave 3: Plan 11 cpp-markdown-parser)
+**Status:** Executing Phase 01 — Wave 1 COMPLETE; Wave 2 Python-side COMPLETE (Plans 06, 07, 08, 09); Wave 2 UE-side COMPLETE (Plan 10); Wave 3 NEXT (Plans 11, 12, 12b, 13, 14, 15)
 
 **Progress (v1):**
 
 ```text
-[██████░░░░] 56% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09 shipped (9/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09)
+[██████░░░░] 62% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10 shipped (10/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10)
 ```
 
 **Plans completed in Phase 01:**
@@ -61,7 +61,8 @@ Plan: 10 of 16 (next to execute)
 - [x] Plan 07 — NyraHost storage + attachments (Wave 2, 2 tasks TDD=true, 4 commits [2 RED + 2 GREEN], SUMMARY on disk — `nyrahost.storage` [Storage + Conversation/Message dataclasses + SCHEMA_V1 DDL + CURRENT_SCHEMA_VERSION=1 + db_path_for_project] and `nyrahost.attachments` [ingest_attachment + AttachmentRef + ALLOWED_EXTENSIONS + os.link-with-shutil.copy2-fallback] modules + 9 real pytest tests [4 storage + 5 attachments] upgrading Plan 02's last 2 Wave 0 persistence stubs; SQLite per-project sessions.db at `<ProjectDir>/Saved/NYRA/sessions.db` in WAL + foreign_keys=ON with CHECK role IN ('user','assistant','system','tool'); attachments content-addressed to `Saved/NYRA/attachments/<sha[:2]>/<sha>.<ext>` per CD-08; full pytest suite 17 passed / 4 skipped on macOS Darwin Python 3.13.5)
 - [x] Plan 08 — NyraHost infer spawn + Ollama detect + SSE (Wave 2, 3 tasks [Task 1+2 TDD=true, Task 3 type=auto], 5 commits [2 RED + 2 GREEN + 1 feat], SUMMARY on disk — `nyrahost.infer` subpackage [sse.py + ollama_probe.py + gpu_probe.py + llama_server.py + router.py] + `nyrahost.handlers.chat` [ChatHandlers + GemmaNotInstalledError + on_chat_send + on_chat_cancel] + `nyrahost.app` [build_and_run + gemma_gguf_path + _wrap_send adapter] + extended `__main__.py` with --project-dir + --plugin-binaries-dir + one-line `session._ws = ws` addition to server.py; InferRouter picks Ollama fast path else spawns bundled llama-server.exe with CUDA→Vulkan→CPU fallback + 10-min idle shutdown watchdog; chat/send persists user msg + ingests attachments via Plan 07 CD-04 BEFORE streaming then emits per-delta chat/stream notifications + final done:true frame; 13 real pytest tests [5 SSE + 5 Ollama + 3 infer_spawn] upgrading 3 Wave 0 stubs; full pytest suite 30 passed / 1 skipped [Plan 09 test_gemma_download stub remains])
 - [x] Plan 09 — Gemma downloader (Wave 2, 2 tasks [Task 1 TDD=true, Task 2 type=auto], 3 commits [1 RED + 1 GREEN + 1 feat], SUMMARY on disk — `nyrahost.downloader` subpackage [__init__.py + progress.py with ProgressReporter + RATE_LIMIT_MS=500 + RATE_LIMIT_BYTES=10*1024*1024 + gemma.py with GemmaSpec + GemmaDownloader + download_gemma async helper + GEMMA_FILENAME constant] + `nyrahost.handlers.download.DownloadHandlers` + additive superset of app.py [_load_gemma_spec helper + DownloadHandlers instantiation + one extra server.register_request("diagnostics/download-gemma", ...) call]; GemmaDownloader streams HuggingFace CDN with HTTP Range-resume [206 Partial Content + 200 OK restart fallback] + pre-hashes existing .partial bytes + atomic Path.replace rename + SHA256 verify against ModelPins-pinned hash + GitHub Releases mirror fallback on primary failure; on_download_gemma fire-and-forget asyncio.Task emits diagnostics/download-progress per docs/JSONRPC.md §3.7 notifications; one Rule 1 auto-fix during GREEN [httpx.Timeout default param required on httpx 0.32]; 4 real pytest tests upgrading Plan 02's LAST Wave 0 stub [test_sha256_verify_and_range_resume + test_fallback_to_mirror_on_primary_404 + test_both_urls_fail_raises_and_emits_error_progress + test_progress_rate_limited]; full pytest suite 34 passed / 0 skipped — Plan 02's Wave 0 stub pipeline FULLY LIQUIDATED)
-- [ ] Plan 10 onwards (Wave 2 UE-side: cpp supervisor + ws/jsonrpc UE client; Wave 3: markdown parser, chat panel streaming integration, history drawer, first-run UX, Ring 0 harness + run)
+- [x] Plan 10 — C++ supervisor + WS + JSON-RPC (Wave 2 UE-side, 3 tasks, 3 commits, SUMMARY on disk — FNyraJsonRpc encode/decode [10 It block EnvelopeRoundtrip spec, VALIDATION 1-02-02] + FNyraHandshake polling [50ms x1.5 backoff, 2s cap, 30s budget, partial-read tolerant, CleanupOrphans for P1.2] + FNyraWsClient [FWebSocketsModule wrap, session/authenticate first frame, 4401 close-code OnAuthFailed, NextId monotonic from 1 per P1.7] + FNyraSupervisor [FMonitoredProcess bHidden+bCreatePipes, CLI args matching nyrahost/__main__.py parse_args exactly, INyraClock injectable via FNyraSystemClock/FTestClockAdapter, 3-in-60s restart policy with window eviction, in-flight replay with fresh id, RequestShutdown -> shutdown notif -> 2s grace -> Cancel(bKillTree=true)] + NyraEditorModule.cpp additive superset (Plans 03+04 symbols/log lines preserved verbatim; GNyraSupervisor TUniquePtr wired into StartupModule after tab registration [D-04] and ShutdownModule BEFORE tab unregister [D-05]) + NyraSupervisorSpec.cpp RestartPolicy 2-It block [3-in-60s trips / 3-outside-60s does NOT, VALIDATION 1-02-03] + NyraIntegrationSpec.cpp guarded HandshakeAuth LatentIt [VALIDATION 1-02-01 opt-in])
+- [ ] Plan 11 onwards (Wave 3: markdown parser, chat panel streaming integration, history drawer, first-run UX, Ring 0 harness + run)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -103,6 +104,7 @@ Populated as phases complete. Tracks:
 | 01    | 07   | nyrahost-storage-attachments     | 2     | 4     | ~15min   | 5cb4c8f · f6c29b5 · 89e1c49 · 861aa35             |
 | 01    | 08   | nyrahost-infer-spawn-ollama-sse  | 3     | 14    | ~143min  | 1dfd3bb · 477950c · ff4d87e · c83d57d · 9588d41   |
 | 01    | 09   | gemma-downloader                 | 2     | 6     | ~209min  | c1d8b37 · 4c5eac1 · 269c251                       |
+| 01    | 10   | cpp-supervisor-ws-jsonrpc        | 3     | 12    | ~23min   | 048d667 · 475f613 · f89d772                       |
 
 ---
 
@@ -147,6 +149,16 @@ Populated as phases complete. Tracks:
 - Caught `OverflowError` alongside `OSError` in `handshake._pid_running` POSIX branch — macOS `os.kill(pid, 0)` raises `OverflowError` (not `OSError`) for pid > 2^31-1 (32-bit `pid_t`). Such a PID cannot be alive, so returning False is correct; `test_handshake_cleanup_orphans` deliberately exercises this with pid=3,999,999,999. Rule 1 fix; landed in Task 2 GREEN (`ef91a6f`).
 - `websockets.server.ServerConnection` import path preserved — works on both pinned `websockets==12.0` and the test-time installed 16.0. If a future bump removes it, fallback is `websockets.asyncio.server.ServerConnection`.
 - `*.egg-info/` + `build/` + `dist/` appended to `TestProject/.gitignore` — `pip install -e .` (required so `from nyrahost.X import ...` resolves during pytest) writes the egg-info dir; Plans 07/08/09 also need editable installs.
+
+### Decisions from Plan 10 (cpp-supervisor-ws-jsonrpc, 2026-04-22)
+
+- INyraClock is a full virtual abstract class (`virtual double NowSeconds() const = 0`) with `FNyraSystemClock` (production) and `FTestClockAdapter` (test, wraps `Nyra::Tests::FNyraTestClock`) as impls. Replaced PLAN.md's initial sketch of `TFunction<double()>` because the test callsite calls `Clock.Set(t)` between `SimulateCrashForTest` invocations and needs the adapter to re-read the underlying clock on each `NowSeconds()` call — a function-snapshot approach would freeze the first captured value. Plans 12 + 13 inherit the INyraClock abstraction for any future rate-limit / stream-timeout policy tests.
+- Rule 2 addition: `bool bTestMode = false` on FNyraSupervisor. `SimulateCrashForTest` sets it; `RecordCrashAndMaybeRestart` suppresses `PerformSpawn` when true. Required for hermetic unit tests — without the flag the first `SimulateCrashForTest` invocation would call `PerformSpawn -> FMonitoredProcess::Launch("python.exe")` which either fails spuriously or leaks a background process on the test host. Production code never sets the flag, so the D-08 respawn path is unchanged.
+- Rule 1 auto-fix: PLAN.md's handshake-dir sentinel `if (FPlatformProcess::ComputerName() && !(LocalAppData = ...).IsEmpty())` was a bug — `ComputerName()` returns a `const TCHAR*` that's never null on a real host. Simplified to `if (!LocalAppData.IsEmpty())` which directly matches docs/HANDSHAKE.md's "Primary vs Fallback (if LOCALAPPDATA unwritable)" contract.
+- Module-superset discipline (Plan 03 + 04 → Plan 10): every Plan 03/04 symbol and log line in NyraEditorModule.cpp is preserved VERBATIM — `IMPLEMENT_MODULE(FNyraEditorModule, NyraEditor)`, Plan 03's include order, Plan 04's `[NYRA] NyraEditor module starting (Phase 1 skeleton)` log line, Plan 04's `RegisterNomadTabSpawner` + `UToolMenus::RegisterStartupCallback` + Tools-menu extension, Plan 04's `UnregisterNomadTabSpawner` + `UnregisterOwner(this)`. Plan 10 only adds: 3 new includes (FNyraSupervisor.h + IPluginManager.h + Paths.h), 1 `static TUniquePtr<FNyraSupervisor> GNyraSupervisor`, 5 lines in StartupModule (spawn AFTER tab registration per D-04), 5 lines in ShutdownModule (graceful shutdown BEFORE tab unregister so final WS frames drain per D-05). Plans 12/13 inherit this same additive-only contract.
+- WS close-code 4401 handling is a one-shot gate: `HandleClose` only fires `OnAuthFailed` when `Code == 4401 && !bAuthenticated`. After auth success, a 4401 would be a server bug; forwarding it to OnAuthFailed would double-surface the panel's auth-error banner. `OnClosed` is always fired so the supervisor's crash+respawn path sees every close regardless of reason.
+- `NextId` in FNyraWsClient starts at 1 and is a per-object counter; it is NEVER reset. Reconnects happen one layer up (FNyraSupervisor constructs a fresh FNyraWsClient after respawn). The supervisor's in-flight replay calls `SendRequest` under the NEW WsClient which issues a fresh id, and the panel layer (Plan 12) marks the original id as cancelled. Matches docs/JSONRPC.md §2 id-policy / RESEARCH P1.7.
+- `SimulateCrashForTest` path does NOT fire `OnStateChanged` for the pre-unstable transitions through `Crashed` — the test explicitly asserts on `GetState() == Unstable` at the end. This keeps the unit test focused on the policy-trip invariant; Plan 12's panel-level tests can cover the full state-transition sequence through a real subprocess if/when needed.
 
 ### Decisions from Plan 09 (gemma-downloader, 2026-04-22)
 
@@ -216,6 +228,17 @@ None at initialization. Phase 0 legal emails will be in flight Week 1.
 
 **Plan 07 (nyrahost-storage-attachments): ZERO platform-gap deferrals.** Pure Python stdlib (sqlite3 + hashlib + os + shutil + pathlib + dataclasses + typing) with zero new runtime deps beyond Plan 06's. 9 new tests (4 storage + 5 attachments) + Plan 06's 8 tests all run LIVE on macOS Darwin Python 3.13.5 → final full-suite state: 17 passed / 4 skipped / 0 failed / 0 errors in ~9 seconds. The cross-device-fallback path in `ingest_attachment` is exercised via `patch("nyrahost.attachments.os.link", side_effect=OSError("cross-device"))` — no second volume required. `os.link` + `shutil.copy2` both work natively on macOS APFS and Windows NTFS. Windows-specific caveat for later: `os.link` requires SeCreateSymbolicLinkPrivilege on some policies; `shutil.copy2` fallback handles it.
 
+**Plan 10 (cpp-supervisor-ws-jsonrpc): 6 platform-gap deferrals (all Windows-only, consistent with Plans 01/03/04/05 posture):**
+
+- UE 5.6 compile of FNyraJsonRpc + FNyraWsClient + FNyraHandshake + FNyraSupervisor + updated NyraEditorModule.cpp — deferred to Windows CI (macOS host cannot run UBT/MSVC).
+- `UnrealEditor-Cmd.exe TestProject/TestProject.uproject -ExecCmds="Automation RunTests Nyra.Jsonrpc;Quit" -unattended -nopause -testexit="Automation Test Queue Empty"` exit 0 with ≥10 It blocks (VALIDATION 1-02-02) — deferred to Windows CI.
+- `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.Supervisor.RestartPolicy;Quit` exit 0 with 2 It blocks (VALIDATION 1-02-03) — deferred to Windows CI.
+- `UnrealEditor-Cmd.exe ... Automation RunTests Nyra.Integration.HandshakeAuth;Quit` with `ENABLE_NYRA_INTEGRATION_TESTS=1` in the Target.cs (VALIDATION 1-02-01, opt-in) — deferred to Windows dev machine AFTER Plan 06's `prebuild.ps1` populates `Plugins/NYRA/Binaries/Win64/NyraHost/cpython/python.exe`.
+- Manual editor launch verification: NyraHost process in Task Manager within 5s of editor start; `[NYRA] NyraEditor module starting` + `[NYRA] Spawning NyraHost: ...` in Output Log; clean editor close triggers `[NYRA] NyraHost exited code=0` + `[NYRA] WS closed code=1000 ...` — deferred to Windows dev-machine first open.
+- Compile against UBT auto-generated NyraEditor include graph (UBT may flag a missing forward declaration) — deferred to Windows CI; grep-level verification confirms every UE header referenced by Plan 10 files exists in UE 5.6 (WebSocketsModule.h, IWebSocket.h, Misc/MonitoredProcess.h, Containers/Ticker.h, Serialization/JsonWriter.h, Policies/CondensedJsonPrintPolicy.h, Interfaces/IPluginManager.h).
+
+**Plan 10 positive result:** All 28 PLAN.md grep acceptance literals pass across the 3 tasks. Build.cs already had every required dependency (WebSockets, Json, JsonUtilities, Projects) from Plan 03 — no NyraEditor.Build.cs change required. Plan 01's Wave 0 NyraJsonRpcSpec.cpp + NyraSupervisorSpec.cpp placeholders upgraded in place to real assertion-carrying specs; Plan 03's FNyraPluginModulesLoadSpec in NyraIntegrationSpec.cpp preserved verbatim while Plan 10 added the guarded FNyraIntegrationSpec HandshakeAuth LatentIt. NyraEditorModule.cpp additive-only update carries Plan 03's IMPLEMENT_MODULE line, Plan 04's tab/menu registration, and Plan 04's ShutdownModule unregister sequence verbatim — Plan 10's 5 new StartupModule lines spawn GNyraSupervisor AFTER tab registration per D-04; 5 new ShutdownModule lines RequestShutdown BEFORE tab unregister per D-05. PLUG-02 closed end-to-end: UE side can now spawn NyraHost, poll handshake, connect via WS, authenticate with first-frame session/authenticate, receive session/hello responses and chat/stream notifications, and gracefully shut down with KillTree fallback.
+
 **Plan 09 (gemma-downloader): ZERO platform-gap deferrals.** All Plan 09 code paths exercised live on macOS Darwin Python 3.13.5:
 
 - Downloader core (`downloader/progress.py` + `downloader/gemma.py`): pure-Python using `hashlib`, `pathlib`, `asyncio.to_thread`, and `httpx.AsyncClient` streaming. `Path.replace()` is atomic on both NTFS (Windows) and APFS (macOS) + ext4 (Linux).
@@ -249,7 +272,16 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 **Last session handoff:**
 
-- Plan 01-09 (gemma-downloader) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+- Plan 01-10 (cpp-supervisor-ws-jsonrpc) executed end-to-end on main branch (sequential, no worktree). [shipped this session]
+  - 3 atomic commits: 048d667 (feat Task 1 JSON-RPC + spec) · 475f613 (feat Task 2 Handshake + WsClient) · f89d772 (feat Task 3 Supervisor + wiring + specs)
+  - 8 files created under TestProject/Plugins/NYRA/Source/NyraEditor/: Public/WS/FNyraJsonRpc.h + Private/WS/FNyraJsonRpc.cpp + Public/WS/FNyraWsClient.h + Private/WS/FNyraWsClient.cpp + Public/Process/FNyraHandshake.h + Private/Process/FNyraHandshake.cpp + Public/Process/FNyraSupervisor.h + Private/Process/FNyraSupervisor.cpp
+  - 4 files modified: NyraEditorModule.cpp (additive superset of Plans 03+04 — GNyraSupervisor TUniquePtr wired into StartupModule/ShutdownModule) + NyraJsonRpcSpec.cpp (upgraded from Plan 01 Wave 0 stub to 10 It() blocks) + NyraSupervisorSpec.cpp (upgraded from Plan 01 Wave 0 stub to 2 It() blocks via FTestClockAdapter→INyraClock) + NyraIntegrationSpec.cpp (preserved Plan 03's FNyraPluginModulesLoadSpec, added guarded FNyraIntegrationSpec HandshakeAuth LatentIt)
+  - SUMMARY at .planning/phases/01-plugin-shell-three-process-ipc/01-10-cpp-supervisor-ws-jsonrpc-SUMMARY.md
+  - 2 Rule-1/Rule-2 auto-fixed deviations: (Rule 2) added bTestMode flag on FNyraSupervisor so SimulateCrashForTest does NOT invoke PerformSpawn (hermetic unit tests never launch python.exe); (Rule 1) simplified PLAN.md's bogus `FPlatformProcess::ComputerName() && !(LocalAppData).IsEmpty()` handshake-dir sentinel to `!LocalAppData.IsEmpty()` which directly matches docs/HANDSHAKE.md Primary-vs-Fallback contract.
+  - 6 platform-gap deferrals logged (all Windows-only, consistent with Plans 01/03/04/05): UE 5.6 UBT/MSVC compile + 3 Automation test runs (Nyra.Jsonrpc / Nyra.Supervisor.RestartPolicy / Nyra.Integration.HandshakeAuth [opt-in]) + manual editor-launch visual verification + UBT auto-generated include-graph check. All 28 PLAN.md grep acceptance literals pass source-level.
+  - PLUG-02 closed end-to-end on the UE side: editor can now spawn NyraHost, poll handshake with 50ms×1.5 exp backoff + 30s budget, connect via FWebSocketsModule to ws://127.0.0.1:<port>/, send session/authenticate as first frame, receive auth OK + session/hello responses, route chat/stream notifications, and gracefully shut down with 2s grace + Cancel(bKillTree=true) fallback. Plan 12 (chat panel) can now consume GNyraSupervisor->OnNotification / OnResponse / SendRequest / SendNotification to wire the Slate chat UI.
+
+- Plan 01-09 (gemma-downloader) executed end-to-end on main branch (sequential, no worktree). [shipped previous session]
   - 3 atomic commits: c1d8b37 (test Task1 RED) · 4c5eac1 (feat Task1 GREEN) · 269c251 (feat Task2)
   - 4 files created under TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/: downloader/__init__.py, downloader/progress.py, downloader/gemma.py, handlers/download.py
   - 2 files modified: src/nyrahost/app.py (additive superset — imports json + GEMMA_FILENAME + GemmaSpec + DownloadHandlers; adds _load_gemma_spec helper; routes gemma_gguf_path through GEMMA_FILENAME constant; wires DownloadHandlers + register_request("diagnostics/download-gemma", ...) into build_and_run alongside Plan 08's chat/send + chat/cancel) + tests/test_gemma_download.py (Plan 02's LAST Wave 0 @pytest.mark.skip stub → 4 real passing tests)
@@ -318,8 +350,8 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 ### Next session
 
-1. Execute Plan 01-10 (cpp-supervisor + ws-jsonrpc UE client) — UE C++ `NyraHostSupervisor` that spawns `python -m nyrahost --editor-pid N --log-dir ... --project-dir ... --plugin-binaries-dir ...` at FNyraEditorModule::StartupModule, monitors the handshake file for the port+token, connects via LibWebSockets (or minimal WS client), sends session/authenticate as the first frame, then session/hello. Respawns on crash per D-08 (3 restarts in 60s). Wires chat/send + chat/cancel + diagnostics/download-gemma outbound JSON-RPC calls from the UE side. Closes the UE-side PLUG-03 gate.
-2. Continue through Phase 01 Wave 2/3 plans (01-11 markdown parser, 01-12 chat panel streaming integration, 01-12b history drawer, 01-13 first-run UX banners + diagnostics [consumes Plan 09's diagnostics/download-gemma surface], 01-14 ring0 harness, 01-15 ring0 run + commit).
+1. Execute Plan 01-11 (cpp-markdown-parser) — FNyraMarkdown UE C++ incremental streaming markdown renderer (Slate widgets) that consumes chat/stream delta text and produces renderable blocks (paragraphs, fenced code, bullets, emphasis). Closes VALIDATION 1-03-* (Nyra.Markdown.* spec).
+2. Continue through Phase 01 Wave 3 plans (01-12 chat panel streaming integration [wires SNyraChatPanel to GNyraSupervisor OnNotification + SendRequest], 01-12b history drawer [Saved/NYRA/sessions.db reader from Plan 07], 01-13 first-run UX banners + diagnostics [consumes Plan 09's diagnostics/download-gemma surface], 01-14 ring0 harness, 01-15 ring0 run + commit).
 
 **Files-on-disk checkpoint (all present):**
 
