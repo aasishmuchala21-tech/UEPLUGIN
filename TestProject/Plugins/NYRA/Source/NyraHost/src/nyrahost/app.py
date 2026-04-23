@@ -25,6 +25,7 @@ from .config import NyraConfig
 from .downloader.gemma import GEMMA_FILENAME, GemmaSpec
 from .handlers.chat import ChatHandlers, GemmaNotInstalledError
 from .handlers.download import DownloadHandlers
+from .handlers.sessions import SessionHandlers
 from .infer.router import InferRouter
 from .server import NyraServer, run_server
 from .session import SessionState
@@ -147,6 +148,12 @@ async def build_and_run(
         project_saved=project_dir / "Saved",
     )
 
+    # Plan 12b — read-only sessions/list + sessions/load handlers backing the
+    # UE history drawer (CD-05). SessionHandlers shares the same Storage the
+    # chat handler writes to, so the drawer sees freshly-persisted
+    # conversations without an intermediate cache.
+    session_handlers = SessionHandlers(storage=storage)
+
     # Plan 09 — download handler. assets-manifest.json lives alongside
     # the NyraHost package source; plugin_binaries_dir is
     # <Plugin>/Binaries/Win64, so the manifest is three levels up under
@@ -172,6 +179,15 @@ async def build_and_run(
         # notifications on the same session.
         server.register_request(
             "diagnostics/download-gemma", download_handlers.on_download_gemma,
+        )
+        # Plan 12b — history drawer (CD-05). Both sessions/list and
+        # sessions/load are pure reads against Storage; no per-session WS
+        # attachment is needed. See docs/JSONRPC.md 3.8 + 3.9.
+        server.register_request(
+            "sessions/list", session_handlers.on_sessions_list,
+        )
+        server.register_request(
+            "sessions/load", session_handlers.on_sessions_load,
         )
 
     await run_server(
