@@ -37,6 +37,7 @@
 #include "Panel/SNyraChatPanel.h"
 #include "Panel/SNyraMessageList.h"
 #include "Panel/SNyraComposer.h"
+#include "Panel/SNyraHistoryDrawer.h"
 #include "Process/FNyraSupervisor.h"
 #include "NyraLog.h"
 
@@ -61,18 +62,52 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
     //     conversation and overwrites this value via OpenConversation.
     CurrentConversationId = FGuid::NewGuid();
 
+    // Plan 12b layout: (drawer | existing VBox) in a SHorizontalBox. The
+    // drawer owns its own width management via SBox::SetWidthOverride, so
+    // the outer HBox just gives it AutoWidth and lets the message list +
+    // composer fill the remaining width.
     ChildSlot
     [
-        SNew(SVerticalBox)
-        + SVerticalBox::Slot().FillHeight(1.0f)
+        SNew(SHorizontalBox)
+        + SHorizontalBox::Slot().AutoWidth()
         [
-            SAssignNew(MessageList, SNyraMessageList)
-            .OnCancel(FOnMessageCancel::CreateRaw(this, &SNyraChatPanel::OnMessageCancel))
+            SAssignNew(HistoryDrawer, SNyraHistoryDrawer)
+            .bStartCollapsed(true)
+            .OnOpenConversation(FOnHistoryOpenConversation::CreateLambda(
+                [this](const FGuid& ConvId,
+                       const TArray<TSharedPtr<FNyraMessage>>& Msgs)
+                {
+                    // Clear the current rows before repopulating so
+                    // switching conversations does not bleed previous
+                    // content into the new conversation. (Redundant with
+                    // OpenConversation's own Clear, but explicit here for
+                    // readability of the drawer-driven flow.)
+                    if (MessageList.IsValid()) MessageList->ClearMessages();
+                    this->OpenConversation(ConvId, Msgs);
+                    if (HistoryDrawer.IsValid()) HistoryDrawer->SetSelected(ConvId);
+                }))
+            .OnNewConversation(FOnHistoryNewConversation::CreateLambda(
+                [this]()
+                {
+                    if (MessageList.IsValid()) MessageList->ClearMessages();
+                    const FGuid NewId = FGuid::NewGuid();
+                    this->OpenConversation(NewId, TArray<TSharedPtr<FNyraMessage>>());
+                    if (HistoryDrawer.IsValid()) HistoryDrawer->SetSelected(NewId);
+                }))
         ]
-        + SVerticalBox::Slot().AutoHeight().Padding(6)
+        + SHorizontalBox::Slot().FillWidth(1.0f)
         [
-            SAssignNew(Composer, SNyraComposer)
-            .OnSubmit(FOnComposerSubmit::CreateRaw(this, &SNyraChatPanel::OnComposerSubmit))
+            SNew(SVerticalBox)
+            + SVerticalBox::Slot().FillHeight(1.0f)
+            [
+                SAssignNew(MessageList, SNyraMessageList)
+                .OnCancel(FOnMessageCancel::CreateRaw(this, &SNyraChatPanel::OnMessageCancel))
+            ]
+            + SVerticalBox::Slot().AutoHeight().Padding(6)
+            [
+                SAssignNew(Composer, SNyraComposer)
+                .OnSubmit(FOnComposerSubmit::CreateRaw(this, &SNyraChatPanel::OnComposerSubmit))
+            ]
         ]
     ];
 
@@ -83,6 +118,19 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
     if (GNyraSupervisor.IsValid())
     {
         GNyraSupervisor->OnNotification.BindRaw(this, &SNyraChatPanel::HandleNotification);
+    }
+
+    // Populate the history drawer from SQLite. On first-ever launch
+    // (no rows persisted), the drawer ingests an empty list and our
+    // default fresh-FGuid CurrentConversationId stays in place. On
+    // subsequent launches the drawer's Refresh() auto-opens the
+    // most-recently-updated conversation and overwrites
+    // CurrentConversationId via the OnOpenConversation lambda above.
+    // Safe to call unconditionally: Refresh no-ops if GNyraSupervisor
+    // is not yet valid.
+    if (HistoryDrawer.IsValid())
+    {
+        HistoryDrawer->Refresh();
     }
 }
 

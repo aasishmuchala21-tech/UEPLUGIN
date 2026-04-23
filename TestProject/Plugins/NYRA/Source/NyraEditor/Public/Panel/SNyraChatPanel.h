@@ -43,6 +43,7 @@
 
 class SNyraMessageList;
 class SNyraComposer;
+class SNyraHistoryDrawer;
 
 /** Fired after SNyraChatPanel::OpenConversation completes so the history
  *  drawer (Plan 12b) can sync its selection highlight. */
@@ -86,6 +87,7 @@ private:
 
     TSharedPtr<SNyraMessageList> MessageList;
     TSharedPtr<SNyraComposer> Composer;
+    TSharedPtr<class SNyraHistoryDrawer> HistoryDrawer;  // Plan 12b CD-05
     FGuid CurrentConversationId;  // default on first-ever editor launch; Plan 12b drawer overwrites via OpenConversation
     FDelegateHandle NotificationHandle;
 };
