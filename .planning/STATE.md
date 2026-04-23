@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "13 complete (next = Wave 4: Plan 14 ring0-harness)"
+current_plan: "14 complete (next = Wave 5: Plan 15 ring0-run-and-commit-results)"
 status: executing
-last_updated: "2026-04-23T15:24:00.000Z"
+last_updated: "2026-04-23T15:36:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 14
-  percent: 88
+  completed_plans: 15
+  percent: 94
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-23 (Plan 01-13 completed)
+**Last Updated:** 2026-04-23 (Plan 01-14 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 14 of 16 (next to execute)
+Plan: 15 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 13 complete (next = Wave 4: Plan 14 ring0-harness)
+**Current Plan:** 14 complete (next = Wave 5: Plan 15 ring0-run-and-commit-results)
 **Status:** Ready to execute
 
 **Progress (v1):**
 
 ```text
-[████████▉░] 88% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11/12/12b/13 shipped (14/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11 + 12 + 12b + 13)
+[█████████▍] 94% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11/12/12b/13/14 shipped (15/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11 + 12 + 12b + 13 + 14)
 ```
 
 **Plans completed in Phase 01:**
@@ -66,7 +66,8 @@ Plan: 14 of 16 (next to execute)
 - [x] Plan 12 — Chat panel streaming integration (Wave 3 UE-side, 2 tasks, 2 commits, SUMMARY on disk — SNyraChatPanel replaces Plan 04 placeholder with SVerticalBox(FillHeight SNyraMessageList + AutoHeight SNyraComposer) wired to GNyraSupervisor; FNyraMessage Slate model + SNyraAttachmentChip + SNyraMessageList (SListView virtualized, plain STextBlock→SRichTextBlock+MarkdownToRichText swap on Done, ClearMessages + protected virtual GenerateRow/MakeBodyWidget extension points) + SNyraComposer (SMultiLineEditableTextBox + Ctrl/Cmd+Enter + FDesktopPlatform picker); OnComposerSubmit emits chat/send with gemma-local backend, HandleNotification dispatches chat/stream deltas/done/cancelled/error-remediation, OnMessageCancel emits chat/cancel notification; OpenConversation + GetCurrentConversationId + OnConversationSelected entry points for Plan 12b; extern link pattern promotes GNyraSupervisor from static to non-static in NyraEditorModule.cpp; FNyraCodeBlockDecoratorImpl promoted to public NYRAEDITOR_API header (Plan 11 Rule 2 superset); NyraPanelSpec.cpp AttachmentChip + StreamingBuffer Describe blocks closing VALIDATION 1-04-04 + 1-04-05; 5 new It blocks [1 AttachmentChip + 4 StreamingBuffer])
 - [x] Plan 12b — History drawer (Wave 3 UE+Python, 3 tasks [Task 1 TDD=true], 4 commits [1 RED + 3 feat], SUMMARY on disk — nyrahost.handlers.sessions.SessionHandlers dataclass with on_sessions_list (ORDER BY c.updated_at DESC + message_count subquery + clamped limit DEFAULT_LIST_LIMIT=50/MAX=200) and on_sessions_load (latest N by DESC then reversed to ASC + bulk attachment IN-lookup + empty-on-unknown-id); app.py register_request("sessions/list" + "sessions/load"); SNyraHistoryDrawer Slate widget (SBox width-override 24/220 px collapsed, SListView of FNyraConversationSummary, toggle + [+ New Conversation] buttons, per-rpc-id TMap<int64, TFunction<>> response dispatch avoiding Plan 10 multicast upgrade) mounted in SNyraChatPanel via SHorizontalBox two-column layout (drawer AutoWidth | existing VBox FillWidth) + OnOpenConversation/OnNewConversation lambda bridges + Refresh() call at Construct end; first-launch-ever keeps default fresh FGuid, subsequent launches auto-open most-recently-updated; 4 real pytest tests upgrading test_sessions_list_ordering.py from scratch [ordering + limit + load ASC + unknown-id empty]; NyraPanelSpec.cpp HistoryDrawerSelect + NewConversationButton Describe blocks closing VALIDATION 1-12b-01 + 1-12b-02; full pytest suite 38 passed / 0 failed on macOS Darwin Python 3.13.5)
 - [x] Plan 13 — First-run UX banners + diagnostics (Wave 4 UE-side, 2 tasks, 2 commits, SUMMARY on disk — SNyraBanner widget with ENyraBannerKind {Hidden, Info, Warning, Error} + SetState overloads (message-only + message+buttons) + Hide + indeterminate SProgressBar for Info kind + blue/yellow/red BorderBackgroundColor_Lambda + FOnBannerRestartClicked/FOnBannerOpenLogClicked delegates; SNyraDownloadModal widget consuming diagnostics/download-progress notifications (status downloading/verifying/done/error with D-11 error.data.remediation rendering) via SProgressBar Percent_Lambda on BytesDone/BytesTotal + centred SOverlay mount; SNyraDiagnosticsDrawer SExpandableArea InitiallyCollapsed(true) + static LogFilePath() helper + FFileHelper::LoadFileToStringArray last-100-line tail into read-only monospace SMultiLineEditableTextBox + graceful "(log file not yet written)" fallback; SNyraChatPanel additively extended (Plan 12+12b content preserved verbatim): new 4-slot right-column VBox [Banner | SOverlay(MessageList + DownloadModal) | Composer | Diagnostics], OnStateChanged lambda mapping per RESEARCH §3.9 table (Spawning/WaitingForHandshake/Connecting/Authenticating -> Info, Ready -> Hide, Crashed -> Warning), OnUnstable lambda with Error banner + [Restart] (RequestShutdown + Reset + fresh SpawnAndConnect mirroring StartupModule) + [Open log] (FPlatformProcess::ExploreFolder on logs dir); HandleNotification dispatches diagnostics/download-progress to DownloadModal BEFORE chat/stream branch; destructor unbinds OnStateChanged + OnUnstable + OnNotification; RESEARCH Open Q 6 resolved at source level — no diagnostics/tail WS method in Phase 1)
-- [ ] Plan 14 onwards (Wave 4: Ring 0 bench harness, Ring 0 run + commit results)
+- [x] Plan 14 — Ring 0 bench harness (Wave 4 UE-side, 1 task, 1 commit, SUMMARY on disk — FNyraDevTools static class + FNyraBenchSample per-round struct + FNyraBenchResult aggregate with p50/p95/p99 per metric + 3 pass flags + FormatReport() emitting RESEARCH §3.6 Output Log block; file-scope FAutoConsoleCommand registering Nyra.Dev.RoundTripBench with default N=100 prompt="Reply with OK." (Count clamped 1..1000); RunRoundTripBench synchronous GameThread pump using FTSTicker::Tick(0.016f)+Sleep(1ms) bounded by PerRoundTimeoutS=60.0 with editor-tick sampler AddTicker lambda recording max DeltaTime*1000 into GCurrentRound.MaxTickMs; BenchHandleNotification bound via Sup->OnNotification.BindStatic filters chat/stream by req_id, records first_token on first non-empty delta + done+CompletionTokens+bErrored on done:true; pass thresholds p95 first_token<500ms + p95 editor_tick<33ms + Errors==0; NON-COMPLIANT compliance gate prepends [NON-COMPLIANT: requires N>=100 per ROADMAP Phase 1 SC#3] header AND forces all 3 PASS verdicts to FAIL when N<100 — prevents accidental commit of short-run results as Plan 15 deliverable; NyraEditorModule.cpp additively extended (Plans 03/04/10/13 preserved verbatim: IMPLEMENT_MODULE/RegisterNomadTabSpawner/GNyraSupervisor/SpawnAndConnect/RequestShutdown/D-04/D-05 intact; added one #include "Dev/FNyraDevTools.h" + one UE_LOG registration-confirmation line at end of StartupModule))
+- [ ] Plan 15 (Wave 5: Ring 0 run + commit results on Windows dev machine)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -111,12 +112,14 @@ Populated as phases complete. Tracks:
 | 01    | 10   | cpp-supervisor-ws-jsonrpc        | 3     | 12    | ~23min   | 048d667 · 475f613 · f89d772                       |
 | 01    | 11   | cpp-markdown-parser              | 2     | 6     | ~9min    | 3371bc2 · fa2160e                                 |
 | 01    | 13   | first-run-ux-banners-diagnostics | 2     | 8     | ~6min    | 1995eea · b0ef8d1                                 |
+| 01    | 14   | ring0-bench-harness              | 1     | 3     | ~4min    | 7f479b2                                           |
 
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
 | Phase 01 P12 | 12min | 2 tasks | 14 files |
 | Phase 01 P12b | ~10min | 3 tasks | 8 files |
 | Phase 01 P13 | ~6min | 2 tasks | 8 files |
+| Phase 01 P14 | ~4min | 1 task | 3 files |
 
 ## Accumulated Context
 
