@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 01
-current_plan: "12b complete (next = Wave 3: Plan 13 first-run-ux-banners-diagnostics)"
+current_plan: "13 complete (next = Wave 4: Plan 14 ring0-harness)"
 status: executing
-last_updated: "2026-04-23T15:14:09.141Z"
+last_updated: "2026-04-23T15:24:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 14
+  percent: 88
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-23 (Plan 01-11 completed)
+**Last Updated:** 2026-04-23 (Plan 01-13 completed)
 
 ---
 
@@ -38,16 +38,16 @@ progress:
 ## Current Position
 
 Phase: 01 (plugin-shell-three-process-ipc) — EXECUTING
-Plan: 13 of 16 (next to execute)
+Plan: 14 of 16 (next to execute)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 01
-**Current Plan:** 12b complete (next = Wave 3: Plan 13 first-run-ux-banners-diagnostics)
+**Current Plan:** 13 complete (next = Wave 4: Plan 14 ring0-harness)
 **Status:** Ready to execute
 
 **Progress (v1):**
 
 ```text
-[████████░░] 81% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11/12/12b shipped (13/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11 + 12 + 12b)
+[████████▉░] 88% — 0/9 phases complete (Phases 0-8), Phase 01 Wave 1 + Plans 06/07/08/09/10/11/12/12b/13 shipped (14/16 plans: 01 + 02 + 03 + 04 + 05 + 06 + 07 + 08 + 09 + 10 + 11 + 12 + 12b + 13)
 ```
 
 **Plans completed in Phase 01:**
@@ -65,7 +65,8 @@ Plan: 13 of 16 (next to execute)
 - [x] Plan 11 — C++ markdown parser (Wave 3 UE-side, 2 tasks, 2 commits, SUMMARY on disk — FNyraMarkdownParser::MarkdownToRichText covering Phase-1 markdown subset (headings H1-H3, **bold**, *italic*, `inline code`, fenced code blocks ```lang\n…\n```, [text](url) links, unordered lists with U+2022 bullet char) emitting Slate rich-text tag stream {<heading level="N">, <bold>, <italic>, <code>, <link url="…">, <nyra-code lang="…">} + FNyraMarkdownParser::EscapeRichText helper for <>& HTML-style escape; fenced-code body is escape-only (no recursive inline parse, backticks suppress further markdown) + italic guard against ** collision + URL attr escape; UNyraCodeBlockDecorator URichTextBlockDecorator subclass with FNyraCodeBlockDecoratorImpl::Supports gated on RunInfo.Name == TEXT("nyra-code") + Create extracting body/lang + FSlateWidgetRun anchored on U+200B zero-width space (baseline 16.f matching Epic tooltip sample) + MakeCodeBlockWidget building SBorder(ToolPanel.GroupBorder,8.f padding) > SVerticalBox{header SHorizontalBox[FillWidth lang label + AutoWidth SButton [Copy]], body STextBlock(MonospacedText font, AutoWrapText)} + OnClicked_Lambda invoking FPlatformApplicationMisc::ClipboardCopy(*BodyCopy) per CD-06 copy-button requirement; NyraEditor.Build.cs appends "UMG" after "ApplicationCore" in PublicDependencyModuleNames; NyraMarkdownSpec.cpp upgraded from Plan 01 Wave 0 stub to 10 It blocks (3 FencedCode + 7 InlineFormatting) closing VALIDATION 1-04-02 + 1-04-03 at source level)
 - [x] Plan 12 — Chat panel streaming integration (Wave 3 UE-side, 2 tasks, 2 commits, SUMMARY on disk — SNyraChatPanel replaces Plan 04 placeholder with SVerticalBox(FillHeight SNyraMessageList + AutoHeight SNyraComposer) wired to GNyraSupervisor; FNyraMessage Slate model + SNyraAttachmentChip + SNyraMessageList (SListView virtualized, plain STextBlock→SRichTextBlock+MarkdownToRichText swap on Done, ClearMessages + protected virtual GenerateRow/MakeBodyWidget extension points) + SNyraComposer (SMultiLineEditableTextBox + Ctrl/Cmd+Enter + FDesktopPlatform picker); OnComposerSubmit emits chat/send with gemma-local backend, HandleNotification dispatches chat/stream deltas/done/cancelled/error-remediation, OnMessageCancel emits chat/cancel notification; OpenConversation + GetCurrentConversationId + OnConversationSelected entry points for Plan 12b; extern link pattern promotes GNyraSupervisor from static to non-static in NyraEditorModule.cpp; FNyraCodeBlockDecoratorImpl promoted to public NYRAEDITOR_API header (Plan 11 Rule 2 superset); NyraPanelSpec.cpp AttachmentChip + StreamingBuffer Describe blocks closing VALIDATION 1-04-04 + 1-04-05; 5 new It blocks [1 AttachmentChip + 4 StreamingBuffer])
 - [x] Plan 12b — History drawer (Wave 3 UE+Python, 3 tasks [Task 1 TDD=true], 4 commits [1 RED + 3 feat], SUMMARY on disk — nyrahost.handlers.sessions.SessionHandlers dataclass with on_sessions_list (ORDER BY c.updated_at DESC + message_count subquery + clamped limit DEFAULT_LIST_LIMIT=50/MAX=200) and on_sessions_load (latest N by DESC then reversed to ASC + bulk attachment IN-lookup + empty-on-unknown-id); app.py register_request("sessions/list" + "sessions/load"); SNyraHistoryDrawer Slate widget (SBox width-override 24/220 px collapsed, SListView of FNyraConversationSummary, toggle + [+ New Conversation] buttons, per-rpc-id TMap<int64, TFunction<>> response dispatch avoiding Plan 10 multicast upgrade) mounted in SNyraChatPanel via SHorizontalBox two-column layout (drawer AutoWidth | existing VBox FillWidth) + OnOpenConversation/OnNewConversation lambda bridges + Refresh() call at Construct end; first-launch-ever keeps default fresh FGuid, subsequent launches auto-open most-recently-updated; 4 real pytest tests upgrading test_sessions_list_ordering.py from scratch [ordering + limit + load ASC + unknown-id empty]; NyraPanelSpec.cpp HistoryDrawerSelect + NewConversationButton Describe blocks closing VALIDATION 1-12b-01 + 1-12b-02; full pytest suite 38 passed / 0 failed on macOS Darwin Python 3.13.5)
-- [ ] Plan 13 onwards (Wave 3: first-run UX + banners + diagnostics, Ring 0 bench harness, Ring 0 run + commit results)
+- [x] Plan 13 — First-run UX banners + diagnostics (Wave 4 UE-side, 2 tasks, 2 commits, SUMMARY on disk — SNyraBanner widget with ENyraBannerKind {Hidden, Info, Warning, Error} + SetState overloads (message-only + message+buttons) + Hide + indeterminate SProgressBar for Info kind + blue/yellow/red BorderBackgroundColor_Lambda + FOnBannerRestartClicked/FOnBannerOpenLogClicked delegates; SNyraDownloadModal widget consuming diagnostics/download-progress notifications (status downloading/verifying/done/error with D-11 error.data.remediation rendering) via SProgressBar Percent_Lambda on BytesDone/BytesTotal + centred SOverlay mount; SNyraDiagnosticsDrawer SExpandableArea InitiallyCollapsed(true) + static LogFilePath() helper + FFileHelper::LoadFileToStringArray last-100-line tail into read-only monospace SMultiLineEditableTextBox + graceful "(log file not yet written)" fallback; SNyraChatPanel additively extended (Plan 12+12b content preserved verbatim): new 4-slot right-column VBox [Banner | SOverlay(MessageList + DownloadModal) | Composer | Diagnostics], OnStateChanged lambda mapping per RESEARCH §3.9 table (Spawning/WaitingForHandshake/Connecting/Authenticating -> Info, Ready -> Hide, Crashed -> Warning), OnUnstable lambda with Error banner + [Restart] (RequestShutdown + Reset + fresh SpawnAndConnect mirroring StartupModule) + [Open log] (FPlatformProcess::ExploreFolder on logs dir); HandleNotification dispatches diagnostics/download-progress to DownloadModal BEFORE chat/stream branch; destructor unbinds OnStateChanged + OnUnstable + OnNotification; RESEARCH Open Q 6 resolved at source level — no diagnostics/tail WS method in Phase 1)
+- [ ] Plan 14 onwards (Wave 4: Ring 0 bench harness, Ring 0 run + commit results)
 
 **Progress by phase (REQ-ID coverage):**
 
@@ -109,11 +110,13 @@ Populated as phases complete. Tracks:
 | 01    | 09   | gemma-downloader                 | 2     | 6     | ~209min  | c1d8b37 · 4c5eac1 · 269c251                       |
 | 01    | 10   | cpp-supervisor-ws-jsonrpc        | 3     | 12    | ~23min   | 048d667 · 475f613 · f89d772                       |
 | 01    | 11   | cpp-markdown-parser              | 2     | 6     | ~9min    | 3371bc2 · fa2160e                                 |
+| 01    | 13   | first-run-ux-banners-diagnostics | 2     | 8     | ~6min    | 1995eea · b0ef8d1                                 |
 
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
 | Phase 01 P12 | 12min | 2 tasks | 14 files |
 | Phase 01 P12b | ~10min | 3 tasks | 8 files |
+| Phase 01 P13 | ~6min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -169,6 +172,17 @@ Populated as phases complete. Tracks:
 - Widget composition locked per PLAN.md `<interfaces>`: SBorder(ToolPanel.GroupBorder brush, 8.f padding) wrapping a two-slot SVerticalBox — header SHorizontalBox[FillWidth STextBlock lang-label + AutoWidth SButton `[Copy]`] + body STextBlock(MonospacedText font, AutoWrapText) with 8.f top padding. Body is capture-by-value in the OnClicked lambda so `FPlatformApplicationMisc::ClipboardCopy(*BodyCopy)` remains valid for the full widget lifetime regardless of decorator destruction.
 - NyraMarkdownSpec 2-Describe layout (FencedCode + InlineFormatting) mirrors VALIDATION rows 1-04-02 + 1-04-03 one-to-one. 10 total It blocks (3 FencedCode + 7 InlineFormatting) — exceeds the PLAN.md acceptance floor of >=10 by exactly fitting the minimum.
 - Streaming-render integration contract for Plan 12 (recorded here so the decision doesn't drift): DO render plain STextBlock during `chat/stream` deltas, DO call FNyraMarkdownParser::MarkdownToRichText once on `done:true` and swap to SRichTextBlock. Incremental re-parse on every delta would thrash Slate layout (RESEARCH Sec 3.1). Incremental tail-paragraph parse is a Phase 2 polish item.
+
+### Decisions from Plan 13 (first-run-ux-banners-diagnostics, 2026-04-23)
+
+- Banner state-machine mapping lives in SNyraChatPanel's OnStateChanged lambda (not in SNyraBanner itself). SNyraBanner is a generic 3-kind widget; keeping the supervisor-state-to-banner-kind mapping in the panel means Phase 2 can add new OnStateChanged branches (e.g. subscription-bridge status badges) without touching SNyraBanner.
+- Restart callback does a full supervisor teardown + respawn (RequestShutdown + Reset + fresh MakeUnique + SpawnAndConnect mirroring StartupModule) rather than calling an idempotent restart method on FNyraSupervisor. Full-reset clears the CrashTimestamps window so the user can genuinely recover from Unstable (otherwise the new supervisor would inherit the trip state and re-trigger OnUnstable immediately). Avoids adding new public API to FNyraSupervisor just for this callback.
+- Download modal does NOT auto-dismiss on status=done in Phase 1. User clicks Cancel (reads as "Close" when status=done). Keeps the implementation deterministic (no timer handles across panel teardown) and lets the user verify the "Done!" status text. Phase 2 polish can add a 1.5s fade-auto-dismiss.
+- Download-cancel path is local-only. Plan 09's DownloadHandlers has no cancel endpoint; the background asyncio.Task runs to completion or error regardless. Modal's OnCancelled delegate is bound to a no-op lambda in the panel. Documented as a known Phase 1 limit; a Phase 2 plan can add diagnostics/download-cancel if user research shows this is painful.
+- Log-tail uses FFileHelper::LoadFileToStringArray (full file into memory) rather than streaming the last N bytes. Phase 1 log files are structlog JSON lines rotated daily (D-16), typical <1 MB per session. Full read is simpler and well within memory budget; Phase 2 can add a tail-via-seek helper without touching RefreshFromDisk's public API.
+- RESEARCH Open Q 6 resolved: `diagnostics/tail` JSON-RPC method SKIPPED in Phase 1. SNyraDiagnosticsDrawer reads the log file directly via FFileHelper. Wire surface stays minimal; when/if logs grow unwieldy a Phase 2 plan can add the WS method.
+- DownloadModal lives inside an SOverlay WITH MessageList rather than as a modal window (SWindow). Overlay approach keeps the modal inside the chat tab's dock layout + mutation boundary. A real SWindow would float, could get lost behind other UE windows, and needs explicit teardown in the panel destructor. HAlign/VAlign-Center + modal's own SBox visibility toggle give the same UX (centred blocking overlay) with less lifecycle surface.
+- diagnostics/download-progress dispatch happens BEFORE chat/stream branch in HandleNotification. Ensures the download modal can update even if MessageList is not yet valid (e.g. bootstrap-time progress before first chat). Early return after modal update keeps the branches independent.
 
 ### Decisions from Plan 10 (cpp-supervisor-ws-jsonrpc, 2026-04-22)
 
