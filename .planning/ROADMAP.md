@@ -62,7 +62,22 @@
   4. Beats CoPilot/Aura on undo safety: every agent mutation wrapped in `FScopedTransaction` under a per-session super-transaction — Ctrl+Z rolls back an entire NYRA session as one unit, not step-by-step. Cancel-button cleanly unwinds in-flight subprocesses.
   5. Architectural gate (non-negotiable per PITFALLS §3.3): four-version CI (UE 5.4/5.5/5.6/5.7) green on day one of this phase — no version-specific code merges without all four passing. `NYRA::Compat::` shim covers Slate/Material/Sequencer/Blueprint drift hotspots with empirical matrix test. This prevents the ABI-drift retrofit trap (3-5x cost late).
   6. Architectural gate: EV code-signing cert acquired and applied to plugin DLL, NyraHost.exe, NyraInfer.exe — SmartScreen clears on first install (non-EV has a 30-day reputation window that poisons launch). Router is designed multi-backend (SUBS-03) so Codex drops in for v1.1 without refactor. Console-command (ACT-06) and Output/Message Log tools (ACT-07) ship here as universal introspection primitives every later phase uses.
-**Plans**: TBD
+**Plans**: 14 plans
+Plans:
+- [ ] 02-01-four-version-ci-matrix-bootstrap-PLAN.md — CI runner provisioning + plugin-matrix.yml + NYRACompat.h skeleton (Wave 0, CHECKPOINT)
+- [ ] 02-02-wire-protocol-extension-PLAN.md — Additive JSONRPC + ERROR_CODES Phase 2 surface (Wave 0)
+- [ ] 02-03-backend-interface-refactor-PLAN.md — AgentBackend ABC + GemmaBackend wrapper + BACKEND_REGISTRY (Wave 0, TDD)
+- [ ] 02-04-ev-cert-acquisition-runbook-PLAN.md — DigiCert EV + Azure Key Vault founder runbook (Wave 0, CHECKPOINT)
+- [ ] 02-05-claude-subprocess-driver-PLAN.md — ClaudeBackend + stream-json parser + MCP config writer (Wave 1, TDD, phase0-gated)
+- [ ] 02-06-router-state-machine-PLAN.md — Router state enum + transitions + session/set-mode + Privacy Mode (Wave 1, TDD, phase0-gated)
+- [ ] 02-07-compat-shim-empirical-fill-PLAN.md — Populate NYRA::Compat from first four-version matrix run (Wave 1, CHECKPOINT)
+- [ ] 02-08-session-super-transaction-PLAN.md — FNyraSessionTransaction + PIE gate + diagnostics/pie-state (Wave 2, TDD)
+- [ ] 02-09-safe-mode-permission-gate-PLAN.md — nyra_permission_gate MCP tool + plan/preview + plan/decision + SNyraPreviewCard (Wave 2, TDD, phase0-gated)
+- [ ] 02-10-console-exec-mcp-tool-PLAN.md — Whitelist + nyra_console_exec + FNyraConsoleHandler (Wave 2, TDD)
+- [ ] 02-11-log-tail-mcp-tool-PLAN.md — FNyraOutputDeviceSink + FNyraMessageLogListener + nyra_output_log_tail + nyra_message_log_list (Wave 2, TDD)
+- [ ] 02-12-status-pill-ui-PLAN.md — SNyraBackendStatusStrip + diagnostics/backend-state subscription + first-run wizard (Wave 3)
+- [ ] 02-13-ev-signing-ci-integration-PLAN.md — AzureSignTool + signtool verify CI steps (Wave 3, CHECKPOINT)
+- [ ] 02-14-phase2-release-canary-PLAN.md — Nyra.Dev.SubscriptionBridgeCanary + live pytest + 02-VERIFICATION.md (Wave 3, CHECKPOINT, phase0-gated)
 **UI hint**: yes
 
 ### Phase 3: UE5 Knowledge RAG
