@@ -142,7 +142,7 @@ Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for pha
 | PLUG-02 | Phase 1 | Pending |
 | PLUG-03 | Phase 1 | Complete |
 | PLUG-04 | Phase 2 | Pending |
-| PLUG-05 | Phase 0 | Pending |
+| PLUG-05 | Phase 0 | In progress — docs-layer (Plan 00-01: 4 external-snapshots + draft + PLACEHOLDER sent/response committed 2026-04-24); `pending_manual_verification: true` — founder sends Anthropic ToS clarification email + files written reply; flips to Complete when `-response.md` verdict is PERMITTED or CONDITIONAL |
 | CHAT-01 | Phase 1 | Complete |
 | CHAT-02 | Phase 2 | Pending |
 | CHAT-03 | Phase 2 | Pending |

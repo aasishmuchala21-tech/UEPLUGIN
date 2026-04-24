@@ -2,25 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-current_phase: 01
-current_plan: "15 complete at docs layer (Phase 1 COMPLETE at source+docs; pending_manual_verification=true for Plan 15 ring0 empirical bench run on Windows)"
-status: phase-1-complete-pending-windows-empirical-gate
-last_updated: "2026-04-23T15:55:00.000Z"
-pending_manual_verification: true
-phase_01_empirical_gate: "deferred_to_windows_operator (see ring0-run-instructions.md + ring0-bench-results.md)"
+current_phase: 00
+current_plan: 1
+status: executing
+last_updated: "2026-04-24T09:11:14.180Z"
 progress:
   total_phases: 9
-  completed_phases: 0
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
-  phase_01_source_docs_complete: true
-  phase_01_empirical_sc3_complete: false
+  completed_phases: 1
+  total_plans: 36
+  completed_plans: 17
+  percent: 47
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-23 (Plan 01-15 completed at docs layer -- Phase 1 closed at source+documentation; Phase 1 empirical SC#3 architectural gate pending Windows operator run of `ring0-run-instructions.md`)
+**Last Updated:** 2026-04-24 (Plan 00-01 completed at docs layer — 4 date-stamped external-snapshots of Anthropic policy surface + authored email draft + schema-locked PLACEHOLDER sent/response records with `pending_manual_verification: true`; founder sends email to `support@anthropic.com` + fills PENDING cells when Anthropic replies; Phase 2 execution remains GATED on SC#1 verdict flip)
 
 ---
 
@@ -35,24 +31,28 @@ progress:
 
 **Quality Bar:** Every phase's success criteria must beat a named competitor on a measurable dimension, or be an architectural gate that unblocks a future competitor-beating feature. Parity with Nwiro, Aura/Telos 2.0, Ultimate Engine CoPilot, Ludus, or the OSS MCP long tail is a failure state.
 
-**Current Focus:** Phase 01 — plugin-shell-three-process-ipc
+**Current Focus:** Phase 00 — legal-brand-gate
 
 ---
 
 ## Current Position
 
-Phase: 01 (plugin-shell-three-process-ipc) — COMPLETE at source+docs layer; Phase 1 architectural SC#3 empirical bench gate PENDING Windows operator run of `ring0-run-instructions.md`
-Plan: 15 of 16 COMPLETE at docs layer (pending_manual_verification=true)
+Phase: 00 (legal-brand-gate) — EXECUTING
+Plan: 2 of 6 (Plan 01 complete at docs-layer; Plan 02 ready to start)
 **Milestone:** v1 (Fab launch)
-**Current Phase:** 01 (closure pending operator empirical gate) / next = Phase 02 planning (may start in parallel)
-**Current Plan:** 15 complete (16/16); Phase 1 architectural gate closure pending Windows bench run
-**Status:** phase-1-complete-pending-windows-empirical-gate
+**Current Phase:** 00
+**Current Plan:** 2
+**Status:** Ready to execute Plan 02 (epic-fab-policy-email). Plan 01 docs-layer closed; founder-manual-action TODO: send Anthropic email + file response when it arrives.
 
 **Progress (v1):**
 
 ```text
-[██████████] 100% — 0/9 phases fully complete (Phases 0-8); Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15). Phase 1 architectural gate SC#3 empirical measurement pending Windows operator run of ring0-run-instructions.md (see ring0-bench-results.md placeholder + pending_manual_verification:true flag). Phase 2 planning may proceed in parallel; Phase 2 execution waits on SC#3 empirical close + Phase 0 legal clearance.
+[█████░░░░░] 47% — 17/36 plans complete at source+docs layer. Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15); SC#3 empirical bench pending Windows operator run of ring0-run-instructions.md. Phase 00 at 1/6 plans COMPLETE at docs-layer (00-01 anthropic-tos-email: 4 external-snapshots + draft + placeholder sent/response with pending_manual_verification:true). Phase 2 EXECUTION is GATED on Phase 0 SC#1 (Anthropic verdict) + Phase 1 SC#3 (ring0 bench); Phase 2 PLANNING may proceed in parallel.
 ```
+
+**Plans completed in Phase 00:**
+
+- [x] Plan 01 — Anthropic ToS email (docs-layer, 3 tasks, 3 commits, SUMMARY on disk — `pending_manual_verification: true`: 4 date-stamped external-snapshots of Anthropic policy surface [commercial-terms + consumer-terms + claude-agent-sdk-overview capturing the `third party developers to offer claude.ai login` Note paragraph VERBATIM + claude-code-cli-reference capturing verbatim `setup-token` / `--output-format stream-json` / `--mcp-config` flag rows] + fully authored email draft with 6 PLAN-mandated talking points in order + schema-locked PLACEHOLDER sent-record with D-10 follow-up cadence tracker + schema-locked PLACEHOLDER response-record with enum verdict field [PERMITTED | CONDITIONAL | BLOCKED | UNCLEAR] and Sign-off triplet closure-ledger grep-anchor; partial-completion policy mirrors Phase 1 Plan 15 ring0-bench-results.md pattern; founder sends email + fills PENDING cells in-place when real events occur; Phase 2 execution remains GATED on SC#1 verdict flip)
 
 **Plans completed in Phase 01:**
 
@@ -77,7 +77,7 @@ Plan: 15 of 16 COMPLETE at docs layer (pending_manual_verification=true)
 
 | Phase | Name | REQs Mapped | Status |
 |-------|------|-------------|--------|
-| 0 | Legal & Brand Gate | 1 (PLUG-05) | Not started |
+| 0 | Legal & Brand Gate | 1 (PLUG-05) | In progress — 1/6 plans complete at docs-layer (Plan 01 pending_manual_verification) |
 | 1 | Plugin Shell + Three-Process IPC | 4 (PLUG-01, PLUG-02, PLUG-03, CHAT-01) | Not started |
 | 2 | Subscription Bridge + Four-Version CI Matrix | 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) | Not started |
 | 3 | UE5 Knowledge RAG | 4 (KNOW-01, KNOW-02, KNOW-03, KNOW-04) | Not started |
@@ -118,6 +118,7 @@ Populated as phases complete. Tracks:
 | 01    | 13   | first-run-ux-banners-diagnostics | 2     | 8     | ~6min    | 1995eea · b0ef8d1                                 |
 | 01    | 14   | ring0-bench-harness              | 1     | 3     | ~4min    | 7f479b2                                           |
 | 01    | 15   | ring0-run-and-commit-results     | 3     | 3     | ~10min   | d3731f2 · 6a50059 · (final metadata commit)       |
+| 00    | 01   | anthropic-tos-email              | 3     | 7     | ~35min   | 171a3da · 8fe61f1 · 0bbf0bc · (final metadata commit) |
 
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
@@ -126,6 +127,7 @@ Populated as phases complete. Tracks:
 | Phase 01 P13 | ~6min | 2 tasks | 8 files |
 | Phase 01 P14 | ~4min | 1 task | 3 files |
 | Phase 01 P15 | ~10min | 3 tasks | 3 files |
+| Phase 00 P01 | ~35min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -151,6 +153,18 @@ Populated as phases complete. Tracks:
 - [ ] Random-reference daily test from Phase 6 Day 1 (PITFALLS §7.2 — demo-driven-development-trap mitigation)
 - [ ] Symbol-validation step is a pre-execution gate for every Phase 4+ action (PITFALLS §4.1, §4.4)
 - [ ] Every NYRA session wrapped in a super-transaction; cleanup-session menu option tags all NYRA-created assets (PITFALLS §9.2)
+
+### Decisions from Plan 00-01 (anthropic-tos-email, 2026-04-24)
+
+**pending_manual_verification: true** — Phase 0 SC#1 verdict is OWED by Anthropic's written reply to the founder-sent email. Plan closes at documentation + source layer today but explicitly defers the "written response on file with PERMITTED or CONDITIONAL verdict" event. Outstanding founder actions: (1) finalize signature placeholders in `correspondence/00-01-anthropic-tos-email-draft.md`, (2) send email to `support@anthropic.com` from personal address per D-03, (3) fill PENDING cells in `-sent.md` in-place, (4) wait 2-4 weeks for reply (D-10 cadence ladder: Day-14 nudge / Day-28 re-send to partnerships@anthropic.com / Day-42 fallback replan), (5) fill PENDING cells in `-response.md` + Sign-off triplet when reply lands.
+
+- Correspondence-file triad pattern (draft + placeholder-sent + placeholder-response) generalises Phase 1 Plan 15's partial-completion discipline to correspondence workflows. Committing placeholder sent/response files pre-event creates the in-git audit trail without lying about state; founder fills PENDING cells in-place post-event without renaming files (ledger lookups stay stable). Plan 00-02 (Epic/Fab email) copies this pattern verbatim.
+- Claude Agent SDK Note paragraph ('Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login...') quoted **character-for-character verbatim** in both `external-snapshots/claude-agent-sdk-overview-SNAPSHOT.md` and `correspondence/00-01-anthropic-tos-email-draft.md`. Rationale: future diff against a re-fetched snapshot detects Anthropic wording drift; the email's clarification-question anchor is frozen to 2026-04-24 language. Task 1 automated verify grep-checks for `third party developers` in the snapshot.
+- Email tone locked to direct founder-to-partner (D-09), not lawyer-to-lawyer. Opens with 'I'm a solo founder building NYRA' — plain-English yes/no/conditional from a human at Anthropic is the goal; contract-interpretation memo-writing is deferred to counsel-review (CONTEXT.md D-09 post-Phase-0 activity).
+- Sent-record PLACEHOLDER carries `Date-sent:` in frontmatter with VALUE `"PENDING — <ISO-8601 UTC timestamp>"`. Rationale: Task 2 automated verify (`grep -q "Date-sent:"`) passes today because the field NAME is present; founder replaces the string value post-send without altering schema. Pattern reusable for every correspondence plan that has a verify-grep on a post-event field.
+- Response-file verdict frontmatter is an enum `PERMITTED | CONDITIONAL | BLOCKED | UNCLEAR` rather than free-text. UNCLEAR is an explicit state so the founder never has to fabricate a gate-closing value when the reply is ambiguous — UNCLEAR triggers a clarifying follow-up round recorded in the `## Follow-ups` multi-round table and keeps SC#1 PENDING. Closure-ledger Plan 00-06 grep-looks-up `verdict: PERMITTED` OR `verdict: CONDITIONAL` to flip SC#1.
+- Anthropic policy pages are Next.js SPAs; raw `curl` HTML fetches partially rehydrate client-side. Mitigation: the two HIGH-priority snapshots (agent-sdk overview Note paragraph, cli-reference flag rows) rendered in initial HTML and were captured VERBATIM; the two MEDIUM-priority snapshots (commercial-terms, consumer-terms) captured headings verbatim + paraphrased body paragraphs with explicit `[paraphrased from live page 2026-04-24]` flags. No scope-creep attempt to deploy a headless browser — paraphrase-with-flag preserves audit-trail honesty at lower cost.
+- License notice in all 4 snapshots acknowledges Anthropic owns the text and the committed archive is fair-use research only. Cheap posture for Fab listing / counsel review; commits NYRA to never redistributing Anthropic's terms as NYRA content.
 
 ### Decisions from Plan 02 (python-pytest-scaffold, 2026-04-21)
 
@@ -338,7 +352,17 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 **Last session handoff:**
 
-- Plan 01-15 (ring0-run-and-commit-results) executed end-to-end on main branch (sequential, no worktree) — PARTIAL-COMPLETION at documentation layer with pending_manual_verification:true. [shipped this session]
+- Plan 00-01 (anthropic-tos-email) executed end-to-end on main branch (sequential, no worktree) — PARTIAL-COMPLETION at documentation layer with pending_manual_verification:true. [shipped this session]
+  - 3 atomic commits: 171a3da (docs Task 1: 4 date-stamped external-snapshots of Anthropic policy surface — commercial-terms + consumer-terms + claude-agent-sdk-overview capturing the 'third party developers to offer claude.ai login' Note paragraph VERBATIM + claude-code-cli-reference capturing verbatim setup-token / stream-json / mcp-config flag rows) · 8fe61f1 (docs Task 2: fully authored email draft with 6 PLAN-mandated talking points in order + PLACEHOLDER sent-record with D-10 follow-up cadence tracker) · 0bbf0bc (docs Task 3: PLACEHOLDER response-record with enum verdict field + Sign-off triplet closure-ledger grep-anchor + pending_manual_verification: true frontmatter flag) · (final metadata commit adds SUMMARY.md + this STATE.md update + ROADMAP.md Phase 0 row update + REQUIREMENTS.md PLUG-05 status note)
+  - 7 files created: .planning/phases/00-legal-brand-gate/external-snapshots/{anthropic-commercial-terms,anthropic-consumer-terms,claude-agent-sdk-overview,claude-code-cli-reference}-SNAPSHOT.md + .planning/phases/00-legal-brand-gate/correspondence/00-01-anthropic-tos-email-{draft,sent,response}.md
+  - 1 file created in final metadata commit: .planning/phases/00-legal-brand-gate/00-01-anthropic-tos-email-SUMMARY.md
+  - SUMMARY at .planning/phases/00-legal-brand-gate/00-01-anthropic-tos-email-SUMMARY.md
+  - 3 auto-fixed deviations (1 Rule-3 blocking, 2 Rule-2 missing-critical): (Rule 3) mkdir correspondence/ + external-snapshots/ dirs (did not exist — Phase 0 never executed before); (Rule 2) sent-record PLACEHOLDER with Date-sent: field NAME present in YAML + VALUE "PENDING — <ISO-8601 UTC timestamp>" so Task 2 automated verify passes today without fabricating a date; (Rule 2) response-record uses canonical filename (`...-response.md`) not `-PENDING.md` suffix so future ledger cross-references don't break, but encodes placeholder-state via prominent ASCII-banner + frontmatter `status: placeholder` + `pending_manual_verification: true` + every verdict-sensitive cell marked PENDING. All documented in SUMMARY.md.
+  - **OPEN TODO for founder (manual):** (1) open `correspondence/00-01-anthropic-tos-email-draft.md`, finalize signature placeholders (`<founder-name>`, `<nyra.dev placeholder>`, `<nyra-ai placeholder>`); (2) send email to `support@anthropic.com` from personal address per D-03 discipline; (3) fill PENDING cells in `correspondence/00-01-anthropic-tos-email-sent.md` in-place (To / Cc / From [redacted] / Subject / Date-sent / Message-Id / Email-provider / Thread-URL); (4) wait 2-4 weeks for Anthropic reply (D-10 cadence ladder: Day-14 polite nudge in same thread / Day-28 re-send to `partnerships@anthropic.com` referencing original thread-id / Day-42 open new planning conversation for fallback path if still no reply); (5) when reply arrives, fill PENDING cells in `correspondence/00-01-anthropic-tos-email-response.md` including frontmatter verdict (PERMITTED | CONDITIONAL | BLOCKED | UNCLEAR) + paste verbatim reply + write 3-6-sentence Founder Interpretation + (if CONDITIONAL) fill Conditions-to-Comply-With-Pre-Launch table + fill Sign-off triplet (Approved / Interpretation / Phase 2 gate); (6) commit as `docs(00-01): file Anthropic response + founder verdict (<verdict>)`; (7) Plan 00-06 closure ledger then re-reads this file and flips ROADMAP Phase 0 SC#1 PENDING → CLOSED (if verdict ∈ {PERMITTED, CONDITIONAL}).
+  - Phase 2 EXECUTION status after this plan: BLOCKED pending SC#1 verdict flip. Phase 2 PLANNING may proceed in parallel with the founder's email cadence + Phase 1 SC#3 Windows operator bench run.
+  - ZERO code changes (docs-only plan); Phase 0 threat surface = zero (no network endpoints, no auth paths, no schema changes — all 7 files are markdown).
+
+- Plan 01-15 (ring0-run-and-commit-results) executed end-to-end on main branch (sequential, no worktree) — PARTIAL-COMPLETION at documentation layer with pending_manual_verification:true. [shipped previous session]
   - 3 atomic commits: d3731f2 (docs Task 1 ring0-run-instructions.md operator runbook) · 6a50059 (docs Task 2 ring0-bench-results.md STRUCTURED PLACEHOLDER with PENDING cells + prominent ⚠ banner) · (final metadata commit adds SUMMARY.md + this STATE.md update + ROADMAP.md footnote)
   - 2 files created: .planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md (419 lines, Windows-operator runbook: 4-item Preconditions Checklist + canonical `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."` invocation + dev-spec capture + 5-failure-mode Troubleshooting + Appendix A alternate-invocations + Appendix B compliance-gate explainer) + .planning/phases/01-plugin-shell-three-process-ipc/ring0-bench-results.md (273 lines, structured placeholder: frontmatter `status: placeholder` + `pending_manual_verification: true` + prominent ⚠ PLACEHOLDER banner at top + all numeric cells reading `PENDING (awaiting first Windows run)` + Verdict table + Full Percentile Table + Dev Machine Spec table + Raw Output fenced block + Remediation per-failure-mode templates + Re-run history table + "Integrity notes" operator checklist)
   - 1 file created in final metadata commit: .planning/phases/01-plugin-shell-three-process-ipc/01-15-ring0-run-and-commit-results-SUMMARY.md
@@ -442,11 +466,13 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 
 ### Next session
 
-1. **Windows operator path (architectural gate closure, asynchronous):** On a Windows 11 + UE 5.6 dev machine with the Phase 1 stack fully assembled (Gemma GGUF downloaded OR Ollama gemma3:4b-it-qat installed), follow `.planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md` step by step. Run `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."`. Capture Output Log block + dev machine spec. Edit `ring0-bench-results.md` in place: replace all `PENDING (awaiting first Windows run)` cells with real values, flip `status: placeholder` → `measured`, flip `pending_manual_verification: true` → `false`, add `measured_date_utc` + `measured_commit_hash` + `measured_operator` frontmatter fields, remove the ⚠ PLACEHOLDER banner, remove the "Integrity notes" section, collapse the Raw Output "Expected shape" template to the real verbatim Output Log block. Commit with message `feat(01-15): record ring0 bench results from Windows dev machine`. Update STATE.md flags + ROADMAP.md footnote. If Verdict = PASS: Phase 1 architectural gate CLOSED, Phase 2 execution unblocked. If Verdict = FAIL: plan a remediation (most likely "Plan 01-16 move WS I/O to dedicated thread" per RESEARCH §3.10 P1.6) and execute before re-running the bench.
+1. **Phase 0 Plan 02 (epic-fab-policy-email) — immediate next Phase 0 plan:** Execute the same correspondence-triad pattern Plan 00-01 established, applied to Epic/Fab: snapshot current Fab content-policy / AI-disclosure / code-plugin-submission guidelines + draft Epic email + committed PLACEHOLDER sent + committed PLACEHOLDER response. Plan 00-02 PLAN.md is authored and on disk (reviewed during Plan 00-01 execution).
 
-2. **Phase 2 planning path (can run in parallel with the Windows operator bench run):** Start `/gsd:discuss-phase 2` for Phase 2 (Subscription Bridge + Four-Version CI Matrix). Phase 2 has 9 requirements (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) spanning Claude Code CLI subprocess driving, graceful Gemma fallback, four-version CI matrix (UE 5.4/5.5/5.6/5.7), EV code-signing, safe-mode/dry-run plan-preview, FScopedTransaction session super-transactions, console/log tool surfaces. Phase 2 planning does not depend on SC#3 empirical closure; only Phase 2 EXECUTION waits on it.
+2. **Founder manual-action path (Plan 00-01 empirical closure — asynchronous):** Founder sends the Anthropic ToS clarification email per the 7-step OPEN TODO above. D-10 cadence: Day-0 send, Day-14 nudge, Day-28 partnerships re-send, Day-42 fallback replan. When reply arrives, founder fills `correspondence/00-01-anthropic-tos-email-response.md` and commits. Plan 00-06 closure ledger then flips SC#1.
 
-3. **Phase 0 legal gate (can run in parallel too):** Send the written-clarification emails to Anthropic (subscription-subprocess driving ToS confirmation) and Epic (Fab AI-plugin policy pre-clearance). Phase 2 execution also depends on Phase 0 legal clearance.
+3. **Windows operator path (Phase 1 architectural gate closure, asynchronous):** On a Windows 11 + UE 5.6 dev machine with the Phase 1 stack fully assembled (Gemma GGUF downloaded OR Ollama gemma3:4b-it-qat installed), follow `.planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md` step by step. Run `Nyra.Dev.RoundTripBench 100 "Reply with the single word OK only."`. Capture Output Log block + dev machine spec. Edit `ring0-bench-results.md` in place: replace all `PENDING (awaiting first Windows run)` cells with real values, flip `status: placeholder` → `measured`, flip `pending_manual_verification: true` → `false`, add `measured_date_utc` + `measured_commit_hash` + `measured_operator` frontmatter fields, remove the PLACEHOLDER banner, remove the "Integrity notes" section, collapse the Raw Output "Expected shape" template to the real verbatim Output Log block. Commit with message `feat(01-15): record ring0 bench results from Windows dev machine`. Update STATE.md flags + ROADMAP.md footnote. If Verdict = PASS: Phase 1 architectural gate CLOSED, Phase 2 execution unblocked. If Verdict = FAIL: plan a remediation (most likely "Plan 01-16 move WS I/O to dedicated thread" per RESEARCH §3.10 P1.6) and execute before re-running the bench.
+
+4. **Phase 2 planning path (can run in parallel with the Windows operator bench run + Anthropic reply wait):** Start `/gsd:discuss-phase 2` for Phase 2 (Subscription Bridge + Four-Version CI Matrix). Phase 2 has 9 requirements (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) spanning Claude Code CLI subprocess driving, graceful Gemma fallback, four-version CI matrix (UE 5.4/5.5/5.6/5.7), EV code-signing, safe-mode/dry-run plan-preview, FScopedTransaction session super-transactions, console/log tool surfaces. Phase 2 planning does not depend on SC#1 or SC#3 empirical closure; only Phase 2 EXECUTION waits on both.
 
 **Files-on-disk checkpoint (all present):**
 
@@ -457,7 +483,15 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 - `.planning/config.json`
 - `.planning/phases/01-plugin-shell-three-process-ipc/ring0-run-instructions.md` ← new this session (Plan 15 Task 1)
 - `.planning/phases/01-plugin-shell-three-process-ipc/ring0-bench-results.md` ← new this session (Plan 15 Task 2; PLACEHOLDER with PENDING cells)
-- `.planning/phases/01-plugin-shell-three-process-ipc/01-15-ring0-run-and-commit-results-SUMMARY.md` ← new this session (Plan 15 Task 3)
+- `.planning/phases/01-plugin-shell-three-process-ipc/01-15-ring0-run-and-commit-results-SUMMARY.md` ← from previous session (Plan 01-15 Task 3)
+- `.planning/phases/00-legal-brand-gate/external-snapshots/anthropic-commercial-terms-SNAPSHOT.md` ← new this session (Plan 00-01 Task 1)
+- `.planning/phases/00-legal-brand-gate/external-snapshots/anthropic-consumer-terms-SNAPSHOT.md` ← new this session (Plan 00-01 Task 1)
+- `.planning/phases/00-legal-brand-gate/external-snapshots/claude-agent-sdk-overview-SNAPSHOT.md` ← new this session (Plan 00-01 Task 1; contains VERBATIM `third party developers` Note paragraph)
+- `.planning/phases/00-legal-brand-gate/external-snapshots/claude-code-cli-reference-SNAPSHOT.md` ← new this session (Plan 00-01 Task 1; contains VERBATIM setup-token + stream-json + mcp-config flag rows)
+- `.planning/phases/00-legal-brand-gate/correspondence/00-01-anthropic-tos-email-draft.md` ← new this session (Plan 00-01 Task 2)
+- `.planning/phases/00-legal-brand-gate/correspondence/00-01-anthropic-tos-email-sent.md` ← new this session (Plan 00-01 Task 2; PLACEHOLDER with PENDING cells)
+- `.planning/phases/00-legal-brand-gate/correspondence/00-01-anthropic-tos-email-response.md` ← new this session (Plan 00-01 Task 3; PLACEHOLDER with PENDING cells + pending_manual_verification: true)
+- `.planning/phases/00-legal-brand-gate/00-01-anthropic-tos-email-SUMMARY.md` ← new this session (Plan 00-01 docs-layer closure)
 - `.planning/research/SUMMARY.md`
 - `.planning/research/STACK.md`
 - `.planning/research/FEATURES.md`
@@ -467,4 +501,4 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-23 after Plan 01-15 docs-layer closure — Phase 1 COMPLETE at source+docs (16/16 plans); architectural SC#3 empirical bench measurement pending Windows operator run of ring0-run-instructions.md*
+*Last update: 2026-04-24 after Plan 00-01 docs-layer closure — Phase 0 at 1/6 plans COMPLETE at docs-layer with pending_manual_verification:true; founder manual-action TODOs for Anthropic email send + response filing; Phase 2 execution GATED on SC#1 verdict flip*
