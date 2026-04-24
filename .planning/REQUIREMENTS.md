@@ -142,7 +142,7 @@ Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for pha
 | PLUG-02 | Phase 1 | Pending |
 | PLUG-03 | Phase 1 | Complete |
 | PLUG-04 | Phase 2 | Pending |
-| PLUG-05 | Phase 0 | In progress — docs-layer (Plan 00-01: 4 external-snapshots + draft + PLACEHOLDER sent/response committed 2026-04-24); `pending_manual_verification: true` — founder sends Anthropic ToS clarification email + files written reply; flips to Complete when `-response.md` verdict is PERMITTED or CONDITIONAL |
+| PLUG-05 | Phase 0 | In progress — docs-layer (Plan 00-01 anthropic-tos-email + Plan 00-02 epic-fab-policy-email, both committed 2026-04-24 with `pending_manual_verification: true`). Plan 00-01: 4 Anthropic policy snapshots + email draft + PLACEHOLDER sent/response; founder sends email + files Anthropic written reply; closes SC#1 when `-response.md` verdict ∈ {PERMITTED, CONDITIONAL}. Plan 00-02: 3 Fab-policy snapshots (`snapshot_method: curl-blocked-by-cloudflare` + `authenticated-seller-dashboard-copy` upgrade path) + email draft enumerating 5 AI deps + 3 network-call facts + 3 questions + PLACEHOLDER sent/response with 5-value verdict enum (adds BLOCKED-BY-SILENCE) + 510-line direct-download fallback SPEC (`legal/00-02-direct-download-fallback-plan.md`, `status: plan-only`, `implements_at: Phase 8 DIST-02`, 8 mandatory sections delivered). PLUG-05 flips to Complete when BOTH halves land: SC#1 verdict ∈ {PERMITTED, CONDITIONAL} AND SC#2 verdict ∈ {PERMITTED, CONDITIONAL, BLOCKED+fallback-exists} per CONTEXT.md D-07 multi-branch closure rule |
 | CHAT-01 | Phase 1 | Complete |
 | CHAT-02 | Phase 2 | Pending |
 | CHAT-03 | Phase 2 | Pending |

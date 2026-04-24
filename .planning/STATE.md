@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 00
-current_plan: 1
+current_plan: 2
 status: executing
-last_updated: "2026-04-24T09:11:14.180Z"
+last_updated: "2026-04-24T11:46:50.454Z"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 36
-  completed_plans: 17
-  percent: 47
+  completed_plans: 18
+  percent: 50
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-24 (Plan 00-01 completed at docs layer — 4 date-stamped external-snapshots of Anthropic policy surface + authored email draft + schema-locked PLACEHOLDER sent/response records with `pending_manual_verification: true`; founder sends email to `support@anthropic.com` + fills PENDING cells when Anthropic replies; Phase 2 execution remains GATED on SC#1 verdict flip)
+**Last Updated:** 2026-04-24 (Plan 00-02 completed at docs layer — 3 date-stamped Fab-policy external-snapshots with `snapshot_method: curl-blocked-by-cloudflare` + authored email draft enumerating 5 AI deps + 3 network-call facts + 3 numbered questions + schema-locked PLACEHOLDER sent/response records with 5-value verdict enum [adds BLOCKED-BY-SILENCE] + Day 0/21/42/63 cadence + 510-line direct-download fallback SPEC covering 8 mandatory sections with binding 6-point Phase 8 DIST-02 handoff contract; founder sends Fab pre-clearance email + fills PENDING cells when Epic/Fab replies, or triggers BLOCKED-BY-SILENCE at Day 63 to activate fallback primary. Phase 2 gate remains governed by Plan 00-01 Anthropic verdict — this plan's verdict drives Phase 8 primary-distribution-path choice, not Phase 2 gating.)
 
 ---
 
@@ -38,21 +38,22 @@ progress:
 ## Current Position
 
 Phase: 00 (legal-brand-gate) — EXECUTING
-Plan: 2 of 6 (Plan 01 complete at docs-layer; Plan 02 ready to start)
+Plan: 3 of 6 (Plans 01 + 02 complete at docs-layer; Plan 03 ready to start)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 00
-**Current Plan:** 2
-**Status:** Ready to execute Plan 02 (epic-fab-policy-email). Plan 01 docs-layer closed; founder-manual-action TODO: send Anthropic email + file response when it arrives.
+**Current Plan:** 3
+**Status:** Ready to execute Plan 03 (trademark-screening). Plans 00-01 + 00-02 docs-layer closed; founder-manual-action TODO: send Anthropic email + send Epic/Fab email + file responses when they arrive.
 
 **Progress (v1):**
 
 ```text
-[█████░░░░░] 47% — 17/36 plans complete at source+docs layer. Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15); SC#3 empirical bench pending Windows operator run of ring0-run-instructions.md. Phase 00 at 1/6 plans COMPLETE at docs-layer (00-01 anthropic-tos-email: 4 external-snapshots + draft + placeholder sent/response with pending_manual_verification:true). Phase 2 EXECUTION is GATED on Phase 0 SC#1 (Anthropic verdict) + Phase 1 SC#3 (ring0 bench); Phase 2 PLANNING may proceed in parallel.
+[█████░░░░░] 50% — 18/36 plans complete at source+docs layer. Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15); SC#3 empirical bench pending Windows operator run of ring0-run-instructions.md. Phase 00 at 2/6 plans COMPLETE at docs-layer (00-01 anthropic-tos-email + 00-02 epic-fab-policy-email, both pending_manual_verification:true). SC#1 gate Phase 2 execution (Anthropic verdict); SC#2 drives Phase 8 primary distribution (Fab vs. direct-download fallback per CONTEXT.md D-07 — BLOCKED not product-fatal because fallback SPEC ships today). Phase 2 PLANNING may proceed in parallel with Phase 0 response wait.
 ```
 
 **Plans completed in Phase 00:**
 
 - [x] Plan 01 — Anthropic ToS email (docs-layer, 3 tasks, 3 commits, SUMMARY on disk — `pending_manual_verification: true`: 4 date-stamped external-snapshots of Anthropic policy surface [commercial-terms + consumer-terms + claude-agent-sdk-overview capturing the `third party developers to offer claude.ai login` Note paragraph VERBATIM + claude-code-cli-reference capturing verbatim `setup-token` / `--output-format stream-json` / `--mcp-config` flag rows] + fully authored email draft with 6 PLAN-mandated talking points in order + schema-locked PLACEHOLDER sent-record with D-10 follow-up cadence tracker + schema-locked PLACEHOLDER response-record with enum verdict field [PERMITTED | CONDITIONAL | BLOCKED | UNCLEAR] and Sign-off triplet closure-ledger grep-anchor; partial-completion policy mirrors Phase 1 Plan 15 ring0-bench-results.md pattern; founder sends email + fills PENDING cells in-place when real events occur; Phase 2 execution remains GATED on SC#1 verdict flip)
+- [x] Plan 02 — Epic/Fab policy email (docs-layer, 3 tasks, 3 commits, SUMMARY on disk — `pending_manual_verification: true`: 3 date-stamped external-snapshots of Fab policy surface [fab-content-guidelines + fab-ai-disclosure-policy + fab-code-plugin-checklist, all `snapshot_method: curl-blocked-by-cloudflare` with structural-headings + paraphrased-summaries flagged `[paraphrased from live page 2026-04-24]` — founder upgrades to `authenticated-seller-dashboard-copy` as Task 3 side effect]; fully authored email draft enumerating 5 AI deps (Claude CLI subprocess + Meshy REST + ComfyUI HTTP + computer_20251124 Substance/UE modals + optional local Gemma 3 4B GGUF) + 3 network-call facts (localhost-only IPC + user-initiated external APIs + zero NYRA-owned backend) + 3 numbered questions (Q1 disclosure acceptability / Q2 review turnaround / Q3 pre-submission channel) + PDF-attachment mention; schema-locked PLACEHOLDER sent-record with Day 0/21/42/63 follow-up cadence tuned for Fab reviewer timelines; schema-locked PLACEHOLDER response-record with 5-value verdict enum adding BLOCKED-BY-SILENCE + multi-branch SC#2 closure rule (closes on PERMITTED|CONDITIONAL OR BLOCKED+fallback-exists per CONTEXT.md D-07) + explicit `phase_2_gate: OPEN (per Plan 00-01)` + `phase_8_primary_distribution: Fab | direct-download fallback` separation; 510-line direct-download fallback SPEC (`legal/00-02-direct-download-fallback-plan.md`, `status: plan-only`, `implements_at: Phase 8 DIST-02`, binding 6-point handoff contract) covering 8 mandatory sections — 3 triggers w/ observable inputs + precedence / Inno Setup toolchain + 5-candidate rejection table / 13-field JSON update-manifest schema v1 + polling cadence + signature verification / EV cert primary SmartScreen strategy + OV-with-Authenticode-prewarm contingency / two-host distribution (nyra.dev via Cloudflare Pages primary + GitHub Releases mirror) / zero-config onboarding parity with Fab path / Phase 8 handoff contract / 6 deferred questions with default recommendations. Load-bearing insight: BLOCKED verdict from Fab does NOT fail SC#2 because the fallback SPEC ships today, promoting fallback from insurance to primary distribution rather than forcing rescope)
 
 **Plans completed in Phase 01:**
 
@@ -77,7 +78,7 @@ Plan: 2 of 6 (Plan 01 complete at docs-layer; Plan 02 ready to start)
 
 | Phase | Name | REQs Mapped | Status |
 |-------|------|-------------|--------|
-| 0 | Legal & Brand Gate | 1 (PLUG-05) | In progress — 1/6 plans complete at docs-layer (Plan 01 pending_manual_verification) |
+| 0 | Legal & Brand Gate | 1 (PLUG-05) | In progress — 2/6 plans complete at docs-layer (Plans 01+02, both pending_manual_verification) |
 | 1 | Plugin Shell + Three-Process IPC | 4 (PLUG-01, PLUG-02, PLUG-03, CHAT-01) | Not started |
 | 2 | Subscription Bridge + Four-Version CI Matrix | 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) | Not started |
 | 3 | UE5 Knowledge RAG | 4 (KNOW-01, KNOW-02, KNOW-03, KNOW-04) | Not started |
@@ -119,6 +120,7 @@ Populated as phases complete. Tracks:
 | 01    | 14   | ring0-bench-harness              | 1     | 3     | ~4min    | 7f479b2                                           |
 | 01    | 15   | ring0-run-and-commit-results     | 3     | 3     | ~10min   | d3731f2 · 6a50059 · (final metadata commit)       |
 | 00    | 01   | anthropic-tos-email              | 3     | 7     | ~35min   | 171a3da · 8fe61f1 · 0bbf0bc · (final metadata commit) |
+| 00    | 02   | epic-fab-policy-email            | 3     | 7     | ~40min   | 7fd6b84 · 5bcaaf6 · 06edeab · (final metadata commit) |
 
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
@@ -128,6 +130,7 @@ Populated as phases complete. Tracks:
 | Phase 01 P14 | ~4min | 1 task | 3 files |
 | Phase 01 P15 | ~10min | 3 tasks | 3 files |
 | Phase 00 P01 | ~35min | 3 tasks | 7 files |
+| Phase 00 P02 | ~40min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -153,6 +156,22 @@ Populated as phases complete. Tracks:
 - [ ] Random-reference daily test from Phase 6 Day 1 (PITFALLS §7.2 — demo-driven-development-trap mitigation)
 - [ ] Symbol-validation step is a pre-execution gate for every Phase 4+ action (PITFALLS §4.1, §4.4)
 - [ ] Every NYRA session wrapped in a super-transaction; cleanup-session menu option tags all NYRA-created assets (PITFALLS §9.2)
+
+### Decisions from Plan 00-02 (epic-fab-policy-email, 2026-04-24)
+
+**pending_manual_verification: true** — Phase 0 SC#2 verdict is OWED by Epic/Fab's written reply to the founder-sent email. Plan closes at documentation layer today but explicitly defers the "written response on file with PERMITTED / CONDITIONAL / BLOCKED / BLOCKED-BY-SILENCE verdict" event. Outstanding founder actions: (1) log into fab.com as seller to resolve To: address from Content Guidelines footer + upgrade 3 snapshots to `authenticated-seller-dashboard-copy`; (2) finalize signature + domain placeholders in `correspondence/00-02-epic-fab-policy-email-draft.md`; (3) export 3 Fab-policy snapshots to PDF + attach; (4) send email from personal address per D-03; (5) fill PENDING cells in `-sent.md` in-place; (6) wait for reply on Day 0/21/42/63 cadence (tuned for Fab reviewer timelines vs. Plan 00-01's 0/14/28/42); (7) fill PENDING cells in `-response.md` + Sign-off quad when reply lands, OR set `verdict: BLOCKED-BY-SILENCE` at Day 63 to activate fallback primary.
+
+- **BLOCKED does NOT fail Phase 0 SC#2** — load-bearing insight per CONTEXT.md D-07. The direct-download fallback SPEC ships today (`legal/00-02-direct-download-fallback-plan.md`, 510 lines, 8 mandatory sections delivered). If Fab returns BLOCKED, the fallback simply promotes from insurance to primary distribution rather than forcing a rescope. SC#2 closure rule is multi-branch: closes on PERMITTED ∨ CONDITIONAL ∨ (BLOCKED ∧ fallback-plan-exists). Plan 00-06 closure ledger grep-checks for this disjunction, not a single-value match.
+- **5-value verdict enum** — extends Plan 00-01's 4-value (PERMITTED | CONDITIONAL | BLOCKED | UNCLEAR) with BLOCKED-BY-SILENCE. Rationale: Fab reviewer queues can genuinely go silent for 60+ days in a way that Anthropic support threads generally do not. At Day 63 the founder can close SC#2 (not leave PENDING forever) via the BLOCKED-BY-SILENCE path — activates fallback primary + triggers parallel escalation conversation (LinkedIn Epic dev-rel, Epic community forum, new help-center ticket) — while the status is honestly recorded.
+- **Day 0/21/42/63 cadence ladder** — tuned for Fab reviewer timelines vs. Plan 00-01's 0/14/28/42 for Anthropic support. Pattern: future correspondence plans tune cadence to recipient responsiveness rather than reusing a one-size-fits-all ladder. Encoded per-plan in the `-sent.md` follow-up tracker table.
+- **`snapshot_method: curl-blocked-by-cloudflare`** — new value added to the allowed enumeration joining Plan 00-01's `curl` entry. Confirmed via live fetch 2026-04-24 that fab.com + dev.epicgames.com both return HTTP 403 `cf-mitigated: challenge` to non-browser clients. Raw HTML unrecoverable without headless browser OR seller-dashboard authentication. Adopted Plan 00-01's paraphrase-with-`[paraphrased from live page 2026-04-24]`-flag discipline; founder upgrades each snapshot to `authenticated-seller-dashboard-copy` as a Task 3 side effect when they log in to draft the reply — one authenticated read covers all 3 snapshots.
+- **Phase 2 gate separation from Phase 8 primary distribution** — this plan's verdict does NOT gate Phase 2 (Plan 00-01's Anthropic verdict owns that per PLAN.md `<how-to-verify>` step 6); it governs Phase 8 primary-distribution-path choice only. Encoded explicitly in response-file frontmatter as two separate derived fields: `phase_2_gate: OPEN (per Plan 00-01)` + `phase_8_primary_distribution: Fab | direct-download fallback`. Two different closure signals → two different downstream gates.
+- **Inno Setup chosen as fallback installer toolchain** over NSIS / WiX / portable-zip / Chocolatey / manual per-engine-zip. Rationale: STACK.md §"Windows Platform Specifics" default recommendation + free/BSD-like licensing + first-class SignTool hook for EV cert at build-time + widespread UE-plugin community adoption + per-engine-subdirectory support via `[Components]` pattern + auto-generated uninstaller with Add/Remove Programs entry + `.iss` scriptable/CI-friendly. 5-candidate rejection table in fallback doc §2 documents why alternatives lose. DIST-02 plan author may revisit with explicit deviation if Phase 2 surfaces a concrete blocker.
+- **Two-host distribution (nyra.dev primary via Cloudflare Pages + GitHub Releases mirror)** — single-provider outage cannot block all users; both URLs in manifest + plugin UI; zero-cost for both; preserves PROJECT.md "no backend billing" constraint + email Fact 3 "no NYRA-owned backend".
+- **Update manifest schema_version: 1** locked today with 13 fields — freezing pre-implementation lets Phase 2 (client-side update-check) AND Phase 8 DIST-02 (server-side release publisher) author against the same contract. Breaking changes bump schema_version + publish alongside v1 for a two-release deprecation window.
+- **Phase 8 handoff contract is 6-point and BINDING** (not advisory) — prevents SPEC-drift from silent DIST-02 reinterpretation. DIST-02 MUST (1) read this doc end-to-end before writing PLAN.md, (2) implement as written OR explicitly document deviations, (3) consume §1 triggers as execution-order inputs, (4) confirm DIST-03 EV cert status before relying on §4 primary strategy, (5) write Inno `.iss` + manifest publisher + plugin-side update client, (6) update this doc's `superseded_by:` frontmatter to point at DIST-02-SUMMARY.md on landing.
+- **Plan-only SPEC-vs-IMPLEMENTATION handoff pattern established** — `legal/NN-NN-<feature>-fallback-plan.md` with `document_type` + `status: plan-only` + `implements_at: Phase N REQ-ID` + `handoff.contract` (N-point binding instructions) + N mandatory sections. Reusable by future Phase-0-de-risks-Phase-N plans (Plan 00-04 EULA draft handed off to Phase 8 counsel review; Plan 00-03 budget runbook handed off to Phase 2 DIST-03; etc.).
+- **6 open questions honestly parked for Phase 8** (IPFS mirror / cross-platform installers for v1.1+ / dedicated auto-updater vs. in-editor update-check / crash telemetry / Gemma cache on uninstall / release cadence). Each has an explicit default recommendation so DIST-02 has a starting position, but none forced to resolution today because none blocks SC#2 closure. Honest parking preserves "SPEC, not implementation" posture.
 
 ### Decisions from Plan 00-01 (anthropic-tos-email, 2026-04-24)
 
