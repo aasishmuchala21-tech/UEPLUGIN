@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 current_phase: 00
-current_plan: 2
+current_plan: 3
 status: executing
-last_updated: "2026-04-24T11:46:50.454Z"
+last_updated: "2026-04-24T15:03:49.967Z"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 36
-  completed_plans: 18
-  percent: 50
+  completed_plans: 19
+  percent: 53
 ---
 
 # Project State: NYRA
@@ -38,22 +38,23 @@ progress:
 ## Current Position
 
 Phase: 00 (legal-brand-gate) — EXECUTING
-Plan: 3 of 6 (Plans 01 + 02 complete at docs-layer; Plan 03 ready to start)
+Plan: 4 of 6 (Plans 01 + 02 + 03 complete at docs-layer; Plan 04 ready to start)
 **Milestone:** v1 (Fab launch)
 **Current Phase:** 00
-**Current Plan:** 3
-**Status:** Ready to execute Plan 03 (trademark-screening). Plans 00-01 + 00-02 docs-layer closed; founder-manual-action TODO: send Anthropic email + send Epic/Fab email + file responses when they arrive.
+**Current Plan:** 4
+**Status:** Ready to execute Plan 04 (gemma-license-and-eula-draft). Plans 00-01 + 02 + 03 docs-layer closed; founder-manual-action TODO: (1) send Anthropic email + send Epic/Fab email + file responses when they arrive; (2) register nyra-engine.com + claim github.com/nyra-plugin + claim X/Reddit/YouTube/Discord handles; (3) verbatim-upgrade USPTO/EUIPO/WIPO raw dumps per founder checklists.
 
 **Progress (v1):**
 
 ```text
-[█████░░░░░] 50% — 18/36 plans complete at source+docs layer. Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15); SC#3 empirical bench pending Windows operator run of ring0-run-instructions.md. Phase 00 at 2/6 plans COMPLETE at docs-layer (00-01 anthropic-tos-email + 00-02 epic-fab-policy-email, both pending_manual_verification:true). SC#1 gate Phase 2 execution (Anthropic verdict); SC#2 drives Phase 8 primary distribution (Fab vs. direct-download fallback per CONTEXT.md D-07 — BLOCKED not product-fatal because fallback SPEC ships today). Phase 2 PLANNING may proceed in parallel with Phase 0 response wait.
+[█████░░░░░] 53% — 19/36 plans complete at source+docs layer. Phase 01 at 16/16 plans COMPLETE at source+docs layer (01+02+03+04+05+06+07+08+09+10+11+12+12b+13+14+15); SC#3 empirical bench pending Windows operator run of ring0-run-instructions.md. Phase 00 at 3/6 plans COMPLETE at docs-layer (00-01 anthropic-tos-email + 00-02 epic-fab-policy-email + 00-03 trademark-screening, all pending_manual_verification:true). SC#1 gate Phase 2 execution (Anthropic verdict); SC#2 drives Phase 8 primary distribution (Fab vs. direct-download fallback per CONTEXT.md D-07 — BLOCKED not product-fatal because fallback SPEC ships today); SC#3 closed at docs-layer with aggregate_verdict MEDIUM-RISK (Class 9 software presumptive CLEAN; Class 41 MEDIUM-RISK from U.S. New York Racing Association acronym-identical enforcer) + NYRA retained as primary + AELRA as warm-standby backup + filing_status DEFERRED-TO-V1.1 + devlog_gate OPEN; founder-manual actions: register nyra-engine.com + claim github.com/nyra-plugin + claim X/Reddit/YouTube/Discord handles + verbatim-upgrade registry raw dumps. Phase 2 PLANNING may proceed in parallel with Phase 0 response wait.
 ```
 
 **Plans completed in Phase 00:**
 
 - [x] Plan 01 — Anthropic ToS email (docs-layer, 3 tasks, 3 commits, SUMMARY on disk — `pending_manual_verification: true`: 4 date-stamped external-snapshots of Anthropic policy surface [commercial-terms + consumer-terms + claude-agent-sdk-overview capturing the `third party developers to offer claude.ai login` Note paragraph VERBATIM + claude-code-cli-reference capturing verbatim `setup-token` / `--output-format stream-json` / `--mcp-config` flag rows] + fully authored email draft with 6 PLAN-mandated talking points in order + schema-locked PLACEHOLDER sent-record with D-10 follow-up cadence tracker + schema-locked PLACEHOLDER response-record with enum verdict field [PERMITTED | CONDITIONAL | BLOCKED | UNCLEAR] and Sign-off triplet closure-ledger grep-anchor; partial-completion policy mirrors Phase 1 Plan 15 ring0-bench-results.md pattern; founder sends email + fills PENDING cells in-place when real events occur; Phase 2 execution remains GATED on SC#1 verdict flip)
 - [x] Plan 02 — Epic/Fab policy email (docs-layer, 3 tasks, 3 commits, SUMMARY on disk — `pending_manual_verification: true`: 3 date-stamped external-snapshots of Fab policy surface [fab-content-guidelines + fab-ai-disclosure-policy + fab-code-plugin-checklist, all `snapshot_method: curl-blocked-by-cloudflare` with structural-headings + paraphrased-summaries flagged `[paraphrased from live page 2026-04-24]` — founder upgrades to `authenticated-seller-dashboard-copy` as Task 3 side effect]; fully authored email draft enumerating 5 AI deps (Claude CLI subprocess + Meshy REST + ComfyUI HTTP + computer_20251124 Substance/UE modals + optional local Gemma 3 4B GGUF) + 3 network-call facts (localhost-only IPC + user-initiated external APIs + zero NYRA-owned backend) + 3 numbered questions (Q1 disclosure acceptability / Q2 review turnaround / Q3 pre-submission channel) + PDF-attachment mention; schema-locked PLACEHOLDER sent-record with Day 0/21/42/63 follow-up cadence tuned for Fab reviewer timelines; schema-locked PLACEHOLDER response-record with 5-value verdict enum adding BLOCKED-BY-SILENCE + multi-branch SC#2 closure rule (closes on PERMITTED|CONDITIONAL OR BLOCKED+fallback-exists per CONTEXT.md D-07) + explicit `phase_2_gate: OPEN (per Plan 00-01)` + `phase_8_primary_distribution: Fab | direct-download fallback` separation; 510-line direct-download fallback SPEC (`legal/00-02-direct-download-fallback-plan.md`, `status: plan-only`, `implements_at: Phase 8 DIST-02`, binding 6-point handoff contract) covering 8 mandatory sections — 3 triggers w/ observable inputs + precedence / Inno Setup toolchain + 5-candidate rejection table / 13-field JSON update-manifest schema v1 + polling cadence + signature verification / EV cert primary SmartScreen strategy + OV-with-Authenticode-prewarm contingency / two-host distribution (nyra.dev via Cloudflare Pages primary + GitHub Releases mirror) / zero-config onboarding parity with Fab path / Phase 8 handoff contract / 6 deferred questions with default recommendations. Load-bearing insight: BLOCKED verdict from Fab does NOT fail SC#2 because the fallback SPEC ships today, promoting fallback from insurance to primary distribution rather than forcing rescope)
+- [x] Plan 03 — Trademark screening (docs-layer, 3 tasks, 3 commits, SUMMARY on disk — `pending_manual_verification: true`: 3 date-stamped registry raw-dumps (trademark/00-03-{uspto-tess,euipo-esearch,wipo-brand-db}-raw.md) for NYRA across Nice Classes 009+042+041, all `snapshot_method: manual-lookup-required` because every registry surface is JS-SPA + anti-bot-gated (USPTO AWS WAF challenge / EUIPO AltCha captcha / WIPO AltCha captcha) with structural-heading query reconstruction (12 USPTO + 10 EUIPO + 9 WIPO queries in exact field syntax) + per-query expected-hit-count priors + per-query founder verification checklists — same paraphrased-with-date-flag discipline Plan 00-02 established for Cloudflare-gated Fab pages, new snapshot_method value joins the enumeration; consolidated screening dossier (00-03-nyra-screening-dossier.md) with `aggregate_verdict: MEDIUM-RISK` (Class 9 software presumptive CLEAN — the BLOCKER class is clean; MEDIUM-RISK driver is Class 41 U.S. New York Racing Association acronym-identical enforcer + cross-class fashion/cosmetics prior-art density across Classes 3/14/25 globally) + top-10 nearest-neighbor mark ranking (Racing Association rank 1 goods-distinct; Nura audio-hardware Class 9 rank 2 goods-distinct-within-class) + explicit CLEAN/MEDIUM-RISK/BLOCKED rubric application + `filing_decision: DEFERRED-TO-V1.1` per D-04 + cost transparency ($350/class USPTO + $1,000-2,500 counsel per jurisdiction); precautionary 5-candidate backup-names screening (00-03-backup-names-screening.md, `status: PRECAUTIONARY` because NYRA retained primary) screening AELRA/CAELUM/PYRRA/LIVIA/VYRELL through USPTO+EUIPO+WIPO x Classes 9/42/41 with domain+GitHub+social availability filter + AELRA selected as warm-standby (wins 4-dim ranking: TM clean + domain available + phonetic-distance from NYRA + aesthetic fit); final verdict-and-reservations doc (00-03-verdict-and-reservations.md) with `final_name: NYRA` + `filing_status: DEFERRED-TO-V1.1` + `devlog_gate: OPEN` (PITFALLS §7.4 mitigation unblocked from trademark-side) + embedded machine-readable reservation-manifest YAML (domains/github_orgs/social_handles/code_signing/filing/devlog/rollback sections) with live-probed verdicts — nyra.dev + nyra.ai BOTH held by Atom.com Domains LLC premium broker (WHOIS confirmed creation 2020-04-05, paired premium listing, Registry Expiry 2028-04-05); nyra-engine.com unambiguously AVAILABLE per whois.verisign-grs.com "No match" (recommended primary at Cloudflare Registrar $9.77/yr); github.com/nyra-ai + github.com/nyra TAKEN (HTTP 200); github.com/nyra-plugin + github.com/nyraengine AVAILABLE (HTTP 404, nyra-plugin recommended primary + nyraengine defensive); X/Reddit/Discord/YouTube/Bluesky all MANUAL-LOOKUP-REQUIRED with per-platform fallback-ordered founder-action checklists (X SPA returns 200 for any path, Reddit blocks anon curl 403, Discord vanity gated on Boost Level 3); 2-4 week cutover Rollback Plan to AELRA documented with 3 activation triggers (verbatim-upgrade-to-BLOCKED / post-launch C&D / fashion-house defensive Class-9 extension); Phase 0 SC#3 CLOSEABLE at docs-layer; founder-manual follow-up items (registry verbatim-upgrades + domain/GitHub/social claims) do NOT block closure per partial-completion discipline inherited from Plans 00-01/02)
 
 **Plans completed in Phase 01:**
 
@@ -78,7 +79,7 @@ Plan: 3 of 6 (Plans 01 + 02 complete at docs-layer; Plan 03 ready to start)
 
 | Phase | Name | REQs Mapped | Status |
 |-------|------|-------------|--------|
-| 0 | Legal & Brand Gate | 1 (PLUG-05) | In progress — 2/6 plans complete at docs-layer (Plans 01+02, both pending_manual_verification) |
+| 0 | Legal & Brand Gate | 1 (PLUG-05) | In progress — 3/6 plans complete at docs-layer (Plans 01+02+03, all pending_manual_verification) |
 | 1 | Plugin Shell + Three-Process IPC | 4 (PLUG-01, PLUG-02, PLUG-03, CHAT-01) | Not started |
 | 2 | Subscription Bridge + Four-Version CI Matrix | 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) | Not started |
 | 3 | UE5 Knowledge RAG | 4 (KNOW-01, KNOW-02, KNOW-03, KNOW-04) | Not started |
@@ -121,6 +122,7 @@ Populated as phases complete. Tracks:
 | 01    | 15   | ring0-run-and-commit-results     | 3     | 3     | ~10min   | d3731f2 · 6a50059 · (final metadata commit)       |
 | 00    | 01   | anthropic-tos-email              | 3     | 7     | ~35min   | 171a3da · 8fe61f1 · 0bbf0bc · (final metadata commit) |
 | 00    | 02   | epic-fab-policy-email            | 3     | 7     | ~40min   | 7fd6b84 · 5bcaaf6 · 06edeab · (final metadata commit) |
+| 00    | 03   | trademark-screening              | 3     | 6     | ~90min   | 7a7078f · 33e291b · 6d804df · (final metadata commit) |
 
 ---
 | Phase 01 P11 | ~9min | 2 tasks | 6 files |
@@ -131,6 +133,7 @@ Populated as phases complete. Tracks:
 | Phase 01 P15 | ~10min | 3 tasks | 3 files |
 | Phase 00 P01 | ~35min | 3 tasks | 7 files |
 | Phase 00 P02 | ~40min | 3 tasks | 7 files |
+| Phase 00-legal-brand-gate P03 | ~90min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -520,4 +523,4 @@ Windows-specific caveats for downstream plans: `llama-server.exe` path resolutio
 ---
 
 *State initialized: 2026-04-21 after roadmap creation*
-*Last update: 2026-04-24 after Plan 00-01 docs-layer closure — Phase 0 at 1/6 plans COMPLETE at docs-layer with pending_manual_verification:true; founder manual-action TODOs for Anthropic email send + response filing; Phase 2 execution GATED on SC#1 verdict flip*
+*Last update: 2026-04-24 after Plan 00-03 docs-layer closure — Phase 0 at 3/6 plans COMPLETE at docs-layer (Plans 00-01 + 00-02 + 00-03 all pending_manual_verification:true). Plan 00-03 shipped 6-file trademark-screening architecture: 3 registry raw dumps (USPTO+EUIPO+WIPO, all snapshot_method:manual-lookup-required per captcha-gated SPAs) + consolidated dossier (aggregate_verdict:MEDIUM-RISK; Class 9 software presumptive CLEAN) + precautionary 5-candidate backup-screening (AELRA selected as warm-standby) + verdict-and-reservations doc (final_name:NYRA + filing_status:DEFERRED-TO-V1.1 + devlog_gate:OPEN + embedded reservation-manifest YAML with live-probed domain/GitHub verdicts — nyra.dev+nyra.ai premium-broker-held, nyra-engine.com AVAILABLE, github.com/nyra-plugin AVAILABLE). Founder-manual TODOs cumulatively: (1) send Anthropic email + file response; (2) send Epic/Fab email + file response; (3) register nyra-engine.com + claim github.com/nyra-plugin + claim X/Reddit/YouTube/Discord handles + verbatim-upgrade registry raw dumps. Phase 2 execution remains GATED on SC#1 Anthropic verdict flip; Phase 2 planning may proceed in parallel with Phase 0 founder-manual cadence + Phase 1 SC#3 Windows operator bench run.*
