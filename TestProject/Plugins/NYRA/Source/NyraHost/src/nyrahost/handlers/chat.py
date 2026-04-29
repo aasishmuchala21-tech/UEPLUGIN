@@ -27,6 +27,7 @@ import structlog
 from websockets.server import ServerConnection
 
 from ..attachments import ingest_attachment
+from ..backends import BACKEND_REGISTRY, AgentBackend, get_backend
 from ..infer.router import InferRouter
 from ..jsonrpc import build_notification
 from ..session import SessionState
@@ -52,6 +53,11 @@ class ChatHandlers:
     registered on the singleton :class:`NyraServer`. ``_inflight``
     maps req_id -> asyncio.Event so chat/cancel can signal the
     matching stream task.
+
+    Phase 2 (Plan 02-03): dispatches ``params.backend`` through
+    ``BACKEND_REGISTRY``. ``gemma-local`` preserves Phase 1 behaviour;
+    other backends raise ``NotImplementedError`` until their adapter
+    lands (e.g. ``"claude"`` → Plan 02-04).
     """
 
     storage: Storage
@@ -66,18 +72,33 @@ class ChatHandlers:
         req_id = params["req_id"]
         content = params["content"]
         backend = params.get("backend", "gemma-local")
+
+        # Phase 2 (Plan 02-03): dispatch through BACKEND_REGISTRY.
+        # gemma-local preserves Phase 1 behaviour (InferRouter path below).
+        # claude → NotImplementedError (Plan 02-04 lands it).
+        # Unknown backend → KeyError → ValueError caught and surfaced as -32601.
         if backend != "gemma-local":
-            return {
-                "req_id": req_id,
-                "streaming": False,
-                "error": {
-                    "code": -32601,
-                    "message": "backend_not_supported",
-                    "data": {
-                        "remediation": f"Backend {backend!r} is Phase 2+.",
+            try:
+                backend_cls = get_backend(backend)
+            except ValueError as exc:
+                return {
+                    "req_id": req_id,
+                    "streaming": False,
+                    "error": {
+                        "code": -32601,
+                        "message": "backend_not_supported",
+                        "data": {
+                            "remediation": (
+                                f"Backend {backend!r} not yet implemented. "
+                                "Use 'gemma-local' for now."
+                            ),
+                        },
                     },
-                },
-            }
+                }
+            raise NotImplementedError(
+                f"Backend {backend!r} lands in Plan 02-04 (claude-subprocess-driver). "
+                "Current backend 'gemma-local' still works."
+            )
 
         # Check Gemma installed (unless Ollama has it)
         if await self.router.gemma_not_installed():
