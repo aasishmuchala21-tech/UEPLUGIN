@@ -1,0 +1,53 @@
+name: Plugin Multi-Version CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  compile-and-test:
+    name: Build UE ${{ matrix.ue-version }}
+    runs-on: [self-hosted, Windows, unreal]
+    strategy:
+      fail-fast: false
+      matrix:
+        ue-version: ["5.4", "5.5", "5.6", "5.7"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Build plugin for specific UE version
+      - name: BuildPlugin UE ${{ matrix.ue-version }}
+        shell: cmd
+        run: |
+          C:\EpicGames\UE_${{ matrix.ue-version }}\Engine\Build\BatchFiles\RunUAT.bat BuildPlugin ^
+            -Plugin=%GITHUB_WORKSPACE%\TestProject\Plugins\NYRA\NYRA.uplugin ^
+            -Package=%GITHUB_WORKSPACE%\Artifacts\UE_${{ matrix.ue-version }} ^
+            -TargetPlatforms=Win64 ^
+            -Unattended -NoP4
+
+      # Run Automation spec headless (no GPU, no renderer)
+      - name: Automation Tests UE ${{ matrix.ue-version }}
+        shell: cmd
+        run: |
+          C:\EpicGames\UE_${{ matrix.ue-version }}\Engine\Binaries\Win64\UnrealEditor-Cmd.exe ^
+            %GITHUB_WORKSPACE%\TestProject\TestProject.uproject ^
+            -ExecCmds="Automation RunTests Nyra;Quit" ^
+            -unattended -nopause -nullrhi ^
+            -testexit="Automation Test Queue Empty" ^
+            -log=NyraAutomation-UE${{ matrix.ue-version }}.log
+
+      # Upload artifacts (always, even on failure)
+      - name: Upload artifacts UE ${{ matrix.ue-version }}
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nyra-plugin-ue${{ matrix.ue-version }}
+          path: |
+            Artifacts/UE_${{ matrix.ue-version }}/
+            NyraAutomation-UE${{ matrix.ue-version }}.log
+          retention-days: 14

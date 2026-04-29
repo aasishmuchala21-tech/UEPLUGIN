@@ -1,0 +1,32 @@
+name: Pytest Host (NyraHost)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Single job — version-agnostic, not matrixed.
+# Runs on the same self-hosted Windows runner as plugin-matrix.yml.
+jobs:
+  pytest-single:
+    name: NyraHost pytest
+    runs-on: [self-hosted, Windows, unreal]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run pytest
+        shell: cmd
+        run: |
+          cd TestProject\Plugins\NYRA\Source\NyraHost
+          python -m pytest -v --tb=short
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nyrahost-pytest-results
+          path: TestProject\Plugins\NYRA\Source\NyraHost\html-report.html
+          retention-days: 7
+        continue-on-error: true
