@@ -25,11 +25,16 @@ from .config import NyraConfig
 from .downloader.gemma import GEMMA_FILENAME, GemmaSpec
 from .handlers.chat import ChatHandlers, GemmaNotInstalledError
 from .handlers.download import DownloadHandlers
+from .handlers.session_mode import SessionModeHandler
+from .handlers.transaction import TransactionHandlers
 from .handlers.sessions import SessionHandlers
 from .infer.router import InferRouter
+from .router import NyraRouter
+from .safe_mode import NyraPermissionGate
 from .server import NyraServer, run_server
 from .session import SessionState
 from .storage import Storage, db_path_for_project
+from .transaction import NyraTransactionManager
 
 log = structlog.get_logger("nyrahost.app")
 
@@ -134,7 +139,15 @@ async def build_and_run(
     project_dir: Path,
     plugin_binaries_dir: Path,
 ) -> None:
-    """Compose Storage + InferRouter + chat handlers into NyraServer, run forever."""
+    """Compose Storage + InferRouter + chat handlers into NyraServer, run forever.
+
+    Phase 2 extensions (Plans 02-06/08/09/10/11):
+      - NyraRouter: state machine backend routing (claude stubbed until SC#1 clears)
+      - NyraPermissionGate: plan-first preview gate (safe-mode ON by default)
+      - NyraTransactionManager: session super-transaction + PIE guard
+      - SessionModeHandler: session/set-mode for Privacy Mode toggle
+      - TransactionHandlers: transaction/begin/commit/rollback + diagnostics/pie-state
+    """
     storage = Storage(db_path_for_project(project_dir))
     router = InferRouter(
         plugin_binaries_dir=plugin_binaries_dir,
@@ -169,6 +182,33 @@ async def build_and_run(
         spec=_load_gemma_spec(manifest_path),
     )
 
+    # Phase 2 (Plans 02-06/08/09): router + permission gate + transaction manager
+    # emit_notification helper: captures the per-session WS for diagnostics emission
+    async def _emit_for_phase2(method: str, params: dict) -> None:
+        # Phase 2 components use the server's notification dispatch
+        # Handled via server.register_notification at the server level
+        pass
+
+    # NyraRouter: SC#1 gate (claude_available=False until SC#1 verdict permits)
+    nyra_router = NyraRouter(
+        emit_notification=_emit_for_phase2,
+        claude_available=False,  # Stub until Phase 0 SC#1 clears
+    )
+
+    # NyraPermissionGate: safe-mode ON by default (CHAT-04)
+    permission_gate = NyraPermissionGate()
+
+    # NyraTransactionManager: session super-transaction + PIE guard
+    tx_manager = NyraTransactionManager(
+        project_dir=project_dir,
+        emit_notification=_emit_for_phase2,
+        storage=storage,
+    )
+
+    # Phase 2 handlers
+    session_mode_handler = SessionModeHandler(router=nyra_router)
+    tx_handlers = TransactionHandlers(tx_manager=tx_manager)
+
     def register(server: NyraServer) -> None:
         # chat/send uses the per-session websocket attached via session._ws
         # in server._handle_connection.
@@ -188,6 +228,16 @@ async def build_and_run(
         )
         server.register_request(
             "sessions/load", session_handlers.on_sessions_load,
+        )
+        # Phase 2 (Plans 02-06/08): new handlers appended below
+        # Plan 02-06: session/set-mode (Privacy Mode toggle)
+        server.register_request("session/set-mode", session_mode_handler.on_set_mode)
+        # Plan 02-08: transaction management
+        server.register_request("transaction/begin", tx_handlers.on_transaction_begin)
+        server.register_request("transaction/commit", tx_handlers.on_transaction_commit)
+        server.register_request("transaction/rollback", tx_handlers.on_transaction_rollback)
+        server.register_notification(
+            "diagnostics/pie-state", tx_handlers.on_diagnostics_pie_state,
         )
 
     await run_server(

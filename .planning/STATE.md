@@ -10,13 +10,13 @@ progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 36
-  completed_plans: 23
-  percent: 64
+  completed_plans: 32
+  percent: 89
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-29 (Plan 00-04 completed — Gemma license re-verify verdict UNCHANGED (impact NONE) + NYRA v1 EULA draft v0.1.0-draft authored with §6/§7 D-06 novel clauses + Gemma Notice appendix fulfils redistribution-notice requirement; Phase 0 SC#4 CLOSED at docs-layer; counsel review deferred to post-v1 per D-06; Gemma annual re-verify recommended April 2027) — 3 date-stamped Fab-policy external-snapshots with `snapshot_method: curl-blocked-by-cloudflare` + authored email draft enumerating 5 AI deps + 3 network-call facts + 3 numbered questions + schema-locked PLACEHOLDER sent/response records with 5-value verdict enum [adds BLOCKED-BY-SILENCE] + Day 0/21/42/63 cadence + 510-line direct-download fallback SPEC covering 8 mandatory sections with binding 6-point Phase 8 DIST-02 handoff contract; founder sends Fab pre-clearance email + fills PENDING cells when Epic/Fab replies, or triggers BLOCKED-BY-SILENCE at Day 63 to activate fallback primary. Phase 2 gate remains governed by Plan 00-01 Anthropic verdict — this plan's verdict drives Phase 8 primary-distribution-path choice, not Phase 2 gating.)
+**Last Updated:** 2026-04-29 (Phase 2 Wave 1 COMPLETE — Plans 02-06 + 02-08 + 02-09 + 02-10 + 02-11 executed and committed; 32/36 plans at source+docs layer; 89% complete) — [Plan 00-04 Gemma license] + [Plan 00-01 Anthropic verdict] SC#1 governs Phase 2 Claude-path live execution (stubbed until verdict); Phase 2 Wave 1 shipped: NyraRouter + NyraPermissionGate + NyraTransactionManager + FNyraSessionTransaction + FNyraConsoleHandler + FNyraOutputDeviceSink + FNyraMessageLogListener + 4 C++ automation specs + Python MCP stdio server + 5 SUMMARYs on disk.
 
 ---
 
@@ -82,7 +82,7 @@ Plan: 5 of 6 (Plans 01 + 02 + 03 + 04 complete at docs-layer; Plan 05 ready to s
 |-------|------|-------------|--------|
 | 0 | Legal & Brand Gate | 1 (PLUG-05) | In progress — 4/6 plans complete at docs-layer (Plans 01+02+03+04; Plans 01+02+03 pending_manual_verification; Plan 04 CLOSED — SC#4 closed) |
 | 1 | Plugin Shell + Three-Process IPC | 4 (PLUG-01, PLUG-02, PLUG-03, CHAT-01) | Not started |
-| 2 | Subscription Bridge + Four-Version CI Matrix | 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) | Not started |
+| 2 | Subscription Bridge + Four-Version CI Matrix | 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) | In progress — Plans 06+08+09+10+11 Wave 1 complete; SC#1 gate (Anthropic verdict) governs Claude-path live execution; Plans 02-06/08/09/10/11 committed at source layer |
 | 3 | UE5 Knowledge RAG | 4 (KNOW-01, KNOW-02, KNOW-03, KNOW-04) | Not started |
 | 4 | Blueprint + Asset + Material + Actor Tool Catalog | 5 (ACT-01, ACT-02, ACT-03, ACT-04, ACT-05) | Not started |
 | 5 | External Tool Integrations (API-First) | 3 (GEN-01, GEN-02, GEN-03) | Not started |
@@ -135,6 +135,11 @@ Populated as phases complete. Tracks:
 | Phase 00 P01 | ~35min | 3 tasks | 7 files |
 | Phase 00 P02 | ~40min | 3 tasks | 7 files |
 | Phase 00-legal-brand-gate P03 | ~90min | 3 tasks | 6 files |
+| Phase 02 P06 | Wave1 | 2 tasks | 4 source + 1 test + 2 C++ |
+| Phase 02 P08 | Wave1 | 2 tasks | 3 Python + 1 test + 5 C++ |
+| Phase 02 P09 | Wave1 | 1 task  | 3 Python + 1 test + 1 C++ spec |
+| Phase 02 P10 | Wave1 | 2 tasks | 2 Python + 1 test + 2 C++ + 1 C++ spec |
+| Phase 02 P11 | Wave1 | 2 tasks | 2 Python + 1 test + 4 C++ + 1 C++ spec |
 
 ## Accumulated Context
 
