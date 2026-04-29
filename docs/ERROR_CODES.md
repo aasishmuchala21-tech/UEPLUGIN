@@ -18,6 +18,35 @@ verbatim inside an error bubble.
 | -32005 | gemma_not_installed   | chat/send with backend=gemma-local, no .gguf on disk  | "Gemma model missing. Click [Download Gemma] in Settings or run `nyra install gemma`."                         |
 | -32006 | infer_oom             | llama-server returns OOM / closes 5xx stream          | "Gemma ran out of memory. Try a shorter prompt or close other GPU workloads."                                  |
 
+## Phase 2 Additions (D-23)
+
+> **-32003 / -32009 relationship:** Phase 1 `-32003 rate_limit` remains a
+> generic rate-limit code (Gemma / Ollama backend can still emit it).
+> Phase 2 `-32009 claude_rate_limited` is Claude-specific and carries
+> `rate_limit_resets_at` in `error.data`. Both populate
+> `error.data.remediation`.
+
+| Code    | Name                       | When emitted                                                                   | Remediation template                                                                                   |
+|---------|----------------------------|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| -32007  | claude_not_installed       | `which claude` / `where claude` fails on NyraHost boot                          | "Claude Code CLI not found. Install from code.claude.com."                                              |
+| -32008  | claude_auth_drift          | `claude auth status` exits 1 mid-session OR `api_retry error=authentication_failed` | "Claude session expired. Run `claude auth login` in a terminal."                                      |
+| -32009  | claude_rate_limited        | `system/api_retry error=rate_limit` exhausted attempts                         | "Claude rate-limited. Resume at {time}, or switch to local Gemma ([Switch])."                          |
+| -32010  | privacy_mode_blocked       | Router in Privacy Mode; agent/user attempts action requiring network egress     | "This action requires internet access. Exit Privacy Mode to continue."                                 |
+| -32011  | plan_rejected              | User clicked Reject on a `plan/preview` card                                    | "Plan rejected by user."                                                                              |
+| -32012  | console_command_blocked    | Tier C console command OR unmapped command via `nyra_console_exec`               | "Console command '{cmd}' is not in the safe-mode whitelist."                                           |
+| -32013  | transaction_already_active | Another NYRA session active (plugin hot-reload corner case)                     | "Another NYRA session is already running. End it before starting a new one."                           |
+| -32014  | pie_active                 | chat/send received while PIE is running                                         | "NYRA cannot mutate while Play-In-Editor is running. Stop PIE and retry."                               |
+
+### Usage by Phase 2 plan
+
+| Plan | Owns error codes |
+|------|-----------------|
+| 02-04 (Claude driver) | -32007, -32008, -32009 |
+| 02-05 (Router)        | -32010, -32014 |
+| 02-08 (Permission gate) | -32011 |
+| 02-09 (Console exec)  | -32012 |
+| 02-07 (Super-transaction) | -32013 |
+
 ## Wire shape
 
 ```json
