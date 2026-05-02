@@ -11,6 +11,8 @@ Exports:
     Retry           : retry attempt with delay + category
     HealthState     : str Enum — ready | not-installed | auth-drift | rate-limited | offline | unknown
     GemmaBackend    : Phase 1 Gemma adapter wrapping InferRouter
+    ClaudeBackend   : Phase 2 Claude Code CLI subprocess driver (SC#1 gated)
+    BYOKBackend     : Phase 2 direct API key path (advanced config)
     BACKEND_REGISTRY: dict[str, type[AgentBackend]]
     get_backend(name) -> type[AgentBackend]
 """
@@ -28,9 +30,13 @@ from nyrahost.backends.base import (
     ToolUse,
 )
 from nyrahost.backends.gemma import GemmaBackend
+from nyrahost.backends.claude import ClaudeBackend
+from nyrahost.backends.byok import BYOKBackend
 
 BACKEND_REGISTRY: dict[str, type[AgentBackend]] = {
     "gemma-local": GemmaBackend,
+    "claude": ClaudeBackend,
+    "byok": BYOKBackend,
 }
 
 

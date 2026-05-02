@@ -1,0 +1,4 @@
+{"type": "system", "subtype": "init", "model": "claude-opus-4-7-20250514", "session_id": "session_test_002"}
+{"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text_delta": "Hello"}}}
+{"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text_delta": ", world!"}}}
+{"type": "result", "stop_reason": "end_turn", "usage": {"input_tokens": 12, "output_tokens": 8, "total_tokens": 20}}

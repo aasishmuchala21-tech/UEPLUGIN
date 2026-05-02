@@ -1,0 +1,7 @@
+{"type": "system", "subtype": "init", "model": "claude-opus-4-7-20250514", "session_id": "session_test_003"}
+{"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text_delta": "I'll read that file for you."}}}
+{"type": "stream_event", "event": {"type": "content_block_start", "index": 1, "content_block": {"type": "tool_use", "id": "toolu_test_01", "name": "Read", "input_json": ""}}}
+{"type": "stream_event", "event": {"type": "content_block_delta", "index": 1, "delta": {"type": "input_json_delta", "partial_json": "{\"path\": \"/tmp/test.txt"}}}
+{"type": "stream_event", "event": {"type": "content_block_delta", "index": 1, "delta": {"type": "input_json_delta", "partial_json": "\"}}"}}}
+{"type": "stream_event", "event": {"type": "content_block_stop", "index": 1}}
+{"type": "result", "stop_reason": "tool_use", "usage": {"input_tokens": 20, "output_tokens": 45, "total_tokens": 65}}

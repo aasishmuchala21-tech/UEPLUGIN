@@ -75,7 +75,7 @@ class ChatHandlers:
 
         # Phase 2 (Plan 02-03): dispatch through BACKEND_REGISTRY.
         # gemma-local preserves Phase 1 behaviour (InferRouter path below).
-        # claude → NotImplementedError (Plan 02-04 lands it).
+        # claude → ClaudeBackend (Plan 02-05); byok → BYOKBackend (Plan 02-05).
         # Unknown backend → KeyError → ValueError caught and surfaced as -32601.
         if backend != "gemma-local":
             try:
@@ -95,9 +95,9 @@ class ChatHandlers:
                         },
                     },
                 }
+            # Instantiate and stream via the chosen backend (Plan 02-05).
             raise NotImplementedError(
-                f"Backend {backend!r} lands in Plan 02-04 (claude-subprocess-driver). "
-                "Current backend 'gemma-local' still works."
+                f"Backend {backend!r} — Plan 02-05 TODO: wire BackendEvent → WS"
             )
 
         # Check Gemma installed (unless Ollama has it)

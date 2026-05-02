@@ -60,12 +60,14 @@
 #include "Panel/SNyraBanner.h"
 #include "Panel/SNyraDownloadModal.h"
 #include "Panel/SNyraDiagnosticsDrawer.h"
+#include "Panel/SNyraBackendStatusStrip.h"
 #include "Process/FNyraSupervisor.h"
 #include "NyraLog.h"
 
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "Dom/JsonObject.h"
 #include "Styling/AppStyle.h"
 #include "Interfaces/IPluginManager.h"
@@ -134,6 +136,14 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
             + SVerticalBox::Slot().AutoHeight()
             [
                 SAssignNew(Banner, SNyraBanner)
+            ]
+            // Plan 02-12: status strip between banner and message list
+            + SVerticalBox::Slot().AutoHeight().Padding(4, 2)
+            [
+                SAssignNew(StatusStrip, SNyraBackendStatusStrip)
+                    .OnClaudeClick_Lambda([this]() { OpenClaudePopover(); })
+                    .OnGemmaClick_Lambda([this]() { OpenGemmaPopover(); })
+                    .OnPrivacyClick_Lambda([this]() { OpenPrivacyPopover(); })
             ]
             // Message list + download-modal overlay occupy the main fill area.
             + SVerticalBox::Slot().FillHeight(1.0f)
@@ -337,6 +347,26 @@ void SNyraChatPanel::HandleNotification(const FNyraJsonRpcEnvelope& Env)
         return;
     }
 
+    // Plan 02-12: diagnostics/backend-state updates the status strip in real time.
+    // Must be BEFORE chat/stream so the strip refreshes before tokens arrive.
+    if (Env.Method == TEXT("diagnostics/backend-state") && StatusStrip.IsValid())
+    {
+        FString ParamsJson;
+        if (TSharedPtr<FJsonObject> Obj = Env.Params)
+        {
+            auto JsonWriter = TJsonWriterFactory<>::Create(&ParamsJson);
+            FJsonSerializer::Serialize(Obj.ToSharedRef(), TEXT(""), JsonWriter);
+            JsonWriter->Close();
+            if (!ParamsJson.IsEmpty())
+            {
+                FNyraBackendState NewState = FNyraBackendState::ParseJson(ParamsJson);
+                StatusStrip->SetState(NewState);
+                CurrentBackendState = NewState;  // cached for popover rendering
+            }
+        }
+        return;
+    }
+
     // Plan 12: chat-stream dispatch. Preserved verbatim apart from the early
     // return for the diagnostics branch above.
     if (Env.Method != TEXT("chat/stream") || !MessageList.IsValid()) return;
@@ -398,6 +428,51 @@ void SNyraChatPanel::OpenConversation(const FGuid& ConversationId, const TArray<
     }
 
     OnConversationSelected.ExecuteIfBound(CurrentConversationId);
+}
+
+void SNyraChatPanel::OpenClaudePopover()
+{
+    if (!StatusStrip.IsValid()) return;
+    // Context-sensitive actions per current state:
+    //   auth-drift / offline → [Sign in] instructions + [Test connection]
+    //   ready             → [Sign out] + [Test connection]
+    //   rate-limited     → [Switch to Gemma] button
+    // Minimal v1 implementation: open a notification with instructions.
+    const FString& State = CurrentBackendState.Claude.State;
+    if (State == TEXT("auth-drift") || State == TEXT("offline") || !CurrentBackendState.Claude.bInstalled)
+    {
+        FNotificationInfo Info(FText::FromString(
+            TEXT("Run 'claude auth login' in a terminal, then restart NYRA.")));
+        Info.ExpireDuration = 10.0f;
+        FSlateNotificationManager::Get().AddNotification(Info);
+    }
+}
+
+void SNyraChatPanel::OpenGemmaPopover()
+{
+    if (!StatusStrip.IsValid()) return;
+    // Gemma not-installed → offer download via existing Phase 1 diagnostics path.
+    if (CurrentBackendState.Gemma.State == TEXT("not-installed"))
+    {
+        if (GNyraSupervisor.IsValid())
+        {
+            TSharedRef<FJsonObject> Params = MakeShared<FJsonObject>();
+            Params->SetStringField(TEXT("model"), TEXT("gemma-3-4b-it-qat-q4_0-gguf"));
+            GNyraSupervisor->SendRequest(TEXT("diagnostics/download-gemma"), Params);
+        }
+    }
+}
+
+void SNyraChatPanel::OpenPrivacyPopover()
+{
+    // Privacy pill click: toggle Privacy Mode via session/set-mode notification.
+    if (GNyraSupervisor.IsValid())
+    {
+        TSharedRef<FJsonObject> Params = MakeShared<FJsonObject>();
+        const bool bCurrentlyInPrivacy = CurrentBackendState.Mode == FNyraBackendState::ENyraPrivacyMode::PrivacyMode;
+        Params->SetStringField(TEXT("mode"), bCurrentlyInPrivacy ? TEXT("normal") : TEXT("privacy-mode"));
+        GNyraSupervisor->SendNotification(TEXT("session/set-mode"), Params);
+    }
 }
 
 #undef LOCTEXT_NAMESPACE

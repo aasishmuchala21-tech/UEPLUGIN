@@ -84,9 +84,15 @@ public:
      *  binds this to update its selection highlight. */
     FOnConversationSelected OnConversationSelected;
 
+class SNyraBackendStatusStrip;  // Plan 02-12: status pill strip
+
 private:
     void OnComposerSubmit(const FString& Text, const TArray<FNyraAttachmentRef>& Attachments);
     void OnMessageCancel(const TSharedPtr<FNyraMessage>& Msg);
+
+    void OpenClaudePopover();
+    void OpenGemmaPopover();
+    void OpenPrivacyPopover();
 
     TSharedPtr<SNyraMessageList> MessageList;
     TSharedPtr<SNyraComposer> Composer;
@@ -94,6 +100,9 @@ private:
     TSharedPtr<class SNyraBanner> Banner;                // Plan 13: first-run UX banner
     TSharedPtr<class SNyraDownloadModal> DownloadModal;  // Plan 13: Gemma download progress
     TSharedPtr<class SNyraDiagnosticsDrawer> Diagnostics;// Plan 13: log tail drawer
+    TSharedPtr<SNyraBackendStatusStrip> StatusStrip;      // Plan 02-12: backend status strip
+    FNyraBackendState CurrentBackendState;               // Plan 02-12: cached for popover rendering
+    bool bUserApprovedFallback = false;                 // Plan 02-12: set by [Switch to Gemma] in popover; consumed by next chat/send
     FGuid CurrentConversationId;  // default on first-ever editor launch; Plan 12b drawer overwrites via OpenConversation
     FDelegateHandle NotificationHandle;
 };
