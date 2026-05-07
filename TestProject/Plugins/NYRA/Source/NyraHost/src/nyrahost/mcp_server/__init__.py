@@ -28,6 +28,10 @@ from nyrahost.log_tail import (
     handle_nyra_output_log_tail,
     handle_nyra_message_log_list,
 )
+from nyrahost.tools.computer_use_tools import (
+    ComputerUseTool,
+    ComputerUseStatusTool,
+)
 
 __version__ = "0.1.0"
 TOOL_HANDLERS: dict = {}
@@ -54,6 +58,10 @@ class NyraMCPServer:
             return await self._handle_log_tail(arguments)
         elif tool_name == "nyra_message_log_list":
             return await self._handle_msg_log_list(arguments)
+        elif tool_name == "nyra_computer_use":
+            return await self._handle_computer_use(arguments)
+        elif tool_name == "nyra_computer_use_status":
+            return await self._handle_computer_use_status(arguments)
         else:
             return {"error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}
 
@@ -81,6 +89,22 @@ class NyraMCPServer:
     async def _handle_msg_log_list(self, args: dict) -> dict:
         """nyra_message_log_list: forward to UE log/message-log-list."""
         return await handle_nyra_message_log_list(args, self._ws_emit)
+
+    async def _handle_computer_use(self, args: dict) -> dict:
+        """nyra_computer_use: start computer-use loop in background thread."""
+        tool = ComputerUseTool()
+        result = tool.execute(args)
+        if result.is_ok:
+            return result.data or {}
+        return {"error": {"code": -32011, "message": result.error}}
+
+    async def _handle_computer_use_status(self, args: dict) -> dict:
+        """nyra_computer_use_status: check status or control a computer-use job."""
+        tool = ComputerUseStatusTool()
+        result = tool.execute(args)
+        if result.is_ok:
+            return result.data or {}
+        return {"error": {"code": -32011, "message": result.error}}
 
 
 def create_server() -> Server:
@@ -160,6 +184,43 @@ def create_server() -> Server:
                         "listing_name": {"type": "string", "default": "LogBlueprint"},
                         "since_index": {"type": "integer", "default": 0},
                         "max_entries": {"type": "integer", "default": 50, "maximum": 200},
+                    },
+                },
+            },
+            # nyra_computer_use (Plan 05-03 Task 2)
+            {
+                "name": "nyra_computer_use",
+                "description": "Start a computer-use automation loop using Claude Opus 4.7 with computer_20251124. NYRA will control mouse/keyboard to automate tasks in external apps (Substance 3D Sampler, UE modals). Permission dialog shown before first action. Press Ctrl+Alt+Space to pause at any time.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["task"],
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Natural language description of the task to automate. Be specific: name the app, menu, and button.",
+                        },
+                        "job_id": {
+                            "type": "string",
+                            "description": "Optional job ID. Omit to generate a new UUID. Use existing job_id to resume a paused loop.",
+                        },
+                    },
+                },
+            },
+            # nyra_computer_use_status (Plan 05-03 Task 2)
+            {
+                "name": "nyra_computer_use_status",
+                "description": "Check status of, pause, resume, or stop a computer-use job started with nyra_computer_use.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["job_id"],
+                    "properties": {
+                        "job_id": {"type": "string", "description": "Job ID returned by nyra_computer_use."},
+                        "action": {
+                            "type": "string",
+                            "enum": ["status", "pause", "resume", "stop"],
+                            "default": "status",
+                            "description": "Action: 'status' returns current status; 'pause' halts after current iteration; 'resume' continues a paused loop; 'stop' terminates immediately.",
+                        },
                     },
                 },
             },
