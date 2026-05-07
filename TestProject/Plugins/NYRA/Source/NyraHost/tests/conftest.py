@@ -12,8 +12,10 @@ Per CONTEXT.md:
 from __future__ import annotations
 
 import json
+import os
 import secrets
 from pathlib import Path
+from typing import Optional
 
 import httpx
 import pytest
@@ -88,3 +90,87 @@ def mock_ollama_transport():
     # Placeholder: reference httpx to keep the import used (mypy strict).
     _ = httpx
     return None
+
+
+# =============================================================================
+# Phase 5: External Tool Integration Fixtures (Plan 05-01)
+# =============================================================================
+
+
+def _build_mock_meshy_transport():
+    """Build httpx MockTransport for Meshy API simulation.
+
+    Returns a function that maps (method, url, headers, ...) -> (status, body).
+    """
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if request.method == "POST" and path == "/api/v1/meshes":
+            return httpx.Response(
+                202,
+                json={"id": "test-task-id-abc123", "status": "pending"},
+            )
+        if request.method == "GET" and path == "/api/v1/meshes/test-task-id-abc123":
+            # Return "in_progress" on first poll, "completed" on second
+            # httpx MockTransport doesn't maintain state between calls,
+            # so we always return completed (tests that need in_progress
+            # can override the fixture).
+            return httpx.Response(
+                200,
+                json={
+                    "id": "test-task-id-abc123",
+                    "status": "completed",
+                    "model_urls": {
+                        "glb": "https://cdn.meshy.ai/models/test-task-id-abc123/model.glb"
+                    },
+                },
+            )
+        return httpx.Response(404, json={"error": "not found"})
+    return mock_handler
+
+
+class SlowMeshyTransport:
+    """httpx MockTransport that returns in_progress forever (for timeout tests)."""
+    def __init__(self, get_response: httpx.Response):
+        self._response = get_response
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        return self._response
+
+
+@pytest.fixture
+def mock_meshy_api():
+    """httpx MockTransport simulating Meshy API.
+
+    POST /api/v1/meshes -> 202 task creation response
+    GET  /api/v1/meshes/test-task-id-abc123 -> 200 completed response
+    All other paths -> 404
+    """
+    transport = httpx.MockTransport(_build_mock_meshy_transport())
+    return transport
+
+
+@pytest.fixture
+def slow_meshy_never_completes():
+    """httpx MockTransport that returns status=in_progress forever (for timeout tests)."""
+    in_progress_resp = httpx.Response(
+        200,
+        json={"id": "test-task-id-abc123", "status": "in_progress"},
+    )
+    transport = SlowMeshyTransport(in_progress_resp)
+    return transport
+
+
+@pytest.fixture
+def tmp_staging_dir(tmp_path: Path) -> Path:
+    """Create a real temp staging directory for manifest tests."""
+    staging = tmp_path / "Staging"
+    staging.mkdir(parents=True, exist_ok=True)
+    return staging
+
+
+@pytest.fixture
+def tmp_manifest_path(tmp_staging_dir: Path) -> Path:
+    """Create an empty nyra_pending.json in tmp_staging_dir."""
+    manifest_path = tmp_staging_dir / "nyra_pending.json"
+    manifest_path.write_text(json.dumps({"version": 1, "jobs": []}))
+    return manifest_path
