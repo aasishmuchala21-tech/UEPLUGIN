@@ -28,6 +28,10 @@ from nyrahost.log_tail import (
     handle_nyra_output_log_tail,
     handle_nyra_message_log_list,
 )
+from nyrahost.tools.comfyui_tools import (
+    ComfyUIRunWorkflowTool,
+    ComfyUIGetNodeInfoTool,
+)
 
 __version__ = "0.1.0"
 TOOL_HANDLERS: dict = {}
@@ -54,6 +58,10 @@ class NyraMCPServer:
             return await self._handle_log_tail(arguments)
         elif tool_name == "nyra_message_log_list":
             return await self._handle_msg_log_list(arguments)
+        elif tool_name == "nyra_comfyui_run_workflow":
+            return await self._handle_comfyui_run_workflow(arguments)
+        elif tool_name == "nyra_comfyui_get_node_info":
+            return await self._handle_comfyui_get_node_info(arguments)
         else:
             return {"error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}
 
@@ -81,6 +89,18 @@ class NyraMCPServer:
     async def _handle_msg_log_list(self, args: dict) -> dict:
         """nyra_message_log_list: forward to UE log/message-log-list."""
         return await handle_nyra_message_log_list(args, self._ws_emit)
+
+    async def _handle_comfyui_run_workflow(self, args: dict) -> dict:
+        """nyra_comfyui_run_workflow: run ComfyUI workflow via ComfyUIRunWorkflowTool."""
+        tool = ComfyUIRunWorkflowTool()
+        result = tool.execute(args)
+        return result.to_dict()
+
+    async def _handle_comfyui_get_node_info(self, args: dict) -> dict:
+        """nyra_comfyui_get_node_info: probe ComfyUI node types via ComfyUIGetNodeInfoTool."""
+        tool = ComfyUIGetNodeInfoTool()
+        result = tool.execute(args)
+        return result.to_dict()
 
 
 def create_server() -> Server:
@@ -160,6 +180,44 @@ def create_server() -> Server:
                         "listing_name": {"type": "string", "default": "LogBlueprint"},
                         "since_index": {"type": "integer", "default": 0},
                         "max_entries": {"type": "integer", "default": 50, "maximum": 200},
+                    },
+                },
+            },
+            # nyra_comfyui_run_workflow per Plan 05-02 (GEN-02)
+            {
+                "name": "nyra_comfyui_run_workflow",
+                "description": "Run a ComfyUI image generation workflow and stage results for UE import as UTexture2D. The workflow JSON is validated against the server's node registry before submission. Use nyra_job_status to poll for completion.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["workflow_json"],
+                    "properties": {
+                        "workflow_json": {
+                            "type": "object",
+                            "description": "ComfyUI workflow in API JSON format (export from ComfyUI UI using the 'API' button).",
+                        },
+                        "input_image_asset_path": {
+                            "type": "string",
+                            "description": "Optional UE asset path of a UTexture2D to inject as input to the workflow.",
+                        },
+                        "target_folder": {
+                            "type": "string",
+                            "default": "/Game/NYRA/Textures",
+                            "description": "UE Content Browser destination folder for generated textures.",
+                        },
+                    },
+                },
+            },
+            # nyra_comfyui_get_node_info per Plan 05-02 (GEN-02)
+            {
+                "name": "nyra_comfyui_get_node_info",
+                "description": "Probe the ComfyUI server's available node types. Use to validate workflows before submission or discover installed custom nodes.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "class_type": {
+                            "type": "string",
+                            "description": "Optional: filter to a specific node type. If omitted, returns all node types.",
+                        },
                     },
                 },
             },
