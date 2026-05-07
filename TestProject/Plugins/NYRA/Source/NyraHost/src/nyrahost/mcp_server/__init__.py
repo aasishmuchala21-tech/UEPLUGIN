@@ -32,6 +32,10 @@ from nyrahost.tools.comfyui_tools import (
     ComfyUIRunWorkflowTool,
     ComfyUIGetNodeInfoTool,
 )
+from nyrahost.tools.computer_use_tools import (
+    ComputerUseTool,
+    ComputerUseStatusTool,
+)
 
 __version__ = "0.1.0"
 TOOL_HANDLERS: dict = {}
@@ -62,6 +66,10 @@ class NyraMCPServer:
             return await self._handle_comfyui_run_workflow(arguments)
         elif tool_name == "nyra_comfyui_get_node_info":
             return await self._handle_comfyui_get_node_info(arguments)
+        elif tool_name == "nyra_computer_use":
+            return await self._handle_computer_use(arguments)
+        elif tool_name == "nyra_computer_use_status":
+            return await self._handle_computer_use_status(arguments)
         else:
             return {"error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}
 
@@ -102,6 +110,22 @@ class NyraMCPServer:
         result = tool.execute(args)
         return result.to_dict()
 
+    async def _handle_computer_use(self, args: dict) -> dict:
+        """nyra_computer_use: start computer-use loop in background thread."""
+        tool = ComputerUseTool()
+        result = tool.execute(args)
+        if result.is_ok:
+            return result.data or {}
+        return {"error": {"code": -32011, "message": result.error}}
+
+    async def _handle_computer_use_status(self, args: dict) -> dict:
+        """nyra_computer_use_status: check status or control a computer-use job."""
+        tool = ComputerUseStatusTool()
+        result = tool.execute(args)
+        if result.is_ok:
+            return result.data or {}
+        return {"error": {"code": -32011, "message": result.error}}
+
 
 def create_server() -> Server:
     """Factory: create and configure an MCP Server with all Phase 2 tools."""
@@ -132,7 +156,6 @@ def create_server() -> Server:
                                 "properties": {
                                     "tool": {"type": "string"},
                                     "args": {"type": "object"},
-                                    "rationale": {"type": "string"},
                                     "risk": {"type": "string", "enum": ["read-only", "reversible", "destructive", "irreversible"]},
                                 },
                             },
@@ -217,6 +240,43 @@ def create_server() -> Server:
                         "class_type": {
                             "type": "string",
                             "description": "Optional: filter to a specific node type. If omitted, returns all node types.",
+                        },
+                    },
+                },
+            },
+            # nyra_computer_use (Plan 05-03 Task 2)
+            {
+                "name": "nyra_computer_use",
+                "description": "Start a computer-use automation loop using Claude Opus 4.7 with computer_20251124. NYRA will control mouse/keyboard to automate tasks in external apps (Substance 3D Sampler, UE modals). Permission dialog shown before first action. Press Ctrl+Alt+Space to pause at any time.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["task"],
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Natural language description of the task to automate. Be specific: name the app, menu, and button.",
+                        },
+                        "job_id": {
+                            "type": "string",
+                            "description": "Optional job ID. Omit to generate a new UUID. Use existing job_id to resume a paused loop.",
+                        },
+                    },
+                },
+            },
+            # nyra_computer_use_status (Plan 05-03 Task 2)
+            {
+                "name": "nyra_computer_use_status",
+                "description": "Check status of, pause, resume, or stop a computer-use job started with nyra_computer_use.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["job_id"],
+                    "properties": {
+                        "job_id": {"type": "string", "description": "Job ID returned by nyra_computer_use."},
+                        "action": {
+                            "type": "string",
+                            "enum": ["status", "pause", "resume", "stop"],
+                            "default": "status",
+                            "description": "Action: 'status' returns current status; 'pause' halts after current iteration; 'resume' continues a paused loop; 'stop' terminates immediately.",
                         },
                     },
                 },
