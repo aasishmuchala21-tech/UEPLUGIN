@@ -6,6 +6,17 @@ Exposes Phase 2 tools via MCP (2025-11-25 spec):
   - nyra_output_log_tail (Plan 02-11): UE output log tail
   - nyra_message_log_list (Plan 02-11): UE message log entries
 
+Exposes Phase 4 tools via MCP (Plans 04-01, 04-02, 04-03, 04-04, 04-06):
+  - nyra_asset_search: fuzzy asset registry search
+  - nyra_actor_spawn/duplicate/delete/select/transform/snap_ground: actor CRUD
+  - nyra_material_get_param/set_param/create_mic: material instance control
+  - nyra_blueprint_read/write/debug: Blueprint graph read, mutation, and debug loop
+
+Exposes Phase 5 tools via MCP (Plans 05-01, 05-02, 05-03):
+  - nyra_meshy_image_to_3d / nyra_job_status: Meshy REST
+  - nyra_comfyui_run_workflow / nyra_comfyui_get_node_info: ComfyUI HTTP
+  - nyra_computer_use / nyra_computer_use_status: computer-use loop
+
 Entry point: python -m nyrahost.mcp_server --handshake-file <path>
 """
 from __future__ import annotations
@@ -28,6 +39,23 @@ from nyrahost.log_tail import (
     handle_nyra_output_log_tail,
     handle_nyra_message_log_list,
 )
+from nyrahost.tools.asset_search import AssetSearchTool
+from nyrahost.tools.actor_tools import (
+    ActorSpawnTool,
+    ActorDuplicateTool,
+    ActorDeleteTool,
+    ActorSelectTool,
+    ActorTransformTool,
+    ActorSnapGroundTool,
+)
+from nyrahost.tools.material_tools import (
+    MaterialGetParamTool,
+    MaterialSetParamTool,
+    MaterialCreateMICTool,
+)
+from nyrahost.tools.blueprint_tools import BlueprintReadTool, BlueprintWriteTool
+from nyrahost.tools.blueprint_debug import BlueprintDebugTool
+from nyrahost.tools.meshy_tools import MeshyImageTo3DTool, JobStatusTool
 from nyrahost.tools.comfyui_tools import (
     ComfyUIRunWorkflowTool,
     ComfyUIGetNodeInfoTool,
@@ -47,6 +75,33 @@ class NyraMCPServer:
     def __init__(self) -> None:
         self._gate = NyraPermissionGate()
         self._ws_emit = lambda method, params: None  # Stub — set during init
+        # Phase 4 + Phase 5 tools routed through self._tools dict
+        self._tools = {
+            # Phase 4: Asset/Actor/Material/Blueprint tools
+            "nyra_asset_search": AssetSearchTool(),
+            "nyra_actor_spawn": ActorSpawnTool(),
+            "nyra_actor_duplicate": ActorDuplicateTool(),
+            "nyra_actor_delete": ActorDeleteTool(),
+            "nyra_actor_select": ActorSelectTool(),
+            "nyra_actor_transform": ActorTransformTool(),
+            "nyra_actor_snap_ground": ActorSnapGroundTool(),
+            "nyra_material_get_param": MaterialGetParamTool(),
+            "nyra_material_set_param": MaterialSetParamTool(),
+            "nyra_material_create_mic": MaterialCreateMICTool(),
+            "nyra_blueprint_read": BlueprintReadTool(),
+            "nyra_blueprint_write": BlueprintWriteTool(),
+            "nyra_blueprint_debug": BlueprintDebugTool(),
+            # Phase 5: External Tool Integrations
+            # GEN-01: Meshy REST
+            "nyra_meshy_image_to_3d": MeshyImageTo3DTool(),
+            "nyra_job_status": JobStatusTool(),
+            # GEN-02: ComfyUI HTTP
+            "nyra_comfyui_run_workflow": ComfyUIRunWorkflowTool(),
+            "nyra_comfyui_get_node_info": ComfyUIGetNodeInfoTool(),
+            # GEN-03: computer-use loop
+            "nyra_computer_use": ComputerUseTool(),
+            "nyra_computer_use_status": ComputerUseStatusTool(),
+        }
 
     def set_ws_emit(self, emit_fn: callable) -> None:
         """Set the WebSocket emit function for WS requests."""
@@ -62,14 +117,13 @@ class NyraMCPServer:
             return await self._handle_log_tail(arguments)
         elif tool_name == "nyra_message_log_list":
             return await self._handle_msg_log_list(arguments)
-        elif tool_name == "nyra_comfyui_run_workflow":
-            return await self._handle_comfyui_run_workflow(arguments)
-        elif tool_name == "nyra_comfyui_get_node_info":
-            return await self._handle_comfyui_get_node_info(arguments)
-        elif tool_name == "nyra_computer_use":
-            return await self._handle_computer_use(arguments)
-        elif tool_name == "nyra_computer_use_status":
-            return await self._handle_computer_use_status(arguments)
+        elif tool_name in self._tools:
+            tool = self._tools[tool_name]
+            try:
+                result = tool.execute(arguments)
+                return result.to_dict()
+            except Exception as e:
+                return {"error": {"code": -32000, "message": str(e)}}
         else:
             return {"error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}
 
@@ -98,37 +152,9 @@ class NyraMCPServer:
         """nyra_message_log_list: forward to UE log/message-log-list."""
         return await handle_nyra_message_log_list(args, self._ws_emit)
 
-    async def _handle_comfyui_run_workflow(self, args: dict) -> dict:
-        """nyra_comfyui_run_workflow: run ComfyUI workflow via ComfyUIRunWorkflowTool."""
-        tool = ComfyUIRunWorkflowTool()
-        result = tool.execute(args)
-        return result.to_dict()
-
-    async def _handle_comfyui_get_node_info(self, args: dict) -> dict:
-        """nyra_comfyui_get_node_info: probe ComfyUI node types via ComfyUIGetNodeInfoTool."""
-        tool = ComfyUIGetNodeInfoTool()
-        result = tool.execute(args)
-        return result.to_dict()
-
-    async def _handle_computer_use(self, args: dict) -> dict:
-        """nyra_computer_use: start computer-use loop in background thread."""
-        tool = ComputerUseTool()
-        result = tool.execute(args)
-        if result.is_ok:
-            return result.data or {}
-        return {"error": {"code": -32011, "message": result.error}}
-
-    async def _handle_computer_use_status(self, args: dict) -> dict:
-        """nyra_computer_use_status: check status or control a computer-use job."""
-        tool = ComputerUseStatusTool()
-        result = tool.execute(args)
-        if result.is_ok:
-            return result.data or {}
-        return {"error": {"code": -32011, "message": result.error}}
-
 
 def create_server() -> Server:
-    """Factory: create and configure an MCP Server with all Phase 2 tools."""
+    """Factory: create and configure an MCP Server with all phases' tools."""
     if Server is None:
         return None  # type: ignore[return-value]
 
@@ -139,6 +165,7 @@ def create_server() -> Server:
     @server.list_tools()
     async def list_tools():
         return [
+            # === Phase 2 tools ===
             # nyra_permission_gate per RESEARCH §4.2
             {
                 "name": "nyra_permission_gate",
@@ -156,6 +183,7 @@ def create_server() -> Server:
                                 "properties": {
                                     "tool": {"type": "string"},
                                     "args": {"type": "object"},
+                                    "rationale": {"type": "string"},
                                     "risk": {"type": "string", "enum": ["read-only", "reversible", "destructive", "irreversible"]},
                                 },
                             },
@@ -206,6 +234,228 @@ def create_server() -> Server:
                     },
                 },
             },
+            # === Phase 4 tools ===
+            # nyra_asset_search per Plan 04-03
+            {
+                "name": "nyra_asset_search",
+                "description": "Search the current UE project asset registry using fuzzy string matching. Searches asset names, tags, and class names. Returns ranked results with match scores.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["query"],
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query string (e.g. 'hero material', 'character skeletal')"},
+                        "class_filter": {"type": "string", "description": "Optional: restrict to a specific UClass name (e.g. 'Material', 'StaticMesh')"},
+                        "limit": {"type": "integer", "default": 20, "description": "Maximum number of results to return"},
+                        "threshold": {"type": "integer", "default": 70, "description": "Minimum fuzzy match score (0-100)"},
+                        "include_tags": {"type": "boolean", "default": True, "description": "Include asset tags in match"},
+                    },
+                },
+            },
+            # nyra_actor_spawn per Plan 04-04
+            {
+                "name": "nyra_actor_spawn",
+                "description": "Spawn an actor by class or asset path in the current editor level. The actor is placed at the given world-space location and rotation.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["class_name"],
+                    "properties": {
+                        "class_name": {"type": "string", "description": "UE class name, e.g. 'StaticMeshActor' or '/Script/Engine.CameraActor'"},
+                        "asset_path": {"type": "string", "description": "Asset path for Blueprint-derived actors, e.g. '/Game/Props/Crate_C'"},
+                        "location": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "default": {"x": 0.0, "y": 0.0, "z": 0.0}},
+                        "rotation": {"type": "object", "properties": {"pitch": {"type": "number"}, "yaw": {"type": "number"}, "roll": {"type": "number"}}, "default": {"pitch": 0.0, "yaw": 0.0, "roll": 0.0}},
+                        "name": {"type": "string", "description": "Optional actor label/name in the world outliner"},
+                    },
+                },
+            },
+            # nyra_actor_duplicate per Plan 04-04
+            {
+                "name": "nyra_actor_duplicate",
+                "description": "Duplicate one or more actors in the current level with an optional offset.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["actor_path"],
+                    "properties": {
+                        "actor_path": {"type": "string", "description": "Path to the source actor (world outliner path or '/Game/...' format)"},
+                        "offset": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}, "default": {"x": 0.0, "y": 0.0, "z": 0.0}},
+                    },
+                },
+            },
+            # nyra_actor_delete per Plan 04-04
+            {
+                "name": "nyra_actor_delete",
+                "description": "Delete one or more actors from the current level. This operation is destructive.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["actor_path"],
+                    "properties": {
+                        "actor_path": {"type": "string", "description": "Path to the actor to delete"},
+                    },
+                },
+            },
+            # nyra_actor_select per Plan 04-04
+            {
+                "name": "nyra_actor_select",
+                "description": "Set the editor selection to one or more actors by path.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["actor_paths"],
+                    "properties": {
+                        "actor_paths": {"type": "array", "items": {"type": "string"}, "description": "Paths to actors to select"},
+                        "add_to_selection": {"type": "boolean", "default": False, "description": "If true, add to current selection; if false, replace it"},
+                    },
+                },
+            },
+            # nyra_actor_transform per Plan 04-04
+            {
+                "name": "nyra_actor_transform",
+                "description": "Set location, rotation, and/or scale of an actor.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["actor_path"],
+                    "properties": {
+                        "actor_path": {"type": "string"},
+                        "location": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}},
+                        "rotation": {"type": "object", "properties": {"pitch": {"type": "number"}, "yaw": {"type": "number"}, "roll": {"type": "number"}}},
+                        "scale": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}},
+                    },
+                },
+            },
+            # nyra_actor_snap_ground per Plan 04-04
+            {
+                "name": "nyra_actor_snap_ground",
+                "description": "Snap an actor to the ground using a downward line trace. Finds the first blocking hit below the actor's current location and moves it so its bottom sits flush with the hit surface.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["actor_path"],
+                    "properties": {
+                        "actor_path": {"type": "string"},
+                        "trace_distance": {"type": "number", "default": 10000.0, "description": "Maximum trace distance in cm (default 100m)"},
+                    },
+                },
+            },
+            # nyra_material_get_param per Plan 04-06
+            {
+                "name": "nyra_material_get_param",
+                "description": "Read scalar, vector, or texture parameter values from a Material Instance (or any material that exposes parameter collections).",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["material_path", "param_name", "param_type"],
+                    "properties": {
+                        "material_path": {"type": "string", "description": "UE asset path, e.g. '/Game/Materials/M_Hero_C.M_Hero_C'"},
+                        "param_name": {"type": "string"},
+                        "param_type": {"type": "string", "enum": ["scalar", "vector", "texture"], "description": "Type of parameter to read"},
+                    },
+                },
+            },
+            # nyra_material_set_param per Plan 04-06
+            {
+                "name": "nyra_material_set_param",
+                "description": "Write scalar, vector, or texture parameter values on a Material Instance. Creates a dynamic Material Instance if the parent material is not already a MIC.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["material_path", "param_name", "param_type"],
+                    "properties": {
+                        "material_path": {"type": "string"},
+                        "param_name": {"type": "string"},
+                        "param_type": {"type": "string", "enum": ["scalar", "vector", "texture"]},
+                        "scalar_value": {"type": "number"},
+                        "vector_value": {"type": "object", "properties": {"r": {"type": "number"}, "g": {"type": "number"}, "b": {"type": "number"}, "a": {"type": "number"}}},
+                        "texture_value": {"type": "string", "description": "UE asset path of UTexture2D"},
+                        "actor_path": {"type": "string", "description": "Optional: apply this MIC to a specific actor's static mesh component"},
+                        "component_index": {"type": "integer", "default": 0, "description": "Mesh component index on the target actor"},
+                    },
+                },
+            },
+            # nyra_material_create_mic per Plan 04-06
+            {
+                "name": "nyra_material_create_mic",
+                "description": "Create a dynamic Material Instance (MIC) from a parent Material.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["parent_material"],
+                    "properties": {
+                        "parent_material": {"type": "string", "description": "UE asset path of the parent Material"},
+                        "mic_name": {"type": "string", "description": "Optional actor label for the new MIC (visible in world outliner)"},
+                    },
+                },
+            },
+            # nyra_blueprint_read per Plan 04-01
+            {
+                "name": "nyra_blueprint_read",
+                "description": "Read a Blueprint's node graph, variables, and event graphs as structured JSON. Returns class name, functions, events, variables, and graph nodes.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["asset_path"],
+                    "properties": {
+                        "asset_path": {"type": "string", "description": "Full UE asset path, e.g. '/Game/Characters/Hero_BP.Hero_BP_C'"},
+                        "include_graphs": {"type": "boolean", "default": True, "description": "Include graph/node details"},
+                    },
+                },
+            },
+            # nyra_blueprint_write per Plan 04-01
+            {
+                "name": "nyra_blueprint_write",
+                "description": "Mutate a Blueprint: add nodes, remove nodes, reconnect pins, set variable defaults, and recompile. All mutations are wrapped in a transaction and validated against the Blueprint's current state before application.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["asset_path", "mutation"],
+                    "properties": {
+                        "asset_path": {"type": "string"},
+                        "mutation": {
+                            "type": "object",
+                            "description": "Mutation to apply",
+                            "properties": {
+                                "set_variable_defaults": {"type": "object", "description": "variable_name -> new_default_value map"},
+                                "add_comment": {"type": "object", "description": "Add a comment node: {graph_name, text, pos_x, pos_y}"},
+                            },
+                        },
+                        "recompile": {"type": "boolean", "default": True},
+                        "dry_run": {"type": "boolean", "default": False},
+                    },
+                },
+            },
+            # nyra_blueprint_debug per Plan 04-02
+            {
+                "name": "nyra_blueprint_debug",
+                "description": "Debug a Blueprint's compile errors: reads the compile log, parses errors, explains each in plain English, and returns structured diffs to fix them. Returns status=clean if the Blueprint has no errors. The diffs returned are valid mutation inputs for nyra_blueprint_write.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["asset_path"],
+                    "properties": {
+                        "asset_path": {"type": "string", "description": "Full UE asset path, e.g. '/Game/Characters/Hero_BP.Hero_BP_C'"},
+                        "include_warnings": {"type": "boolean", "default": False, "description": "Include warnings in the errors list"},
+                        "include_suggestions": {"type": "boolean", "default": True, "description": "Include suggested_fix in each error entry"},
+                    },
+                },
+            },
+            # === Phase 5 tools ===
+            # nyra_meshy_image_to_3d per Plan 05-01 (GEN-01)
+            {
+                "name": "nyra_meshy_image_to_3d",
+                "description": "Generate a 3D mesh from a reference image using Meshy AI. Uploads the image, polls until the job completes, downloads the GLB, and stages it for UE import as UStaticMesh with LODs and collision. Submitting the same image twice returns the existing job_id (idempotent, no duplicate imports).",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["image_path"],
+                    "properties": {
+                        "image_path": {"type": "string", "description": "Absolute path to the reference image on disk (JPG, PNG, WebP)"},
+                        "prompt": {"type": "string", "description": "Optional natural-language guidance for mesh generation, e.g. 'low-poly stylized'"},
+                        "task_type": {"type": "string", "default": "meshy-image-to-3d-reMeshed", "description": "Meshy task type"},
+                        "target_folder": {"type": "string", "default": "/Game/NYRA/Meshes", "description": "UE Content Browser destination folder"},
+                    },
+                },
+            },
+            # nyra_job_status per Plan 05-01 (GEN-01)
+            {
+                "name": "nyra_job_status",
+                "description": "Poll the status of a NYRA staging job by its job_id. Works for Meshy, ComfyUI, and computer-use jobs.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["job_id"],
+                    "properties": {
+                        "job_id": {"type": "string", "description": "The job_id returned by nyra_meshy_image_to_3d or nyra_comfyui_run_workflow"},
+                    },
+                },
+            },
             # nyra_comfyui_run_workflow per Plan 05-02 (GEN-02)
             {
                 "name": "nyra_comfyui_run_workflow",
@@ -244,7 +494,7 @@ def create_server() -> Server:
                     },
                 },
             },
-            # nyra_computer_use (Plan 05-03 Task 2)
+            # nyra_computer_use (Plan 05-03 Task 2, GEN-03)
             {
                 "name": "nyra_computer_use",
                 "description": "Start a computer-use automation loop using Claude Opus 4.7 with computer_20251124. NYRA will control mouse/keyboard to automate tasks in external apps (Substance 3D Sampler, UE modals). Permission dialog shown before first action. Press Ctrl+Alt+Space to pause at any time.",
@@ -263,7 +513,7 @@ def create_server() -> Server:
                     },
                 },
             },
-            # nyra_computer_use_status (Plan 05-03 Task 2)
+            # nyra_computer_use_status (Plan 05-03 Task 2, GEN-03)
             {
                 "name": "nyra_computer_use_status",
                 "description": "Check status of, pause, resume, or stop a computer-use job started with nyra_computer_use.",
