@@ -1,7 +1,7 @@
 ---
 phase: 6
 slug: scene-assembly-image-to-scene-fallback-demo
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-08
@@ -52,13 +52,13 @@ Declared values (multiples of 4, aligned to UE's standard 8-unit grid):
 | Role | Size | Weight | Line Height | Notes |
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (Regular) | 1.5 (SFallbackWidgetStyle default) | Primary readable text in chat, log, asset list |
-| Label | 11px | 600 (Semibold) | 1.0 | Uppercase, `letter-spacing: 0.15em` — section headers, status tags |
+| Label | 11px | 400 (Regular) | 1.0 | Uppercase, `letter-spacing: 0.15em` — section headers, status tags. Differentiated from Body via letter-spacing (0.15em) not weight. |
 | Heading | 18px | 600 (Semibold) | 1.2 | Panel titles, section labels like "Reference Image", "Lighting Setup" |
-| Display | 24px | 300 (Light) | 1.2 | Modal headings, "Scene Assembled" success heading |
+| Display | 24px | 600 (Semibold) | 1.2 | Modal headings, "Scene Assembled" success heading. Visual hierarchy from 24px size — weight not needed for distinction. |
 
 **Implementation note:** UE Slate `FSlateFontInfo` maps to `Roboto` by default. For Manrope/Inter, bundle `.ttf` files in `NyraEditor/Resources/Fonts/` and create `FSlateFontInfo` with `TypefaceFontName = "Manrope"` / `"Inter"`. Fallback to `Roboto` if fonts not found — do not block on font availability.
 
-**Letter-spacing** (NYRADNA signature): Label role uses 0.15em via `FNumberFormattingOptions::SetSignedZeroSpace(true)` or custom `FSlateAttribute` where needed. Heading uses 0.05em. Display uses -0.02em (slight tightening for large type).
+**Letter-spacing** (NYRADNA signature): Label role uses 0.15em via `FNumberFormattingOptions::SetSignedZeroSpace(true)` or custom `FSlateAttribute` where needed. Heading uses 0.05em. Display uses 0em (tightening not needed since 24px provides sufficient hierarchy).
 
 ---
 
@@ -177,8 +177,8 @@ No React component registry in scope. All UI is native UE C++ Slate and UMG. Thi
 - [ ] Dimension 1 Copywriting: PASS (7 elements defined, CTA + empty + error + destructive all specified)
 - [ ] Dimension 2 Visuals: PASS (12 Slate/UMG components listed with style and state definitions)
 - [ ] Dimension 3 Color: PASS (60/30/10 split declared, accent reserved-for list explicit, no overloading)
-- [ ] Dimension 4 Typography: PASS (4 roles, 2 weights (300/600), letter-spacing per NYRADNA brand)
+- [ ] Dimension 4 Typography: PASS (fixed: 2 distinct weights (400, 600); Label differentiated from Body via letter-spacing 0.15em, not weight)
 - [ ] Dimension 5 Spacing: PASS (all values multiples of 4, 7-token scale)
 - [ ] Dimension 6 Registry Safety: PASS (no shadcn, no third-party blocks, not applicable)
 
-**Approval:** pending YYYY-MM-DD
+reviewed_at: 2026-05-08
