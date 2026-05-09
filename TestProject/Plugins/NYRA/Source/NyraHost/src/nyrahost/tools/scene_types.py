@@ -1,0 +1,180 @@
+"""nyrahost.tools.scene_types - Phase 6 shared dataclasses.
+
+All Phase 6 components (SCENE-01 lighting, DEMO-01 assembly) import from here.
+Do not duplicate these definitions in scene_llm_parser.py or scene_assembler.py.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+# ---------------------------------------------------------------------------
+# Scene assembly types
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ActorSpec:
+    """Specification for a single actor to be placed in the scene."""
+    role: str
+    class_path: str
+    asset_hint: str
+    count: int = 1
+    placement: str = "scattered"
+    transform_hint: str = ""
+    source: str = "library"
+
+
+@dataclass
+class MaterialSpec:
+    """Specification for a material to apply to one or more actors."""
+    target_actor: str
+    material_type: str
+    texture_hint: str
+    source: str = "library"
+    asset_path: str = ""
+    fallback_path: str = ""
+
+
+@dataclass
+class SceneBlueprint:
+    """Structured output from LLM image analysis - the scene assembly plan."""
+    scene_type: str
+    actor_specs: list[ActorSpec]
+    material_specs: list[MaterialSpec]
+    mood_tags: list[str]
+    confidence: float = 0.0
+
+
+@dataclass
+class AssemblyResult:
+    """Result of a full scene assembly run."""
+    placed_actors: list[dict] = field(default_factory=list)
+    applied_materials: list[dict] = field(default_factory=list)
+    lighting_actors: list[dict] = field(default_factory=list)
+    log_entries: list[str] = field(default_factory=list)
+    success: bool = True
+    error_message: Optional[str] = None
+
+    @property
+    def actor_count(self) -> int:
+        return len(self.placed_actors)
+
+    @property
+    def material_count(self) -> int:
+        return len(self.applied_materials)
+
+    @property
+    def lighting_count(self) -> int:
+        return len(self.lighting_actors)
+
+    def to_structured_summary(self) -> dict:
+        """Returns the dict used for success copy in SNyraLogDrawer."""
+        return {
+            "success": self.success,
+            "actor_count": self.actor_count,
+            "material_count": self.material_count,
+            "lighting_count": self.lighting_count,
+            "message": (
+                f"{self.actor_count} actors placed, "
+                f"{self.material_count} materials applied, "
+                f"{self.lighting_count} light setup configured."
+            ),
+            "log_entries": self.log_entries,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Lighting types (shared between SCENE-01 and DEMO-01)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class LightingParams:
+    """Structured lighting parameters derived from NL prompts or reference images."""
+    primary_light_type: str = "directional"
+    primary_intensity: float = 1.0
+    primary_color: tuple[float, float, float] = (1.0, 1.0, 1.0)
+    primary_direction: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    primary_temperature_k: float = 5500.0
+    use_shadow: bool = True
+    shadow_cascades: int = 4
+
+    fill_light_type: str = ""
+    fill_intensity: float = 0.0
+    fill_color: tuple[float, float, float] = (0.5, 0.5, 0.5)
+
+    use_sky_atmosphere: bool = False
+    sky_atmosphere_composition: str = "earth"
+    use_volumetric_cloud: bool = False
+    cloud_coverage: float = 0.5
+    use_exponential_height_fog: bool = False
+    fog_density: float = 0.02
+    fog_height_falloff: float = 0.2
+    fog_color: tuple[float, float, float] = (0.8, 0.85, 1.0)
+    use_volumetric_fog: bool = False
+    volumetric_fog_density: float = 0.1
+
+    use_post_process: bool = False
+    exposure_compensation: float = 0.0
+    contrast: float = 1.0
+    color_saturation: float = 1.0
+
+    prompt: str = ""
+    mood_tags: list[str] = field(default_factory=list)
+    confidence: float = 0.0
+
+    def to_ue_params(self) -> dict:
+        """Return a flat dict of UE-compatible parameter values."""
+        return {
+            "primary_light_type": self.primary_light_type,
+            "primary_intensity": self.primary_intensity,
+            "primary_color_r": self.primary_color[0],
+            "primary_color_g": self.primary_color[1],
+            "primary_color_b": self.primary_color[2],
+            "primary_direction_pitch": self.primary_direction[0],
+            "primary_direction_yaw": self.primary_direction[1],
+            "primary_direction_roll": self.primary_direction[2],
+            "primary_temperature_k": self.primary_temperature_k,
+            "use_shadow": self.use_shadow,
+            "use_sky_atmosphere": self.use_sky_atmosphere,
+            "use_volumetric_cloud": self.use_volumetric_cloud,
+            "use_exponential_height_fog": self.use_exponential_height_fog,
+            "fog_density": self.fog_density,
+            "fog_color_r": self.fog_color[0],
+            "fog_color_g": self.fog_color[1],
+            "fog_color_b": self.fog_color[2],
+            "use_post_process": self.use_post_process,
+            "exposure_compensation": self.exposure_compensation,
+            "mood_tags": self.mood_tags,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Asset resolution types
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AssetResolutionResult:
+    """Result of resolving an asset through the fallback chain."""
+    asset_path: str
+    source: str
+    quality_score: float
+    generation_time: Optional[float] = None
+
+
+@dataclass
+class ProgressUpdate:
+    """A single progress update for WS streaming to Slate panel."""
+    step: str
+    current: int
+    total: int
+    message: str = ""
+
+    def to_ws_payload(self) -> dict:
+        return {
+            "type": "assembly_progress",
+            "step": self.step,
+            "current": self.current,
+            "total": self.total,
+            "message": self.message,
+        }
