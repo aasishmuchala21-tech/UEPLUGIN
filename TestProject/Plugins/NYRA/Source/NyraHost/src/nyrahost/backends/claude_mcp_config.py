@@ -36,7 +36,12 @@ __all__ = ["write_mcp_config", "cleanup_stale_configs"]
 
 log: Final = structlog.get_logger(__name__)
 
-MCP_CONFIGS_DIR: Final = Path(os.environ["LOCALAPPDATA"]) / "NYRA" / "mcp-configs"
+_DEFAULT_APP_DATA: Final = (
+    Path(os.environ["LOCALAPPDATA"])
+    if "LOCALAPPDATA" in os.environ
+    else Path.home() / ".local" / "share"
+)
+MCP_CONFIGS_DIR: Final = _DEFAULT_APP_DATA / "NYRA" / "mcp-configs"
 """Fixed location — always under %LOCALAPPDATA% so the file is user-scoped."""
 
 

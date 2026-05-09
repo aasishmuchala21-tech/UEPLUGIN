@@ -94,13 +94,13 @@ class AgentBackend(abc.ABC):
     """Abstract base class for every reasoning backend (Claude, Gemma, Codex).
 
     Subclasses MUST implement:
-        name          : class-level str ("gemma-local" | "claude" | "byok" | ...)
+        name          : class-level str ("gemma-local" | "claude" | ...)
         send(...)     : emit BackendEvent objects via on_event; MUST end with Done or Error
         cancel(...)   : cancel the in-flight request
         health_check(): return current HealthState
     """
 
-    name: str  # "claude" | "gemma-local" | "byok" (v1.1 Codex drop-in)
+    name: str  # "claude" | "gemma-local" | "codex" (v1.1)
 
     @abc.abstractmethod
     async def send(

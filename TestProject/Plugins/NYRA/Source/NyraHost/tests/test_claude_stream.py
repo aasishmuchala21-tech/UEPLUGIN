@@ -62,7 +62,7 @@ class TestStreamParser:
         assert isinstance(tu, ToolUse)
         assert tu.id == "toolu_002"
         # Partial deltas — accumulate internally, no new emission
-        parser.parse_line('{"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": "{\\""}}')
+        parser.parse_line('{"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": "{\\""}}}')
         parser.parse_line('{"type": "stream_event", "event": {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": "file\\": \\"out.txt"}}}')
         # Stop — final ToolUse emitted with full accumulated JSON
         stop_line = '{"type": "stream_event", "event": {"type": "content_block_stop", "index": 0}}'

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -121,7 +121,7 @@ class TestClaudeBackendClass:
     @pytest.mark.asyncio
     async def test_cancel_sends_terminate(self, backend):
         """cancel(req_id) calls proc.terminate() on the tracked subprocess."""
-        proc = AsyncMock()
+        proc = MagicMock()
         proc.returncode = None
         backend._inflight["req-99"] = proc
 
@@ -144,7 +144,7 @@ class TestClaudeBackendClass:
 
 
 class TestBackendRegistry:
-    """Registry wiring — verifies claude + byok backends are registered."""
+    """Registry wiring — verifies claude backend is registered."""
 
     def test_registry_has_claude(self):
         from nyrahost.backends import BACKEND_REGISTRY
@@ -152,13 +152,6 @@ class TestBackendRegistry:
 
         assert "claude" in BACKEND_REGISTRY
         assert BACKEND_REGISTRY["claude"] is ClaudeBackend
-
-    def test_registry_has_byok(self):
-        from nyrahost.backends import BACKEND_REGISTRY
-        from nyrahost.backends.byok import BYOKBackend
-
-        assert "byok" in BACKEND_REGISTRY
-        assert BACKEND_REGISTRY["byok"] is BYOKBackend
 
     def test_get_backend_claude(self):
         from nyrahost.backends import get_backend
@@ -173,31 +166,4 @@ class TestBackendRegistry:
             get_backend("unknown-backend")
 
 
-class TestBYOKBackend:
-    """BYOKBackend smoke tests — no subprocess needed."""
 
-    @pytest.fixture
-    def byok(self):
-        from nyrahost.backends.byok import BYOKBackend
-
-        return BYOKBackend(api_key=None)  # unconfigured state
-
-    def test_name_is_byok(self, byok):
-        assert byok.name == "byok"
-
-    @pytest.mark.asyncio
-    async def test_not_configured_emits_error(self, byok):
-        from nyrahost.backends.base import Error
-
-        events: list = []
-        await byok.send("conv", "req", "hello", [], None, events.append)
-        assert len(events) == 1
-        assert isinstance(events[0], Error)
-        assert "not_configured" in events[0].message
-
-    @pytest.mark.asyncio
-    async def test_health_check_not_configured(self, byok):
-        from nyrahost.backends.base import HealthState
-
-        state = await byok.health_check()
-        assert state == HealthState.NOT_INSTALLED

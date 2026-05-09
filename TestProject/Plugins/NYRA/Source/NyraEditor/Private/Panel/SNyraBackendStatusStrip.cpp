@@ -58,11 +58,6 @@ FNyraBackendState FNyraBackendState::ParseJson(const FString& Json)
         Out.Gemma.State         = G->GetStringField(TEXT("state"));
     }
 
-    // computer_use block (optional)
-    if (TSharedPtr<FJsonObject> CU = Obj->GetObjectField(TEXT("computer_use")))
-    {
-        Out.ComputerUse.State = CU->GetStringField(TEXT("state"));
-    }
 
     // mode
     FString ModeStr;

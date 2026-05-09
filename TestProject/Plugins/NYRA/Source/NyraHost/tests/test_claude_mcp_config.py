@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -120,7 +121,7 @@ class TestCleanupStaleConfigs:
 
         # Age the old file by setting its mtime to 2 days ago
         two_days_ago = time.time() - 172_800
-        old.setattr("st_mtime", two_days_ago)
+        os.utime(old, times=(two_days_ago, two_days_ago))
 
         deleted = cleanup_stale_configs(tmp_path, max_age_seconds=86_400)
         assert deleted == 1

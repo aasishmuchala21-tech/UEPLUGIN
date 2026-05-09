@@ -196,10 +196,13 @@ class TestRetryHandling:
 
     async def test_retry_server_error_attempt_3_stays_but_emits(self):
         """RESEARCH §10.6: attempt >= 3 surfaces error but state stays."""
-        router = _make_router(claude_available=True)
-        await router.decide_backend("claude")
         emit_log = []
-        router._emit = lambda m, p: emit_log.append((m, p))
+
+        async def capture_emit(method: str, params: dict) -> None:
+            emit_log.append((method, params))
+
+        router = _make_router(claude_available=True, emit=capture_emit)
+        await router.decide_backend("claude")
 
         for attempt in range(1, 4):
             await router.observe_event(
@@ -264,7 +267,15 @@ def _make_router(
     async def noop_emit(method: str, params: dict) -> None:
         pass
 
+    async def async_emit_adapter(method: str, params: dict) -> None:
+        # Wrap sync emit (e.g. test lambda) so router's `await self._emit(...)` works
+        import asyncio
+        if asyncio.iscoroutinefunction(emit):
+            await emit(method, params)
+        else:
+            emit(method, params)
+
     return NyraRouter(
-        emit_notification=emit or noop_emit,
+        emit_notification=async_emit_adapter if emit is not None else noop_emit,
         claude_available=claude_available,
     )

@@ -58,15 +58,13 @@ static TArray<FToolEntry> GPhase4Tools = {
 };
 
 // ---------------------------------------------------------------------------
-// Phase 5 tool registry (6 tools across GEN-01, GEN-02, GEN-03)
+// Phase 5 tool registry (4 tools across GEN-01, GEN-02)
 // ---------------------------------------------------------------------------
 
 static bool Validate_nyra_meshy_image_to_3d();
 static bool Validate_nyra_job_status();
 static bool Validate_nyra_comfyui_run_workflow();
 static bool Validate_nyra_comfyui_get_node_info();
-static bool Validate_nyra_computer_use();
-static bool Validate_nyra_computer_use_status();
 
 static TArray<FToolEntry> GPhase5Tools = {
     // GEN-01: Meshy REST
@@ -75,9 +73,6 @@ static TArray<FToolEntry> GPhase5Tools = {
     // GEN-02: ComfyUI HTTP
     { TEXT("nyra_comfyui_run_workflow"),    Validate_nyra_comfyui_run_workflow },
     { TEXT("nyra_comfyui_get_node_info"), Validate_nyra_comfyui_get_node_info },
-    // GEN-03: computer-use
-    { TEXT("nyra_computer_use"),         Validate_nyra_computer_use },
-    { TEXT("nyra_computer_use_status"),  Validate_nyra_computer_use_status },
 };
 
 // ---------------------------------------------------------------------------
@@ -181,7 +176,6 @@ static bool Validate_nyra_material_create_mic()
 // Phase 5 validation stubs
 // GEN-01: Meshy REST — validates tool registration + parameter schema
 // GEN-02: ComfyUI HTTP — validates tool registration + parameter schema
-// GEN-03: computer-use — validates tool registration + permission gate wiring
 // ---------------------------------------------------------------------------
 
 // GEN-01: nyra_meshy_image_to_3d
@@ -238,35 +232,6 @@ static bool Validate_nyra_comfyui_get_node_info()
     //   2. No required params
     //   3. Output: dict of node_type -> {inputs, required, properties}
     //   4. Security: only validated node types returned (no raw API dump — T-05-04)
-    return true;
-}
-
-// GEN-03: nyra_computer_use
-// Check: ComputerUseTool registered in mcp_server/__init__.py or tools/computer_use_tools.py
-// Verify: name="nyra_computer_use", task required, permission gate shown before first action
-static bool Validate_nyra_computer_use()
-{
-    // Phase 5 GEN-03: computer-use orchestration tool registration
-    // Validation checks:
-    //   1. Tool name: "nyra_computer_use" in MCP tool list
-    //   2. Required params: task (string)
-    //   3. Optional params: max_turns (integer, default 30), target_app (string)
-    //   4. Permission gate: MessageBoxW shown before first Win32 action (T-05-07)
-    //   5. Pause chord: Ctrl+Alt+Space halts loop mid-execution (T-05-05, T-05-08)
-    //   6. Screenshot: mss saves to staging dir, never in base64 response (T-05-06)
-    return true;
-}
-
-// GEN-03: nyra_computer_use_status
-// Check: ComputerUseStatusTool registered in mcp_server/__init__.py or tools/computer_use_tools.py
-// Verify: name="nyra_computer_use_status", returns current loop state + last action
-static bool Validate_nyra_computer_use_status()
-{
-    // Phase 5 GEN-03: computer-use status query tool registration
-    // Validation checks:
-    //   1. Tool name: "nyra_computer_use_status" in MCP tool list
-    //   2. No required params
-    //   3. Output: {running (bool), paused (bool), last_action (string), error (string, optional)}
     return true;
 }
 
@@ -359,7 +324,7 @@ void RunToolCatalogCanary(int32 Iterations)
     UE_LOG(LogNyraToolCanary, Display, TEXT("  ToolCatalogCanary Summary"));
     UE_LOG(LogNyraToolCanary, Display, TEXT("========================================"));
     UE_LOG(LogNyraToolCanary, Display, TEXT("  Phase 4 (ACT-01..ACT-05): %d/%d passed"), Phase4Passed, GPhase4Tools.Num());
-    UE_LOG(LogNyraToolCanary, Display, TEXT("  Phase 5 (GEN-01..GEN-03): %d/%d passed"), Phase5Passed, GPhase5Tools.Num());
+    UE_LOG(LogNyraToolCanary, Display, TEXT("  Phase 5 (GEN-01..GEN-02): %d/%d passed"), Phase5Passed, GPhase5Tools.Num());
     UE_LOG(LogNyraToolCanary, Display, TEXT("  Total: %d/%d tools passed"), TotalPassed, TotalTools);
     UE_LOG(LogNyraToolCanary, Display, TEXT("========================================"));
 

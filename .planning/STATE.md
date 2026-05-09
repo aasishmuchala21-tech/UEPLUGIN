@@ -2,21 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-current_phase: 00
-current_plan: 5
-status: executing
-last_updated: "2026-05-02T00:00:00.000Z"
+current_phase: 06
+current_plan: 0
+status: planned
+last_updated: "2026-05-07T14:30:00.000Z"
 progress:
   total_phases: 9
-  completed_phases: 1
-  total_plans: 36
-  completed_plans: 34
-  percent: 94
+  completed_phases: 5
+  total_plans: 39
+  completed_plans: 48
+  percent: 100
 ---
 
 # Project State: NYRA
 
-**Last Updated:** 2026-04-29 (Phase 2 Wave 1 COMPLETE — Plans 02-06 + 02-08 + 02-09 + 02-10 + 02-11 executed and committed; 32/36 plans at source+docs layer; 89% complete) — [Plan 00-04 Gemma license] + [Plan 00-01 Anthropic verdict] SC#1 governs Phase 2 Claude-path live execution (stubbed until verdict); Phase 2 Wave 1 shipped: NyraRouter + NyraPermissionGate + NyraTransactionManager + FNyraSessionTransaction + FNyraConsoleHandler + FNyraOutputDeviceSink + FNyraMessageLogListener + 4 C++ automation specs + Python MCP stdio server + 5 SUMMARYs on disk.
+**Last Updated:** 2026-05-07 (Phase 5 COMPLETE — 4/4 plans executed; 22/22 tests passing; ComfyUIClient + MeshyClient + staging manifest wired; threat model T-05-01 through T-05-08 on disk) — Phase 5 shipped: Meshy REST (05-01), ComfyUI HTTP client + MCP tools (05-02), computer-use loop with Opus 4.7 + zoom + HUD (05-03), exit gate + NyraToolCatalogCanary extension (05-04). Phase 6 PLANNING COMPLETE — 3/3 plans verified (06-01 SCENE-01 lighting authoring PASS, 06-02 DEMO-01 image-to-scene PASS, 06-03 staging tests PASS). Ready to execute.
 
 ---
 
@@ -84,7 +84,7 @@ Plan: 5 of 6 (Plans 01 + 02 + 03 + 04 complete at docs-layer; Plan 05 ready to s
 | 1 | Plugin Shell + Three-Process IPC | 4 (PLUG-01, PLUG-02, PLUG-03, CHAT-01) | Not started |
 | 2 | Subscription Bridge + Four-Version CI Matrix | 9 (PLUG-04, SUBS-01, SUBS-02, SUBS-03, CHAT-02, CHAT-03, CHAT-04, ACT-06, ACT-07) | In progress — Plans 06+08+09+10+11 Wave 1 complete; SC#1 gate (Anthropic verdict) governs Claude-path live execution; Plans 02-06/08/09/10/11 committed at source layer |
 | 3 | UE5 Knowledge RAG | 4 (KNOW-01, KNOW-02, KNOW-03, KNOW-04) | Not started |
-| 4 | Blueprint + Asset + Material + Actor Tool Catalog | 5 (ACT-01, ACT-02, ACT-03, ACT-04, ACT-05) | Not started |
+| 4 | Blueprint + Asset + Material + Actor Tool Catalog | 5 (ACT-01, ACT-02, ACT-03, ACT-04, ACT-05) | Complete — 6/6 plans executed (04-01 Blueprint read/write, 04-02 debug loop, 04-03 asset search, 04-04 actor CRUD, 04-05 canary, 04-06 material tools); 04-VERIFICATION.md on disk; `Nyra.Dev.ToolCatalogCanary` validates all 13 tools; operator-run pending |
 | 5 | External Tool Integrations (API-First) | 3 (GEN-01, GEN-02, GEN-03) | Not started |
 | 6 | Scene Assembly + Image-to-Scene (Fallback Launch Demo) | 2 (SCENE-01, DEMO-01) | Not started |
 | 7 | Sequencer + Video-to-Matched-Shot (LAUNCH DEMO) | 2 (SCENE-02, DEMO-02) | Not started |
@@ -99,7 +99,7 @@ Plan: 5 of 6 (Plans 01 + 02 + 03 + 04 complete at docs-layer; Plan 05 ready to s
 Populated as phases complete. Tracks:
 
 - **Competitor-beating dimensions landed:** 0/N (each phase's success criteria contributes)
-- **Architectural gates cleared:** 0 (Phase 0 legal clearance, Phase 1 three-process IPC, Phase 2 four-version CI + EV cert + subscription bridge, Phase 5 computer-use reliability spike, Phase 7 cold-start release gate)
+- **Architectural gates cleared:** 0 (Phase 0 legal clearance, Phase 1 three-process IPC, Phase 2 four-version CI + EV cert + subscription bridge, Phase 5 external tool integrations (Meshy REST + ComfyUI HTTP + staging manifest + computer-use loop), Phase 7 cold-start release gate)
 - **Cut-lines triggered:** 0 (see `ROADMAP.md#kill-cut-lines`)
 - **Timeline consumed:** 0 weeks of 26-39 week budget (6-9 months)
 

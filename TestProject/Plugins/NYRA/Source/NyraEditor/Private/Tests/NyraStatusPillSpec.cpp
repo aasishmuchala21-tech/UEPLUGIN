@@ -261,12 +261,7 @@ void FNyraStatusPillSpec::Define()
                 static_cast<uint8>(FNyraBackendState::ENyraPrivacyMode::Normal));
         });
 
-        It("computer_use block parsed without crash", [this]()
-        {
-            const FString Json = TEXT(R"({"computer_use":{"state":"not-configured"}})");
-            FNyraBackendState State = FNyraBackendState::ParseJson(Json);
-            TestEqual(TEXT("ComputerUse state parsed"), State.ComputerUse.State, TEXT("not-configured"));
-        });
+
     });
 }
 

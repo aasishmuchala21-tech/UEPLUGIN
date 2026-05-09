@@ -129,7 +129,13 @@ Plans:
   2. Beats Nwiro/CoPilot on lighting authoring: SCENE-01 handles directional/point/spot/rect/sky lights + SkyAtmosphere + VolumetricCloud + ExponentialHeightFog + PostProcessVolume + exposure curves from natural-language prompts ("golden hour", "harsh overhead volumetrics") AND from reference images ("match this image's mood") — Nwiro has cinematic presets, CoPilot has granular light actions, but "match this reference image's lighting mood" is unique to NYRA.
   3. Beats every competitor on first-install cold-start reliability: DEMO-01 passes the random-reference daily test from Phase 6 Day 1 — the exact code path the demo uses is the exact code path users run (no "demo mode" feature flag). A full uninstall + reinstall + run-demo pass is a release gate, not a checkbox.
   4. Architectural gate: DEMO-01 is the v1-launchable state — if DEMO-02 (Phase 7) slips past the 6-9 month budget, the launch reposts around DEMO-01 and still beats Nwiro via GEN-01+GEN-02+GEN-03 orchestration. This is the nuclear cut-line from FEATURES §v1-cut-line.
-**Plans**: TBD
+**Plans**: 5 plans (06-00 through 06-04)
+Plans:
+- [ ] 06-00-PLAN.md -- Wave 0: SceneAssemblyOrchestrator + AssetPool + scene_orchestrator base class (foundation, no UE-native code)
+- [ ] 06-01-SCENE-01-lighting-authoring-PLAN.md -- Wave 1: SCENE-01 lighting MCP tools + SNyraLightingSelector per UI-SPEC
+- [ ] 06-02-DEMO-01-image-to-scene-PLAN.md -- Wave 2: DEMO-01 scene assembly planner + actor placement pipeline
+- [ ] 06-03-staging-test-PLAN.md -- Wave 3: End-to-end integration tests for assembly + lighting
+- [ ] 06-04-PLAN.md -- Wave 4: NyraToolCatalogCanary Phase 6 extension + DEMO-01 canary test + exit gate
 **UI hint**: yes
 
 ### Phase 7: Sequencer + Video-to-Matched-Shot (LAUNCH DEMO)
@@ -166,12 +172,12 @@ Plans:
 |-------|----------------|--------|-----------|
 | 0. Legal & Brand Gate | 3/6 [‡] [§] [¶] | In progress — docs-layer; SC#1 PENDING Anthropic written reply, SC#2 PENDING Fab written reply (BLOCKED not product-fatal because fallback SPEC ships per CONTEXT.md D-07), SC#3 closed at docs-layer with `aggregate_verdict: MEDIUM-RISK` (Class 9 software presumptive CLEAN; founder verbatim-upgrade pending) + `final_name: NYRA` + `filing_status: DEFERRED-TO-V1.1` + `devlog_gate: OPEN` | 00-01 (2026-04-24 docs-layer; pending_manual_verification:true — founder sends email + files Anthropic response), 00-02 (2026-04-24 docs-layer; pending_manual_verification:true — founder sends email + files Epic/Fab response; OR sets BLOCKED-BY-SILENCE at Day 63 to activate fallback primary per legal/00-02-direct-download-fallback-plan.md §1 Trigger a), 00-03 (2026-04-24 docs-layer; pending_manual_verification:true — 3 registry raw dumps + dossier + backup-screening + verdict-and-reservations with embedded reservation-manifest YAML; founder registers nyra-engine.com at Cloudflare Registrar + claims github.com/nyra-plugin + claims X/Reddit/YouTube/Discord handles + verbatim-upgrades USPTO/EUIPO/WIPO raw dumps; if any verbatim Class-9 NYRA live mark surfaces, AELRA warm-standby rollback per verdict-and-reservations §Rollback Plan) |
 | 1. Plugin Shell + Three-Process IPC | 16/16 [†] | Source+docs COMPLETE; SC#3 empirical bench PENDING Windows operator | 01-03 (2026-04-21), 01-01 (2026-04-21), 01-02 (2026-04-21), 01-04 (2026-04-21), 01-05 (2026-04-21), 01-06 (2026-04-22), 01-07 (2026-04-22), 01-08 (2026-04-22), 01-09 (2026-04-22), 01-10 (2026-04-22), 01-11 (2026-04-23), 01-12 (2026-04-23), 01-12b (2026-04-23), 01-13 (2026-04-23), 01-14 (2026-04-23), 01-15 (2026-04-23 docs-layer; empirical bench pending Windows run) |
-| 2. Subscription Bridge + Four-Version CI Matrix | 0/? | Not started | - |
-| 3. UE5 Knowledge RAG | 0/? | Not started | - |
-| 4. Blueprint + Asset + Material + Actor Tool Catalog | 0/? | Not started | - |
-| 5. External Tool Integrations (API-First) | 0/? | Not started | - |
-| 6. Scene Assembly + Image-to-Scene (Fallback Launch Demo) | 0/? | Not started | - |
-| 7. Sequencer + Video-to-Matched-Shot (LAUNCH DEMO) | 0/? | Not started | - |
+| 2. Subscription Bridge + Four-Version CI Matrix | 12/14 | Source+docs COMPLETE; 02-07/02-13/02-14 blocked on human checkpoints | 02-01 (2026-04-25), 02-02 (2026-04-25), 02-03 (2026-04-25), 02-04 (2026-04-25), 02-05 (2026-04-26), 02-06 (2026-04-26), 02-07 (2026-04-27 docs-layer; compat shim pending matrix run), 02-08 (2026-04-27), 02-09 (2026-04-27), 02-10 (2026-04-28), 02-11 (2026-04-28), 02-12 (2026-04-28), 02-13 (2026-04-28 docs-layer; EV signing pending cert), 02-14 (2026-04-28 docs-layer; canary pending clearance) |
+| 3. UE5 Knowledge RAG | 8/8 | Source+docs COMPLETE; SC#2 KnowledgeBench PENDING Windows operator run; SC#1/03-07 PLAN-COMPLETE (operator tags `ue-*` when Epic ships); all other SC ✅ | 03-01 (2026-05-07), 03-02 (2026-05-07), 03-03 (2026-05-07), 03-04 (2026-05-07), 03-05 (2026-05-07), 03-06 (2026-05-07), 03-07 (2026-05-07 PLAN-COMPLETE; operator-run), 03-08 (2026-05-07 PLAN-COMPLETE; operator-run KnowledgeBench) |
+| 4. Blueprint + Asset + Material + Actor Tool Catalog | 6/6 | Source+docs COMPLETE; operator-run pending (SC#1–06 all PLAN-COMPLETE; `Nyra.Dev.ToolCatalogCanary` reports all 13 tools registered) | 04-01 (2026-05-07), 04-02 (2026-05-07), 04-03 (2026-05-07), 04-04 (2026-05-07), 04-05 (2026-05-07), 04-06 (2026-05-07) |
+| 5. External Tool Integrations (API-First) | 4/4 | Source+docs COMPLETE; 22/22 tests passing | 05-01 (2026-05-07), 05-02 (2026-05-07), 05-03 (2026-05-07), 05-04 (2026-05-07) |
+| 6. Scene Assembly + Image-to-Scene (Fallback Launch Demo) | 5/5 | PLAN-COMPLETE; operator-run pending | 06-00 (2026-05-09), 06-01 (2026-05-08), 06-02 (2026-05-08), 06-03 (2026-05-08), 06-04 (2026-05-09) |
+| 7. Sequencer + Video-to-Matched-Shot (LAUNCH DEMO) | 5/5 | PLAN-COMPLETE; operator-run pending | 07-00 (2026-05-09), 07-01 (2026-05-09), 07-02 (2026-05-09), 07-03 (2026-05-09), 07-04 (2026-05-09) |
 | 8. Fab Launch Prep | 0/? | Not started | - |
 
 ---

@@ -75,7 +75,7 @@ class ChatHandlers:
 
         # Phase 2 (Plan 02-03): dispatch through BACKEND_REGISTRY.
         # gemma-local preserves Phase 1 behaviour (InferRouter path below).
-        # claude → ClaudeBackend (Plan 02-05); byok → BYOKBackend (Plan 02-05).
+        # claude → ClaudeBackend (Plan 02-05).
         # Unknown backend → KeyError → ValueError caught and surfaced as -32601.
         if backend != "gemma-local":
             try:

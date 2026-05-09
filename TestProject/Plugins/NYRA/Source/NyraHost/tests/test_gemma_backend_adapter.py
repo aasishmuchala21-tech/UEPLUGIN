@@ -26,7 +26,7 @@ class StubInferRouter:
         self._stream_events = stream_events or []
         self._cancel_called: list[str] = []
 
-    def gemma_not_installed(self) -> bool:
+    async def gemma_not_installed(self) -> bool:
         return not self._installed
 
     async def stream_chat(self, content: str, cancel_event=None):
@@ -105,10 +105,11 @@ class TestGemmaBackendSend:
         from nyrahost.backends import GemmaBackend
 
         class FailingRouter:
-            def gemma_not_installed(self):
+            async def gemma_not_installed(self):
                 return False
 
             async def stream_chat(self, content, cancel_event=None):
+                yield  # must be an async generator so `async for` body runs
                 raise RuntimeError("llama-server crashed")
 
         backend = GemmaBackend(infer_router=FailingRouter())

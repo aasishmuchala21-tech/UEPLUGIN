@@ -56,14 +56,11 @@ public:
         FString Runtime;     // "ollama" | "llama-server"
         FString State;       // "ready" | "downloading" | "loading" | "not-installed"
     };
-    struct FComputerUseState
-    {
-        FString State;       // "not-configured" | ...
-    };
+
 
     FClaudeState Claude;
     FGemmaState Gemma;
-    FComputerUseState ComputerUse;
+
 
     /** Normal = normal mode; PrivacyMode = egress-blocked overlay active. */
     enum class ENyraPrivacyMode : uint8

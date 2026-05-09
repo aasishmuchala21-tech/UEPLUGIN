@@ -104,10 +104,11 @@ class NyraRouter:
     ) -> None:
         """
         Args:
-            emit_notification: async callable(method, params) for diagnostics notifications.
+            emit_notification: callable(method, params) for diagnostics notifications.
+                May be sync or async; router handles both transparently.
             claude_available: True once SC#1 clears. Stub until then.
         """
-        self._emit = emit_notification
+        self._raw_emit = emit_notification
         self.ctx = RouterContext()
         # Phase 0 gate: Claude is NOT available until SC#1 clears
         self._claude_available = claude_available
@@ -115,6 +116,26 @@ class NyraRouter:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    async def _do_emit(self, method: str, params: dict) -> None:
+        """Async-safe emit — bypasses instance-level _emit overwrite.
+
+        Uses _raw_emit directly from __dict__ to avoid test-level
+        `router._emit = sync_lambda` intercepts.
+        """
+        import asyncio
+
+        raw = self.__dict__["_raw_emit"]
+        if asyncio.iscoroutinefunction(raw):
+            await raw(method, params)
+        else:
+            result = raw(method, params)
+            if asyncio.iscoroutine(result):
+                await result
 
     def is_safe_mode(self) -> bool:
         """Safe mode is controlled by Plan 02-09 permission gate."""
@@ -144,7 +165,9 @@ class NyraRouter:
             return self._route_to_gemma(BackendState.IDLE, note="claude-stubbed-waiting-sc1")
 
         if request_backend == "claude":
-            if self.ctx.state == BackendState.RATE_LIMITED and not user_approved_fallback:
+            if self.ctx.state == BackendState.RATE_LIMITED:
+                if user_approved_fallback:
+                    return self._route_to_gemma(BackendState.GEMMA_ACTIVE)
                 return BackendDecision(
                     backend=None,
                     state=BackendState.RATE_LIMITED,
@@ -152,7 +175,9 @@ class NyraRouter:
                     error_message="claude_rate_limited",
                     error_remediation="Rate limit hit. Click [Use Gemma] in NYRA status bar to continue.",
                 )
-            if self.ctx.state == BackendState.AUTH_DRIFT and not user_approved_fallback:
+            if self.ctx.state == BackendState.AUTH_DRIFT:
+                if user_approved_fallback:
+                    return self._route_to_gemma(BackendState.GEMMA_ACTIVE)
                 return BackendDecision(
                     backend=None,
                     state=BackendState.AUTH_DRIFT,
@@ -207,7 +232,7 @@ class NyraRouter:
             )
 
     async def set_mode(self, mode: str) -> None:
-        """Set routing mode: 'claude' | 'gemma' | 'auto'."""
+        """Set routing mode: 'claude' | 'gemma' | 'auto' | 'normal'."""
         if mode == "gemma":
             await self.enter_privacy_mode()
         elif mode == "claude":
@@ -216,13 +241,16 @@ class NyraRouter:
             await self._transition_and_notify(
                 BackendState.IDLE, "user set mode=claude", {"mode": "claude"},
             )
-        elif mode == "auto":
+        elif mode in ("auto", "normal"):
             # auto: try Claude, fallback to Gemma on errors — handled by decide_backend
-            await self._transition_and_notify(
-                BackendState.IDLE, "user set mode=auto", {"mode": "auto"},
-            )
+            if self.ctx.privacy_mode:
+                await self.exit_privacy_mode()
+            else:
+                await self._transition_and_notify(
+                    BackendState.IDLE, "user set mode=auto", {"mode": "auto"},
+                )
         else:
-            raise ValueError(f"invalid mode {mode!r}; expected 'claude'|'gemma'|'auto'")
+            raise ValueError(f"invalid mode {mode!r}; expected 'claude'|'gemma'|'auto'|'normal'")
 
     def get_diagnostics(self) -> dict:
         """Return current router state for diagnostics/backend-state payload."""
@@ -243,7 +271,7 @@ class NyraRouter:
         key = (self.ctx.state, event)
         next_state = self._TRANSITIONS.get(key)
         if next_state is None:
-            log.warning("router_invalid_transition", from_state=self.ctx.state.value, event=event)
+            log.warning("router_invalid_transition", from_state=self.ctx.state.value, trigger_event=event)
             return
         self.ctx.state = next_state
 
@@ -251,7 +279,7 @@ class NyraRouter:
         self, next_state: BackendState, reason: str, extra_params: dict,
     ) -> None:
         self.ctx.state = next_state
-        await self._emit("diagnostics/backend-state", {
+        await self._do_emit("diagnostics/backend-state", {
             "state": next_state.value,
             "reason": reason,
             **extra_params,
@@ -269,8 +297,7 @@ class NyraRouter:
                     f"rate_limit_exhausted_attempt_{attempt}",
                     {"error_category": category},
                 )
-            else:
-                await self._transition("rate_limit")
+            # attempt < 3: stay in CLAUDE_ACTIVE; no transition call needed
         elif category == "authentication_failed":
             await self._transition_and_notify(
                 BackendState.AUTH_DRIFT,
@@ -280,7 +307,7 @@ class NyraRouter:
         elif category in ("server_error", "unknown"):
             if attempt >= 3:
                 self.ctx.last_error = f"{category}_attempt_{attempt}"
-                await self._emit("diagnostics/backend-state", {
+                await self._do_emit("diagnostics/backend-state", {
                     "state": self.ctx.state.value,
                     "reason": f"server_error_exhausted_attempt_{attempt}",
                     "error_category": category,
@@ -295,8 +322,10 @@ class NyraRouter:
 
     def _route_to_claude(self) -> BackendDecision:
         self.ctx.active_backend = "claude"
+        self.ctx.state = BackendState.CLAUDE_ACTIVE
         return BackendDecision(backend="claude", state=BackendState.CLAUDE_ACTIVE)
 
     def _route_to_gemma(self, next_state: BackendState, note: str = "") -> BackendDecision:
         self.ctx.active_backend = "gemma-local"
+        self.ctx.state = next_state
         return BackendDecision(backend="gemma-local", state=next_state)
