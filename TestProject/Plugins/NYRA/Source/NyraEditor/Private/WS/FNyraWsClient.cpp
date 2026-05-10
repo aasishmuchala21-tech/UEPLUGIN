@@ -9,14 +9,42 @@
 
 void FNyraWsClient::Connect(const FString& Host, int32 Port, const FString& AuthToken)
 {
+    // BL-05: bump the connection generation BEFORE creating the new socket
+    // so any in-flight callbacks fired by the previous socket (which may
+    // still be enqueued on the WS worker thread) compare unequal and
+    // bail out without touching `this`. Defends against rapid reconnect
+    // race + use-after-free on supervisor destruction.
+    const uint64 ThisGeneration = ++ConnectionGeneration;
+
+    // BL-05: tear down the previous socket cleanly. Clearing the delegates
+    // BEFORE Socket.Reset() prevents any callback the WS module has already
+    // queued from dispatching into our (about-to-be-destructed) lambdas.
+    if (Socket.IsValid())
+    {
+        Socket->OnConnected().Clear();
+        Socket->OnMessage().Clear();
+        Socket->OnClosed().Clear();
+        Socket->OnConnectionError().Clear();
+        Socket->Close();
+        Socket.Reset();
+    }
+
     const FString Url = FString::Printf(TEXT("ws://%s:%d/"), *Host, Port);
     PendingAuthToken = AuthToken;
     bAuthenticated = false;
 
     Socket = FWebSocketsModule::Get().CreateWebSocket(Url, TEXT(""));
 
-    Socket->OnConnected().AddLambda([this]()
+    Socket->OnConnected().AddLambda([this, ThisGeneration]()
     {
+        // BL-05: stale-generation guard. If Connect() was called again
+        // between the WS upgrade and this callback firing, ConnectionGeneration
+        // will have advanced past ThisGeneration; ignore this callback
+        // entirely so we don't auth on a socket Disconnect() already torn down.
+        if (ThisGeneration != ConnectionGeneration)
+        {
+            return;
+        }
         // D-07: Send session/authenticate as the FIRST frame after the WS upgrade.
         TSharedRef<FJsonObject> Params = MakeShared<FJsonObject>();
         Params->SetStringField(TEXT("token"), PendingAuthToken);
@@ -30,8 +58,13 @@ void FNyraWsClient::Connect(const FString& Host, int32 Port, const FString& Auth
 
     Socket->OnMessage().AddRaw(this, &FNyraWsClient::HandleMessage);
     Socket->OnClosed().AddRaw(this, &FNyraWsClient::HandleClose);
-    Socket->OnConnectionError().AddLambda([this](const FString& Err)
+    Socket->OnConnectionError().AddLambda([this, ThisGeneration](const FString& Err)
     {
+        // BL-05: stale-generation guard.
+        if (ThisGeneration != ConnectionGeneration)
+        {
+            return;
+        }
         UE_LOG(LogNyra, Warning, TEXT("[NYRA] WS connection error: %s"), *Err);
     });
 
@@ -40,8 +73,16 @@ void FNyraWsClient::Connect(const FString& Host, int32 Port, const FString& Auth
 
 void FNyraWsClient::Disconnect()
 {
+    // BL-05: bump generation so any pending callbacks bail.
+    ++ConnectionGeneration;
     if (Socket.IsValid())
     {
+        // Clear delegates before Reset to avoid the in-flight-callback UAF
+        // on the WS worker thread.
+        Socket->OnConnected().Clear();
+        Socket->OnMessage().Clear();
+        Socket->OnClosed().Clear();
+        Socket->OnConnectionError().Clear();
         Socket->Close();
         Socket.Reset();
     }

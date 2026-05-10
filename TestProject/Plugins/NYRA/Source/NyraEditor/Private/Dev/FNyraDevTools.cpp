@@ -225,7 +225,13 @@ static void BenchHandleNotification(const FNyraJsonRpcEnvelope& Env)
 FNyraBenchResult FNyraDevTools::RunRoundTripBench(int32 Count, const FString& Prompt, double PerRoundTimeoutS)
 {
     FNyraBenchResult Result;
-    Result.N = Count;
+    // BL-02: Result.N must reflect the count of samples that ACTUALLY
+    // completed -- not the count requested. Setting Result.N = Count up
+    // front meant a 1-sample run (rest timed out) could ship as PASS
+    // because the compliance gate (N >= 100) saw 100 even when only
+    // FirstTokenSamples held a single entry. Result.N is now assigned
+    // AFTER the loop from FirstTokenSamples.Num().
+    Result.N = 0;
 
     if (!GNyraSupervisor.IsValid() || GNyraSupervisor->GetState() != ENyraSupervisorState::Ready)
     {
@@ -336,6 +342,12 @@ FNyraBenchResult FNyraDevTools::RunRoundTripBench(int32 Count, const FString& Pr
     // Unbind our notification handler. Single-consumer delegate returns to
     // unbound state; the panel's HandleNotification can re-bind as usual.
     Sup->OnNotification.Unbind();
+
+    // BL-02: now that the loop has run, set Result.N to the authoritative
+    // completion count (the size of the per-round samples array). Anything
+    // that timed out, raised mid-stream, or never received a first-token
+    // notification was skipped via FirstTokenSamples.Add() guard at line 318.
+    Result.N = FirstTokenSamples.Num();
 
     // Compute aggregate percentiles.
     Result.FirstTokenP50     = Percentile(FirstTokenSamples, 0.50);

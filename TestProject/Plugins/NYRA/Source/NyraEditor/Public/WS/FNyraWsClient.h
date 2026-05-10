@@ -62,4 +62,10 @@ private:
     int64 NextId = 1;
     int64 AuthRequestId = 0;   // id used for the session/authenticate first frame
     bool bAuthenticated = false;
+    // BL-05: monotonic counter bumped on every Connect()/Disconnect(). Lambdas
+    // capture the generation by value; if the captured generation differs
+    // from the current value when the callback fires, we know Connect was
+    // called again (or Disconnect ran) and the callback bails out cleanly,
+    // avoiding use-after-free on the WS worker thread during rapid reconnect.
+    uint64 ConnectionGeneration = 0;
 };

@@ -98,11 +98,36 @@ void FNyraSupervisor::PerformSpawn()
         return;
     }
 
+    // BL-04: ensure no stale handshake file from a previous (crashed)
+    // NyraHost can be misread as the new one. Cancel any in-flight
+    // polling, delete the previous PID-derived handshake file, and run
+    // CleanupOrphans so a recycled PID can never deadlock the new
+    // editor's bind. Also record the spawn timestamp so the polling
+    // OnReady can reject any handshake whose started_at predates this
+    // spawn (defense-in-depth against PID reuse).
+    Handshake.CancelPolling();
+    const int32 EditorPid = FPlatformProcess::GetCurrentProcessId();
+    FNyraHandshake::DeleteFile(HandshakeDir, EditorPid);
+    FNyraHandshake::CleanupOrphans(HandshakeDir);
+    const int64 SpawnedAt = FDateTime::UtcNow().ToUnixTimestamp() * 1000;
+
     // Begin polling for the handshake file.
     SetState(ENyraSupervisorState::WaitingForHandshake);
     Handshake = FNyraHandshake{};
-    Handshake.OnReady.BindLambda([this](const FNyraHandshakeData& Data)
+    Handshake.OnReady.BindLambda([this, SpawnedAt](const FNyraHandshakeData& Data)
     {
+        // BL-04: reject handshake files whose started_at predates this
+        // spawn. A NyraHost that began before our PerformSpawn cannot have
+        // emitted this file -- it must be a stale leftover from a prior
+        // editor that the orphan cleanup somehow missed (PID race,
+        // antivirus delay).
+        if (Data.StartedAt > 0 && Data.StartedAt < SpawnedAt)
+        {
+            UE_LOG(LogNyra, Warning,
+                TEXT("[NYRA] Rejecting stale handshake (started_at=%lld < spawned_at=%lld); waiting for fresh"),
+                Data.StartedAt, SpawnedAt);
+            return;
+        }
         CurrentHandshake = Data;
         SetState(ENyraSupervisorState::Connecting);
 
