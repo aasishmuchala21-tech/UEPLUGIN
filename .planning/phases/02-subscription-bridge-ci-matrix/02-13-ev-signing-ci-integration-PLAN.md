@@ -80,11 +80,21 @@ Per CONTEXT.md:
   run: |
     $binaries = Get-ChildItem -Recurse -Include @("*.dll","*.exe") `
                   -Path Artifacts/UE_${{ matrix.ue-version }}/
-    # Optional: filter out pre-signed binaries by inspecting signature with Get-AuthenticodeSignature
+    # CR-08: pin pre-sign skip to KNOWN thumbprints (not substring match
+    # on Subject DN, which is bypassable by self-signing a cert containing
+    # "Astral" or "ggml" anywhere in the CN). The thumbprints are captured
+    # from the actual Astral Python and ggml.ai llama.cpp release binaries
+    # during Wave 0 setup; they live in $env:NYRA_KNOWN_THUMBPRINTS as a
+    # comma-separated allowlist. signtool verify /pa is NOT sufficient on
+    # its own because it accepts any trusted signature; we need exact
+    # thumbprint equality so a foreign cert with a matching CN cannot
+    # claim to be a known pre-signed dependency.
+    $KnownThumbprints = ($env:NYRA_KNOWN_THUMBPRINTS -split ",")
     foreach ($bin in $binaries) {
       $sig = Get-AuthenticodeSignature $bin.FullName
-      if ($sig.Status -eq "Valid" -and $sig.SignerCertificate.Subject -match "Astral|ggml") {
-        Write-Host "Skipping pre-signed $($bin.Name): $($sig.SignerCertificate.Subject)"
+      $thumbprint = $sig.SignerCertificate.Thumbprint
+      if ($sig.Status -eq "Valid" -and ($KnownThumbprints -contains $thumbprint)) {
+        Write-Host "Skipping pre-signed $($bin.Name): thumbprint=$thumbprint subject=$($sig.SignerCertificate.Subject)"
         continue
       }
       AzureSignTool sign `

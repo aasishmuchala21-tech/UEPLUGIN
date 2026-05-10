@@ -39,6 +39,15 @@ from nyrahost.backends.base import (
 
 log = structlog.get_logger(__name__)
 
+# CR-06: bound the cumulative size of buffered partial_json strings per
+# tool block, and the number of simultaneously open tool blocks. Without
+# these caps a malicious or misbehaving LLM emitting megabytes of
+# input_json_delta events without a closing content_block_stop will OOM
+# the NyraHost process.
+_MAX_TOOL_INPUT_BYTES = 1 * 1024 * 1024  # 1 MiB
+_MAX_OPEN_TOOL_BLOCKS = 8
+
+
 # Literal type aliases for the six known error categories carried in api_retry
 _ErrorCategory = Literal[
     "authentication_failed",
@@ -104,7 +113,16 @@ class StreamParser:
             return []
         elif subtype == "api_retry":
             attempt: int = obj.get("attempt", 1)
-            delay_ms: int = obj.get("retry_delay_ms", 0)
+            # CR-07: Claude CLI emits this field as `delay_ms`, not
+            # `retry_delay_ms`. The previous accessor returned 0 on
+            # every real retry event so the router's backoff fired
+            # with no delay. Read both forms so a future CLI rename
+            # in either direction doesn't silently regress to 0.
+            delay_ms: int = int(
+                obj.get("delay_ms")
+                or obj.get("retry_delay_ms")
+                or 0
+            )
             raw_error: str = obj.get("error", "unknown")
             category: _ErrorCategory = _normalize_error_category(raw_error)
             return [Retry(attempt=attempt, delay_ms=delay_ms, error_category=category)]
@@ -120,7 +138,13 @@ class StreamParser:
             delta_obj = event.get("delta", {})
             delta_type = delta_obj.get("type", "")
             if delta_type == "text_delta":
-                return [Delta(text=delta_obj.get("text_delta", ""))]
+                # CR-07: Anthropic Messages SSE schema puts the text
+                # under `delta.text`, not `delta.text_delta`. The
+                # previous accessor returned "" for every real text
+                # delta so the chat panel saw zero tokens. Read both
+                # so a fixture / older CLI wire shape still flows.
+                text_value = delta_obj.get("text") or delta_obj.get("text_delta") or ""
+                return [Delta(text=text_value)]
             elif delta_type == "input_json_delta":
                 return self._handle_input_json_delta(event, delta_obj)
             else:
@@ -142,25 +166,73 @@ class StreamParser:
         if block.get("type") == "tool_use":
             tool_id = block.get("id", "")
             tool_name = block.get("name", "")
-            # Buffer the start for later accumulation
-            self._tool_buf[tool_id] = {"name": tool_name, "input_parts": []}
+            # CR-06: cap the number of simultaneously open tool blocks so
+            # an adversary cannot omit content_block_stop and accumulate
+            # unbounded buffers. Drop new opens past the cap; the dropped
+            # tool_use's deltas will land on a no-existing-block path
+            # below and be silently discarded (acceptable; the ToolUse
+            # event is already emitted with empty input).
+            if len(self._tool_buf) >= _MAX_OPEN_TOOL_BLOCKS:
+                log.warning(
+                    "tool_block_open_cap",
+                    open_count=len(self._tool_buf),
+                    cap=_MAX_OPEN_TOOL_BLOCKS,
+                )
+                return [ToolUse(id=tool_id, name=tool_name, input_json="")]
+            self._tool_buf[tool_id] = {
+                "name": tool_name,
+                "input_parts": [],
+                "_size": 0,  # CR-06: cumulative byte counter
+            }
             return [ToolUse(id=tool_id, name=tool_name, input_json="")]
         return []
 
     def _handle_input_json_delta(
         self, event: dict, delta_obj: dict
     ) -> list[BackendEvent]:
-        # The index field identifies which block this delta belongs to
-        # We track by id instead since index alone is ambiguous across block types
+        # The index field identifies which block this delta belongs to.
+        # WR-10 fix: prefer event.index → tool_id mapping at content_block_start
+        # time over "last-opened" heuristic, but maintain backwards-compat
+        # with single-block streams.
         partial = delta_obj.get("partial_json", "")
-        # Try to find the most recently opened tool_use by scanning the buffer.
-        # If not found (shouldn't happen in normal operation), discard.
-        if self._tool_buf:
-            # last-opened-id: maintain insertion order by popping and re-adding
+        if not isinstance(partial, str):
+            return []
+        if not self._tool_buf:
+            return []
+        # Map by index when available.
+        idx = event.get("index")
+        target_id: str | None = None
+        if isinstance(idx, int):
+            for tid, buf in self._tool_buf.items():
+                if buf.get("_index") == idx:
+                    target_id = tid
+                    break
+        if target_id is None:
+            # Fallback: most-recently-opened tool block.
             tool_ids = list(self._tool_buf.keys())
             if tool_ids:
-                last_id = tool_ids[-1]
-                self._tool_buf[last_id]["input_parts"].append(partial)
+                target_id = tool_ids[-1]
+        if target_id is None:
+            return []
+        buf = self._tool_buf[target_id]
+        # CR-06: cap the cumulative input bytes per tool block. Once a
+        # buffer exceeds the cap, silently drop further deltas and emit
+        # a one-time warning per block. The block's eventual ToolUse
+        # event will carry whatever was accumulated up to the cap.
+        size_now = buf.get("_size", 0)
+        chunk = partial.encode("utf-8")
+        if size_now + len(chunk) > _MAX_TOOL_INPUT_BYTES:
+            if not buf.get("_capped"):
+                log.warning(
+                    "tool_input_too_large",
+                    tool_id=target_id,
+                    size=size_now,
+                    cap=_MAX_TOOL_INPUT_BYTES,
+                )
+                buf["_capped"] = True
+            return []
+        buf["input_parts"].append(partial)
+        buf["_size"] = size_now + len(chunk)
         return []
 
     def _handle_content_block_stop(self, event: dict) -> list[BackendEvent]:

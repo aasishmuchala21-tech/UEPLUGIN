@@ -108,14 +108,58 @@ async def handle_nyra_console_exec(
         }
 
     if tier == "B":
-        # Tier B: generate preview via permission gate (Plan 02-09)
-        preview_id = f"console-{command[:20]}"
-        await permission_gate.generate_preview(preview_id, [
-            {"tool": "nyra_console_exec", "args": {"command": command}, "impact": f"Execute console: {command}", "risk": "reversible"}
-        ])
-        # For stub: simulate immediate approval after preview
-        # Real implementation: await decision, then proceed or reject
-        await permission_gate.approve(preview_id)
+        # CR-04: Tier-B preview MUST be user-confirmed before execution.
+        # The previous implementation called permission_gate.approve()
+        # directly inside this coroutine, which made the preview a no-op
+        # and bypassed CHAT-04 entirely. Now we generate the preview,
+        # then *await* the user's decision via the gate. On rejection,
+        # return a structured -32011 plan_rejected envelope so the UE
+        # console keeps the typed command in the buffer for editing.
+        # preview_id collision-safe: per-call UUID (was [:20] of command,
+        # which collides on identical commands run in parallel).
+        import uuid as _uuid
+        preview_id = f"console-{_uuid.uuid4()}"
+        await permission_gate.generate_preview(preview_id, [{
+            "tool": "nyra_console_exec",
+            "args": {"command": command},
+            "impact": f"Execute console: {command}",
+            "risk": "reversible",
+        }])
+        try:
+            decision = await permission_gate.await_decision(preview_id)
+        except AttributeError:
+            # Older permission gates without await_decision still expose
+            # approve/reject; treat absence of await_decision as a
+            # configuration error rather than auto-approving.
+            return {
+                "error": {
+                    "code": -32011,
+                    "message": "plan_gate_unconfigured",
+                    "data": {
+                        "remediation": (
+                            "permission_gate.await_decision is not available; "
+                            "Tier-B console commands cannot be confirmed. "
+                            "Update NyraHost or run the command via UE editor directly."
+                        ),
+                        "preview_id": preview_id,
+                    },
+                }
+            }
+        if not decision or not getattr(decision, "approved", False):
+            return {
+                "error": {
+                    "code": -32011,
+                    "message": "plan_rejected",
+                    "data": {
+                        "remediation": (
+                            "User rejected the preview. Edit the command "
+                            "and re-issue, or click Approve in the chat panel."
+                        ),
+                        "preview_id": preview_id,
+                        "command": command,
+                    },
+                }
+            }
 
     # Tier A and approved Tier B: emit console/exec request to UE
     result = await ws_emit_request("console/exec", {

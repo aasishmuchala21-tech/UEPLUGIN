@@ -29,7 +29,9 @@ No rate-limit fallback logic here — that lands in Plan 02-06.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Final
@@ -126,10 +128,24 @@ class ClaudeBackend(AgentBackend):
             out_path=mcp_config_file,
         )
 
-        # 2. Build argv — RESEARCH §1.1 locked flag set; --bare ABSENT (D-02)
+        # CR-02: feed the prompt via stdin (--input-format=stream-json) rather
+        # than positionally on argv. On Windows, CreateProcess + CommandLineToArgvW
+        # reassemble argv from the joined command line; embedded `"`, NUL, or
+        # leading `--` in user content can split the argument and inject flags
+        # (e.g. an LLM-emitted system prompt containing
+        # ` --dangerously-skip-permissions ` would land as a real flag).
+        # Reject NUL bytes and feed the rest through stdin where the argv
+        # parser cannot reach.
+        if "\x00" in content:
+            raise ValueError(
+                "[-32030] prompt contains NUL byte; rejected to prevent "
+                "Windows argv-reassembly truncation"
+            )
+
         argv = [
             str(self._claude_path),
             "-p",
+            "--input-format", "stream-json",
             "--output-format", "stream-json",
             "--verbose",
             "--include-partial-messages",
@@ -138,9 +154,10 @@ class ClaudeBackend(AgentBackend):
             "--session-id", session_id,
             "--permission-mode", "dontAsk",
             "--permission-prompt-tool", "nyra_permission_gate",
-            "--",
-            content,
         ]
+        # CR-02: argv no longer carries the user-controlled `content`.
+        # The prompt is written to stdin below as a JSON-RPC message frame
+        # (Claude CLI's documented stream-json input format).
 
         # 3. Scrub API-key env vars from child env (D-02; RESEARCH §1.2)
         child_env: dict[str, str] = {}
@@ -173,6 +190,25 @@ class ClaudeBackend(AgentBackend):
             return
 
         self._inflight[req_id] = proc
+
+        # CR-02: write the user prompt to stdin as a stream-json input frame.
+        # Per Claude CLI docs (RESEARCH §1.1), --input-format=stream-json
+        # reads a single JSON message from stdin: {"type":"user", "message":
+        # {"role":"user","content":[{"type":"text","text":"..."}]}}.
+        try:
+            assert proc.stdin is not None
+            input_frame = json.dumps({
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": content}],
+                },
+            })
+            proc.stdin.write((input_frame + "\n").encode("utf-8"))
+            await proc.stdin.drain()
+            proc.stdin.close()
+        except Exception as exc:
+            log.warning("claude_stdin_write_failed", error=str(exc))
 
         # 5. Read NDJSON lines from stdout, parse, emit
         parser = StreamParser()

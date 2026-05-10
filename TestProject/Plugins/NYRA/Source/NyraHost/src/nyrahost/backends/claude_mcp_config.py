@@ -36,6 +36,20 @@ __all__ = ["write_mcp_config", "cleanup_stale_configs"]
 
 log: Final = structlog.get_logger(__name__)
 
+# CR-03: every id-shaped param that flows into a filename or env var must
+# match this regex. UUID-shaped values are well within the 1-64 char
+# alphanum + dash + underscore set; anything else is rejected before any
+# filesystem or subprocess interaction.
+_ID_PATTERN = __import__("re").compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _validate_id(name: str, value: str) -> None:
+    """Raise ValueError if ``value`` does not match the strict id pattern."""
+    if not isinstance(value, str) or not _ID_PATTERN.match(value):
+        raise ValueError(
+            f"[-32030] {name} must match ^[A-Za-z0-9_-]{{1,64}}$ (got {value!r})"
+        )
+
 _DEFAULT_APP_DATA: Final = (
     Path(os.environ["LOCALAPPDATA"])
     if "LOCALAPPDATA" in os.environ
@@ -75,7 +89,31 @@ def write_mcp_config(
         Destination file path. Caller is responsible for placing this under
         ``MCP_CONFIGS_DIR/<session-id>.json`` or equivalent. Existence of the
         parent directory is NOT guaranteed; the caller should ensure it exists.
+
+    Raises
+    ------
+    ValueError
+        CR-03: when ``session_id``, ``conversation_id``, or ``out_path``
+        fails validation. Both ids must match ^[A-Za-z0-9_-]{1,64}$ (UUID
+        shape); ``out_path`` must resolve under ``MCP_CONFIGS_DIR`` so
+        callers cannot write the config file outside the per-user dir
+        (defends against `..` segments that could land the file in another
+        user's directory or overwrite system files).
     """
+    # CR-03: validate ids before they reach filenames / env vars.
+    _validate_id("session_id", session_id)
+    _validate_id("conversation_id", conversation_id)
+
+    # CR-03: assert out_path is under MCP_CONFIGS_DIR.
+    try:
+        out_resolved = out_path.resolve()
+        out_resolved.relative_to(MCP_CONFIGS_DIR.resolve())
+    except (ValueError, OSError) as exc:
+        raise ValueError(
+            f"[-32030] out_path must resolve under {MCP_CONFIGS_DIR} "
+            f"(got {out_path!r}): {exc}"
+        )
+
     payload = {
         "mcpServers": {
             "nyra": {

@@ -80,6 +80,10 @@ class NyraTransactionManager:
         self._active: Optional[NyraTransaction] = None
         self._super_tx_counter = 0
         self._pie_active = False  # Updated by diagnostics/pie-state notifications
+        # CR-05: track whether ANY pie-state push has arrived. Callers can
+        # consult this to fail-closed during the cold-start window before
+        # the editor has had a chance to push its current PIE state.
+        self._pie_state_seen = False
 
     @asynccontextmanager
     async def begin_transaction(
@@ -98,18 +102,33 @@ class NyraTransactionManager:
         self._super_tx_counter += 1
         super_tx_id = f"super-{self._super_tx_counter:06d}"
 
-        # PIE guard: check before mutating
+        # CR-05: PIE guard. The previous code yielded a PIE_GUARDED tx and
+        # let the caller body run, which silently accumulated state with
+        # no rollback. The contract from CONTEXT D-11 is that PIE mode
+        # MUST refuse mutations; the correct behavior is to raise so the
+        # caller surface returns -32014 pie_active to UE rather than
+        # creating a phantom transaction the caller will populate without
+        # any commit/rollback actually persisting.
+        # Defense-in-depth on cold start: if `_pie_active` is False because
+        # we have not yet received the initial diagnostics/pie-state push
+        # from UE, the caller will run unguarded -- session/handshake is
+        # the canonical place for UE to push the initial state. The
+        # _pie_state_seen flag below tracks whether ANY state push has
+        # arrived; callers can opt to refuse mutations until then.
         if self._pie_active:
-            tx = NyraTransaction(
-                id=str(uuid.uuid4()),
+            log.warning(
+                "transaction_pie_guard_refused",
+                super_tx_id=super_tx_id,
                 session_id=session_id,
-                state=TransactionState.PIE_GUARDED,
-                super_transaction_id=super_tx_id,
-                created_at=int(time.time() * 1000),
             )
-            self._active = tx
-            yield tx
-            return
+            await self._emit("diagnostics/transaction-rejected", {
+                "transaction_id": super_tx_id,
+                "session_id": session_id,
+                "reason": "pie_active",
+            })
+            raise PIEActiveError(
+                "[-32014] pie_active: refusing mutation while UE is in Play-In-Editor"
+            )
 
         tx = NyraTransaction(
             id=str(uuid.uuid4()),
@@ -164,10 +183,29 @@ class NyraTransactionManager:
         return not self._pie_active
 
     def on_pie_state_changed(self, pie_active: bool) -> None:
-        """Called by diagnostics/pie-state notification handler (Plan 02-08)."""
+        """Called by diagnostics/pie-state notification handler (Plan 02-08).
+
+        CR-05: also flips the _pie_state_seen flag the first time we hear
+        from UE, so callers that fail-closed during cold start can know
+        when it's safe to begin issuing mutations.
+        """
         self._pie_active = pie_active
+        self._pie_state_seen = True
         log.info("pie_state_changed", pie_active=pie_active)
 
 
+class PIEActiveError(RuntimeError):
+    """CR-05: raised by begin_transaction when UE is in Play-In-Editor.
+
+    The caller (chat handler / tool dispatcher) should catch this and
+    return a JSON-RPC -32014 pie_active error envelope to the UE client.
+    """
+
+
 from typing import AsyncIterator
-__all__ = ["NyraTransactionManager", "NyraTransaction", "TransactionState"]
+__all__ = [
+    "NyraTransactionManager",
+    "NyraTransaction",
+    "TransactionState",
+    "PIEActiveError",
+]
