@@ -209,7 +209,16 @@ class LightingAuthoringTool(NyraTool):
 
     @staticmethod
     def _preset_to_params(preset_name: str) -> LightingParams:
-        return _PRESETS.get(preset_name, _PRESETS["studio_fill"])
+        # WR-04: don't silently substitute studio_fill for typos. The dry-run
+        # tool and the apply tool both pass through here, so a mistyped
+        # preset would otherwise quietly produce the wrong lighting and
+        # report "Lighting applied" as if everything matched.
+        if preset_name not in _PRESETS:
+            raise ValueError(
+                f"Unknown lighting preset '{preset_name}'. "
+                f"Valid: {sorted(_PRESETS)}"
+            )
+        return _PRESETS[preset_name]
 
     # --- Application --------------------------------------------------------
 
