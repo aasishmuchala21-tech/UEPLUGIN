@@ -21,6 +21,10 @@ import structlog
 from nyrahost.tools.asset_fallback_chain import AssetFallbackChain
 from nyrahost.tools.scene_orchestrator import SceneAssemblyOrchestrator
 from nyrahost.tools.scene_types import (
+    ASSEMBLY_STEP_APPLYING_MATERIALS,
+    ASSEMBLY_STEP_FINALIZING,
+    ASSEMBLY_STEP_PLACING_ACTORS,
+    ASSEMBLY_STEP_SETTING_UP_LIGHTING,
     ActorSpec,
     AssemblyResult,
     LightingParams,
@@ -85,7 +89,7 @@ class SceneAssembler(SceneAssemblyOrchestrator):
         for spec in blueprint.actor_specs:
             for _ in range(spec.count):
                 placed += 1
-                progress("Placing Actors", placed, total_actors, spec.role)
+                progress(ASSEMBLY_STEP_PLACING_ACTORS, placed, total_actors, spec.role)
                 placed_entry = self._place_actor(spec)
                 result.placed_actors.append(placed_entry)
                 result.log_entries.append(
@@ -96,7 +100,7 @@ class SceneAssembler(SceneAssemblyOrchestrator):
         # Step 2: Apply materials
         total_materials = max(1, len(blueprint.material_specs))
         for idx, mspec in enumerate(blueprint.material_specs, start=1):
-            progress("Applying Materials", idx, total_materials, mspec.material_type)
+            progress(ASSEMBLY_STEP_APPLYING_MATERIALS, idx, total_materials, mspec.material_type)
             material_entry = self._apply_material(mspec)
             result.applied_materials.append(material_entry)
             result.log_entries.append(
@@ -105,7 +109,7 @@ class SceneAssembler(SceneAssemblyOrchestrator):
             )
 
         # Step 3: Lighting
-        progress("Setting Up Lighting", 1, 1, "lighting")
+        progress(ASSEMBLY_STEP_SETTING_UP_LIGHTING, 1, 1, "lighting")
         if lighting_plan and self._lighting_tool is not None:
             try:
                 # Honor the LightingParams the caller supplied: serialize via
@@ -128,7 +132,7 @@ class SceneAssembler(SceneAssemblyOrchestrator):
                 result.log_entries.append(f"lighting:error {e}")
 
         # Step 4: Finalize
-        progress("Finalizing", 1, 1, "summary")
+        progress(ASSEMBLY_STEP_FINALIZING, 1, 1, "summary")
         # CR-03: success must reflect actual outcome. _place_actor returns a
         # dict containing the "error" key on spawn failure, and the lighting
         # step records "lighting:error ..." log entries when the lighting tool

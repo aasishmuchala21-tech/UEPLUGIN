@@ -52,6 +52,11 @@ void SNyraProgressBar::Reset()
 
 float SNyraProgressBar::ProgressFor(const FString& Step) const
 {
+	// WR-06: WIRE CONSTANTS. The labels below MUST match
+	// nyrahost.tools.scene_types.ASSEMBLY_PROGRESS_STEPS (in
+	// NYRA/Source/NyraHost/src/nyrahost/tools/scene_types.py). Adding or
+	// renaming a step requires updating BOTH that Python list AND this
+	// switch -- the assembler emits these strings verbatim over WS.
 	// 4 segments: Placing Actors / Applying Materials / Setting Up Lighting / Finalizing
 	float SegmentBase = 0.0f;
 	if (Step == TEXT("Applying Materials"))    SegmentBase = 0.25f;

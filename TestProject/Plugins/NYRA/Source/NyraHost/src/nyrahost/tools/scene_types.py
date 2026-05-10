@@ -314,3 +314,25 @@ PRESET_TOKENS: dict[str, list[str]] = {
     "studio_fill": ["studio", "fill", "neutral", "even"],
     "dawn": ["dawn", "morning", "sunrise", "pink", "first light"],
 }
+
+
+# ---------------------------------------------------------------------------
+# Assembly progress step labels (WR-06)
+# ---------------------------------------------------------------------------
+#
+# WIRE CONSTANTS shared across the Python assembler and the C++ Slate
+# progress bar. Both ends MUST use the same strings; SNyraProgressBar.cpp
+# matches against these in ProgressFor(). Adding or renaming a step
+# requires updating BOTH this list AND SNyraProgressBar::ProgressFor().
+
+ASSEMBLY_STEP_PLACING_ACTORS = "Placing Actors"
+ASSEMBLY_STEP_APPLYING_MATERIALS = "Applying Materials"
+ASSEMBLY_STEP_SETTING_UP_LIGHTING = "Setting Up Lighting"
+ASSEMBLY_STEP_FINALIZING = "Finalizing"
+
+ASSEMBLY_PROGRESS_STEPS: list[str] = [
+    ASSEMBLY_STEP_PLACING_ACTORS,
+    ASSEMBLY_STEP_APPLYING_MATERIALS,
+    ASSEMBLY_STEP_SETTING_UP_LIGHTING,
+    ASSEMBLY_STEP_FINALIZING,
+]
