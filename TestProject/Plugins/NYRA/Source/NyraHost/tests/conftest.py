@@ -174,3 +174,45 @@ def tmp_manifest_path(tmp_staging_dir: Path) -> Path:
     manifest_path = tmp_staging_dir / "nyra_pending.json"
     manifest_path.write_text(json.dumps({"version": 1, "jobs": []}))
     return manifest_path
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 integration fixtures (Plan 06-03)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sample_reference_image(tmp_path: Path) -> Path:
+    """Reference image bytes on disk for SceneAssembler.analyze_image.
+
+    The Phase 6 pipeline only needs Path.exists() to return True before calling
+    the (mocked) router; image decoding is the LLM provider's concern. We write
+    a JPEG-magic-prefixed byte sequence so any future content-type sniff still
+    classifies the file as an image without bloating the fixture.
+    """
+    img_path = tmp_path / "phase6_reference.jpg"
+    img_path.write_bytes(b"\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")
+    return img_path
+
+
+@pytest.fixture
+def fake_meshy_tool():
+    """Drop-in Meshy tool stub returning a deterministic asset_path."""
+    from nyrahost.tools.base import NyraToolResult
+
+    class _Tool:
+        def execute(self, params):
+            return NyraToolResult.ok({"asset_path": f"/Game/Meshy/{params.get('prompt', 'asset')}.uasset"})
+
+    return _Tool()
+
+
+@pytest.fixture
+def fake_comfyui_tool():
+    """Drop-in ComfyUI tool stub returning a deterministic asset_path."""
+    from nyrahost.tools.base import NyraToolResult
+
+    class _Tool:
+        def execute(self, params):
+            return NyraToolResult.ok({"asset_path": f"/Game/ComfyUI/{params.get('prompt', 'mat')}.M_Generated"})
+
+    return _Tool()
