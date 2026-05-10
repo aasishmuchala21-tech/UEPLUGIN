@@ -285,16 +285,19 @@ class SequencerSetKeyframeTool(SequencerToolMixin, NyraTool):
         if binding is None:
             return NyraToolResult.err(f"Actor not bound to sequence: {params['binding_path']}")
         frame = int(min(max(params["time_seconds"], 0) * 24.0, 86400))  # clamp to 1hr max
-        if params.get("transform"):
+        # WR-05: explicit "is not None" so a legitimate value of 0 (e.g. dim
+        # a light to 0 over time, set a 0 deg FOV adjustment) is not silently
+        # treated as "skip this channel".
+        if params.get("transform") is not None:
             t = params["transform"]
             loc = (t["location"]["x"], t["location"]["y"], t["location"]["z"])
             rot = (t["rotation"]["pitch"], t["rotation"]["yaw"], t["rotation"]["roll"])
             self._set_transform_keyframe(seq, binding, frame, loc, rot)
-        if params.get("fov_degrees"):
+        if params.get("fov_degrees") is not None:
             self._set_camera_fov_keyframe(seq, binding, frame, params["fov_degrees"])
-        if params.get("light_intensity"):
+        if params.get("light_intensity") is not None:
             self._set_light_intensity_keyframe(seq, binding, frame, params["light_intensity"])
-        if params.get("light_color"):
+        if params.get("light_color") is not None:
             self._set_light_color_keyframe(seq, binding, frame, tuple(params["light_color"]))
         log.info("keyframe_set", binding=params["binding_path"],
                  time_s=params["time_seconds"], frame=frame)
