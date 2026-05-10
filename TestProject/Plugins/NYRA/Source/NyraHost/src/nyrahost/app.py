@@ -72,6 +72,10 @@ from .tools.blueprint_review import on_review_graph
 from .tools.pcg_scatter import on_pcg_scatter
 from .tools.blockout_validation import validate_blockout
 from .tools.blueprint_review_llm import on_compose_review
+# Phase 17 — finish Tier 2 (on-device SD, plugin marketplace, multiplayer NYRA).
+from .external.local_sd import on_local_inpaint, on_probe as on_local_sd_probe
+from .marketplace import MarketplaceClient, MarketplaceHandlers
+from .multiplayer import LocalRoomBackend, MultiplayerHandlers
 from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
@@ -263,6 +267,18 @@ async def build_and_run(
     # Phase 14-H — replication scaffolder (pure-function output).
     repl_handlers = ReplicationScaffolderHandlers()
 
+    # Phase 17-B — marketplace client (default URL; can be overridden
+    # via env). Real signing keys land alongside the marketplace deploy.
+    marketplace_handlers = MarketplaceHandlers(
+        MarketplaceClient(),
+        user_tools_dir=user_tools_dir,
+    )
+
+    # Phase 17-C — multiplayer NYRA. v0 ships LocalRoomBackend
+    # (single-process); a network backend lands when the sync
+    # server itself is deployed.
+    multiplayer_handlers = MultiplayerHandlers(LocalRoomBackend())
+
     # Phase 15-A — encrypted per-project memory.
     encrypted_memory = EncryptedMemory(project_dir=project_dir)
     encrypted_memory_handlers = EncryptedMemoryHandlers(encrypted_memory)
@@ -434,6 +450,19 @@ async def build_and_run(
         # Phase 16 — Tier 1.B finish line.
         server.register_request("level_design/pcg_scatter", on_pcg_scatter)
         server.register_request("blueprint_review/compose", on_compose_review)
+        # Phase 17-A — on-device Stable Diffusion.
+        server.register_request("inpaint/submit_local", on_local_inpaint)
+        server.register_request("inpaint/local_probe", on_local_sd_probe)
+        # Phase 17-B — plugin marketplace.
+        server.register_request("marketplace/list", marketplace_handlers.on_list)
+        server.register_request("marketplace/install", marketplace_handlers.on_install)
+        server.register_request("marketplace/uninstall", marketplace_handlers.on_uninstall)
+        # Phase 17-C — multiplayer NYRA.
+        server.register_request("multiplayer/rooms/list", multiplayer_handlers.on_list_rooms)
+        server.register_request("multiplayer/rooms/join", multiplayer_handlers.on_join)
+        server.register_request("multiplayer/rooms/leave", multiplayer_handlers.on_leave)
+        server.register_request("multiplayer/events/post", multiplayer_handlers.on_post_event)
+        server.register_request("multiplayer/events/poll", multiplayer_handlers.on_poll_events)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
