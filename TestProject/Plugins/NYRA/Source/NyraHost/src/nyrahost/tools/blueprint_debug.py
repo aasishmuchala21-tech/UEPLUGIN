@@ -130,7 +130,7 @@ def _get_compile_log(bp: unreal.Blueprint) -> list[str]:
         from unreal import FMessageLog
         # Open the Blueprint log page
         log_page = FMessageLog.Open(
-            unreal.ELogVerbosity::Error,  # type: ignore[misc]
+            unreal.ELogVerbosity.Error,  # type: ignore[misc]
             "BlueprintLog",
         )
         # Get messages for this asset
