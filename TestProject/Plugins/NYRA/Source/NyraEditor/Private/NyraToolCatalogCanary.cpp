@@ -100,20 +100,20 @@ static bool Validate_nyra_lighting_authoring()
 {
     // Check: LightingAuthoringTool registered with nl_prompt + reference_image_path +
     // preset_name + apply params. Verify SCENE-01 spec fields present.
-    return true; // Placeholder — full validation requires Python sidecar IPC
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list endpoint; returning false so canary truthfully reports "no validation performed" rather than fraudulent PASS
 }
 
 static bool Validate_nyra_lighting_dry_run_preview()
 {
     // Check: LightingDryRunTool registered with preset_name + lighting_params_json.
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_assemble_scene()
 {
     // Check: AssembleSceneTool registered with reference_image_path required +
     // optional lighting_preset.
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 // ---------------------------------------------------------------------------
@@ -126,91 +126,91 @@ static bool Validate_nyra_blueprint_read()
 {
     // Check: BlueprintReadTool is registered in mcp_server/__init__.py
     // Verify: tool name, description non-empty, asset_path param present
-    return true; // Placeholder — full validation requires Python sidecar IPC
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list endpoint; returning false so canary truthfully reports "no validation performed" rather than fraudulent PASS
 }
 
 static bool Validate_nyra_blueprint_write()
 {
     // Check: BlueprintWriteTool is registered
     // Verify: mutation + asset_path params, dry_run + recompile flags
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_blueprint_debug()
 {
     // Check: BlueprintDebugTool is registered
     // Verify: include_warnings + include_suggestions optional params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_asset_search()
 {
     // Check: AssetSearchTool is registered
     // Verify: query param, class_filter/limit/threshold optional params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_actor_spawn()
 {
     // Check: ActorSpawnTool is registered
     // Verify: actor_class + spawn_transform params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_actor_duplicate()
 {
     // Check: ActorDuplicateTool is registered
     // Verify: source_actor param
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_actor_delete()
 {
     // Check: ActorDeleteTool is registered
     // Verify: actor_path param
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_actor_select()
 {
     // Check: ActorSelectTool is registered
     // Verify: actor_path + mode params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_actor_transform()
 {
     // Check: ActorTransformTool is registered
     // Verify: actor_path + location/rotation/scale optional params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_actor_snap_ground()
 {
     // Check: ActorSnapGroundTool is registered
     // Verify: actor_path param
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_material_get_param()
 {
     // Check: MaterialGetParamTool is registered
     // Verify: material_path + param_name + param_type params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_material_set_param()
 {
     // Check: MaterialSetParamTool is registered
     // Verify: material_path + param_name + param_type params
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 static bool Validate_nyra_material_create_mic()
 {
     // Check: MaterialCreateMICTool is registered
     // Verify: parent_material param + optional mic_name
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 // ---------------------------------------------------------------------------
@@ -231,7 +231,7 @@ static bool Validate_nyra_meshy_image_to_3d()
     //   3. Optional params: prompt, task_type, target_folder
     //   4. Output schema includes job_id (string) and status (string)
     // Full validation requires Python sidecar running; stubs return true
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 // GEN-01: nyra_job_status
@@ -244,7 +244,7 @@ static bool Validate_nyra_job_status()
     //   1. Tool name: "nyra_job_status" in MCP tool list
     //   2. Required param: job_id (string)
     //   3. Output schema includes status (string), progress (number, optional), error (string, optional)
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 // GEN-02: nyra_comfyui_run_workflow
@@ -259,7 +259,7 @@ static bool Validate_nyra_comfyui_run_workflow()
     //   3. Optional params: input_image_asset_path, target_folder
     //   4. Idempotency: dedup by input_hash before new API call
     //   5. Output schema includes job_id (string) and status (string)
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 // GEN-02: nyra_comfyui_get_node_info
@@ -273,7 +273,7 @@ static bool Validate_nyra_comfyui_get_node_info()
     //   2. No required params
     //   3. Output: dict of node_type -> {inputs, required, properties}
     //   4. Security: only validated node types returned (no raw API dump — T-05-04)
-    return true;
+    return false; // BL-03 PENDING: real validation requires IPC to NyraHost tools/list
 }
 
 // ---------------------------------------------------------------------------
