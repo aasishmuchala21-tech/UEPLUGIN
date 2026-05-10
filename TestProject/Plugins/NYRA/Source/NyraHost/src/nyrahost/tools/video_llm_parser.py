@@ -169,3 +169,75 @@ class VideoReferenceParams:
             "analysis_confidence": self.analysis_confidence,
         }
         return json.dumps(payload)
+
+    @classmethod
+    def from_json(cls, payload: str) -> "VideoReferenceParams":
+        """Deserialize a JSON payload produced by ``to_json`` into a VideoReferenceParams.
+
+        Symmetric inverse of ``to_json``: lists are coerced back into tuples for
+        position / rotation / color fields, and the camera_move_type strings
+        are coerced back into the CameraMoveType enum (UNKNOWN on bad input).
+
+        Demo02Orchestrator -> SequencerAuthorShotTool round-trips through this
+        method; it must accept any output of ``to_json`` without raising.
+        """
+        import json
+
+        def _enum(v: object) -> "CameraMoveType":
+            try:
+                return CameraMoveType(v)
+            except (ValueError, TypeError):
+                return CameraMoveType.UNKNOWN
+
+        def _tuple(v: object, n: int, fill: float = 0.0) -> tuple:
+            if isinstance(v, (list, tuple)) and len(v) >= n:
+                return tuple(float(x) for x in v[:n])
+            return tuple([fill] * n)
+
+        def _opt_enum(v: object) -> Optional["CameraMoveType"]:
+            if v is None:
+                return None
+            return _enum(v)
+
+        d = json.loads(payload)
+
+        shot_blocks: list[ShotBlock] = []
+        for sb in d.get("shot_blocks", []) or []:
+            shot_blocks.append(ShotBlock(
+                shot_id=str(sb.get("shot_id", "")),
+                camera_move_type=_enum(sb.get("camera_move_type", "unknown")),
+                start_time=float(sb.get("start_time", 0.0)),
+                end_time=float(sb.get("end_time", 0.0)),
+                start_position=_tuple(sb.get("start_position"), 3),
+                end_position=_tuple(sb.get("end_position"), 3),
+                start_rotation=_tuple(sb.get("start_rotation"), 3),
+                end_rotation=_tuple(sb.get("end_rotation"), 3),
+                fov=float(sb.get("fov", 35.0)),
+                focus_distance=float(sb.get("focus_distance", 3.0)),
+                aperture=float(sb.get("aperture", 2.8)),
+                nl_description=str(sb.get("nl_description", "")),
+                user_confirmed=bool(sb.get("user_confirmed", False)),
+                user_override_move_type=_opt_enum(sb.get("user_override_move_type")),
+            ))
+
+        return cls(
+            shot_blocks=shot_blocks,
+            subject_position=_tuple(d.get("subject_position"), 2, fill=0.5),
+            framing=str(d.get("framing", "medium")),
+            rule_of_thirds=bool(d.get("rule_of_thirds", True)),
+            headroom=str(d.get("headroom", "normal")),
+            lighting_mood_tags=list(d.get("lighting_mood_tags", []) or []),
+            primary_color=_tuple(d.get("primary_color"), 3, fill=1.0),
+            primary_temperature_k=float(d.get("primary_temperature_k", 5500.0)),
+            fill_ratio=float(d.get("fill_ratio", 0.5)),
+            camera_move_type=_enum(d.get("camera_move_type", "unknown")),
+            camera_move_intensity=str(d.get("camera_move_intensity", "slow")),
+            camera_move_confidence=float(d.get("camera_move_confidence", 0.5)),
+            environment_type=str(d.get("environment_type", "indoor")),
+            time_of_day=str(d.get("time_of_day", "unknown")),
+            weather=str(d.get("weather", "unknown")),
+            geometry_categories=list(d.get("geometry_categories", []) or []),
+            clip_duration_seconds=float(d.get("clip_duration_seconds", 0.0)),
+            keyframe_count=int(d.get("keyframe_count", 0)),
+            analysis_confidence=float(d.get("analysis_confidence", 0.5)),
+        )
