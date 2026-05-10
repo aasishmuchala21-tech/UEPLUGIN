@@ -54,12 +54,65 @@ enum class ENyraMessageStatus : uint8
     Failed,   // error frame ended stream
 };
 
-/** Attachment reference (Phase 1 forwards paths; does NOT upload). */
+/** Kind discriminator for FNyraAttachmentRef.
+ *
+ *  Phase 1 only had image/text/video drops via the FDesktopPlatform picker
+ *  and the SNyraImageDropZone external-file path. Phase 8 extends:
+ *
+ *    - Plan 08-01 (PARITY-01) adds Document (PDF/DOCX/PPTX/XLSX/HTML/MD)
+ *      so document attachments flow through the same chip row + JSONRPC
+ *      attachment shape with extracted text + embedded-image re-ingestion.
+ *    - Plan 08-04 (PARITY-04) adds Asset for drag-from-Content-Browser
+ *      payloads. Asset attachments carry both AssetPath (/Game/...) and
+ *      AssetClass (StaticMesh / Material / Blueprint / ...) so NyraHost
+ *      can interpret them per-tool without round-tripping a path lookup.
+ *
+ *  LOCKED-10 co-ownership note: Document and Asset enum values are added
+ *  by Plan 08-01 and Plan 08-04 respectively. Order is plan-number first
+ *  (Document then Asset). New consumers must handle every value defensively.
+ */
+enum class ENyraAttachmentKind : uint8
+{
+    Image,
+    Text,
+    Video,
+    Document,   // Plan 08-01 (PARITY-01) — co-owned with 08-04 per LOCKED-10
+    Asset,      // Plan 08-04 (PARITY-04) — drag from UE Content Browser
+};
+
+/** Attachment reference (Phase 1 forwards paths; does NOT upload).
+ *
+ *  Plan 08-04 (PARITY-04) extension: when Kind == Asset, AssetPath and
+ *  AssetClass carry the structured FAssetData fields captured at drop
+ *  time (see SNyraImageDropZone::OnDrop -> SNyraComposer::HandleAssetDropped).
+ *  AbsolutePath stays empty for Asset kind because /Game/... isn't a
+ *  filesystem path -- the asset lives inside a UE .uasset and NyraHost
+ *  resolves it via unreal.EditorAssetLibrary.load_asset(AssetPath) on
+ *  the editor side.
+ *
+ *  JSON serialization note: this struct currently has no inline ToJson /
+ *  FromJson methods. The existing chat/send pipeline (SNyraChatPanel::
+ *  OnComposerSubmit) does NOT yet forward attachments over JSONRPC --
+ *  that's Plan 08-01's scope. Plan 08-04 wires the new delegate +
+ *  populates the new fields; the JSON emission path that consumes them
+ *  lands with 08-01.
+ */
 struct NYRAEDITOR_API FNyraAttachmentRef
 {
+    /** Plan 08-01/08-04: kind discriminator. Default Image preserves the
+     *  Phase 1 contract for existing 3-field initializers (composer +
+     *  chip + tests rely on AbsolutePath/DisplayName/SizeBytes only). */
+    ENyraAttachmentKind Kind = ENyraAttachmentKind::Image;
+
     FString AbsolutePath;
     FString DisplayName;
     int64 SizeBytes = 0;
+
+    /** Plan 08-04: /Game/... object path for Asset kind. Empty otherwise. */
+    FString AssetPath;
+    /** Plan 08-04: short asset class name (StaticMesh / Material / ...).
+     *  Empty when Kind != Asset. Sourced from FAssetData::AssetClassPath. */
+    FString AssetClass;
 };
 
 /**
