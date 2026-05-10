@@ -61,6 +61,36 @@ from nyrahost.tools.comfyui_tools import (
     ComfyUIGetNodeInfoTool,
 )
 from nyrahost.tools.kb_search import KbSearchTool
+# Phase 8 PARITY-02..08 — Competitive parity vs Aura
+from nyrahost.tools.cpp_authoring_tools import (
+    CppModuleCreateTool,
+    CppClassAddTool,
+    CppFunctionAddTool,
+    CppRecompileTool,
+)
+from nyrahost.tools.bt_tools import (
+    BTCreateTool,
+    BTAddCompositeTool,
+    BTAddTaskTool,
+    BTAddDecoratorTool,
+    BTSetBlackboardKeyTool,
+)
+from nyrahost.tools.niagara_tools import (
+    NiagaraCreateSystemTool,
+    NiagaraAddEmitterTool,
+    NiagaraSetModuleParameterTool,
+)
+from nyrahost.tools.perf_tools import PerfExplainHotspotTool
+from nyrahost.tools.animbp_tools import (
+    AnimBPCreateTool,
+    AnimBPAddStateMachineTool,
+    AnimBPAddTransitionTool,
+)
+from nyrahost.tools.metasound_tools import (
+    MetasoundCreateTool,
+    MetasoundAddNodeTool,
+    MetasoundConnectTool,
+)
 
 
 __version__ = "0.1.0"
@@ -98,6 +128,34 @@ class NyraMCPServer:
             "nyra_comfyui_get_node_info": ComfyUIGetNodeInfoTool(),
             # Phase 3: UE5 Knowledge RAG (BM25 floor; LanceDB-compatible)
             "nyra_kb_search": KbSearchTool(),
+            # === Phase 8: Competitive Parity vs Aura ===
+            # PARITY-02: C++ authoring + Live Coding
+            "nyra_cpp_module_create": CppModuleCreateTool(),
+            "nyra_cpp_class_add": CppClassAddTool(),
+            "nyra_cpp_function_add": CppFunctionAddTool(),
+            "nyra_cpp_recompile": CppRecompileTool(),
+            # PARITY-03: Behavior Tree authoring
+            "nyra_bt_create": BTCreateTool(),
+            "nyra_bt_add_composite": BTAddCompositeTool(),
+            "nyra_bt_add_task": BTAddTaskTool(),
+            "nyra_bt_add_decorator": BTAddDecoratorTool(),
+            "nyra_bt_set_blackboard_key": BTSetBlackboardKeyTool(),
+            # PARITY-05: Niagara VFX authoring
+            "nyra_niagara_create_system": NiagaraCreateSystemTool(),
+            "nyra_niagara_add_emitter": NiagaraAddEmitterTool(),
+            "nyra_niagara_set_module_parameter": NiagaraSetModuleParameterTool(),
+            # PARITY-06: Performance profiling (only explain_hotspot lives in
+            # _tools; stat_read + insights_query are WS-forwarders dispatched
+            # via handle_tool_call's elif chain — see 08-06-MCP-REGISTRATION.md)
+            "nyra_perf_explain_hotspot": PerfExplainHotspotTool(),
+            # PARITY-07: Animation Blueprint authoring
+            "nyra_animbp_create": AnimBPCreateTool(),
+            "nyra_animbp_add_state_machine": AnimBPAddStateMachineTool(),
+            "nyra_animbp_add_transition": AnimBPAddTransitionTool(),
+            # PARITY-08: Metasounds (audio) — gloss-tier, smallest surface
+            "nyra_metasound_create": MetasoundCreateTool(),
+            "nyra_metasound_add_node": MetasoundAddNodeTool(),
+            "nyra_metasound_connect": MetasoundConnectTool(),
         }
 
     def set_ws_emit(self, emit_fn: callable) -> None:

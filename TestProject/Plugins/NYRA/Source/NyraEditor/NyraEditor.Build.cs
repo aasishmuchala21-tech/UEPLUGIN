@@ -41,6 +41,21 @@ public class NyraEditor : ModuleRules
             "WorkspaceMenuStructure",
             "MainFrame",
             "LevelEditor",
+            // Phase 8 PARITY-02 — C++ authoring + Live Coding helper
+            "LiveCoding",
+            "HotReload",
+            // Phase 8 PARITY-03 — Behavior Tree authoring helper
+            "AIModule",
+            "BehaviorTreeEditor",
+            "AssetTools",
+            "AssetRegistry",
+            // Phase 8 PARITY-05 — Niagara VFX authoring helper
+            "Niagara",
+            "NiagaraEditor",
+            // Phase 8 PARITY-07 — Animation Blueprint authoring helper
+            "AnimGraph",
+            "AnimGraphRuntime",
+            "BlueprintGraph",
         });
 
         // Stage NyraHost + NyraInfer binaries when the plugin is packaged.
