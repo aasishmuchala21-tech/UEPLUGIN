@@ -76,6 +76,11 @@ from .tools.blueprint_review_llm import on_compose_review
 from .external.local_sd import on_local_inpaint, on_probe as on_local_sd_probe
 from .marketplace import MarketplaceClient, MarketplaceHandlers
 from .multiplayer import LocalRoomBackend, MultiplayerHandlers
+# Phase 18 — Tier 3 polish.
+from .snapshot import SnapshotHandlers
+from .recovery import RecoveryHandlers, RecoveryStore
+from .handlers.settings_aggregator import SettingsAggregatorHandlers
+from .i18n_catalog import on_catalog as on_i18n_catalog
 from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
@@ -279,6 +284,22 @@ async def build_and_run(
     # server itself is deployed.
     multiplayer_handlers = MultiplayerHandlers(LocalRoomBackend())
 
+    # Phase 18-B — snapshot export.
+    snapshot_handlers = SnapshotHandlers(project_dir=project_dir)
+
+    # Phase 18-C — crash recovery resume.
+    recovery_handlers = RecoveryHandlers(RecoveryStore(project_dir=project_dir))
+
+    # Phase 18-D — settings/all aggregator.
+    settings_aggregator = SettingsAggregatorHandlers(
+        instructions=instructions_handlers,
+        model=model_settings_handlers,
+        repro=repro_handlers,
+        session_mode=session_mode_handler,
+        user_tools=user_tools_handlers,
+        mcp_install=mcp_install_handlers,
+    )
+
     # Phase 15-A — encrypted per-project memory.
     encrypted_memory = EncryptedMemory(project_dir=project_dir)
     encrypted_memory_handlers = EncryptedMemoryHandlers(encrypted_memory)
@@ -463,6 +484,14 @@ async def build_and_run(
         server.register_request("multiplayer/rooms/leave", multiplayer_handlers.on_leave)
         server.register_request("multiplayer/events/post", multiplayer_handlers.on_post_event)
         server.register_request("multiplayer/events/poll", multiplayer_handlers.on_poll_events)
+        # Phase 18 — Tier 3 polish.
+        server.register_request("snapshot/export", snapshot_handlers.on_export)
+        server.register_request("snapshot/list", snapshot_handlers.on_list)
+        server.register_request("recovery/check", recovery_handlers.on_check)
+        server.register_request("recovery/resume", recovery_handlers.on_resume)
+        server.register_request("recovery/dismiss", recovery_handlers.on_dismiss)
+        server.register_request("settings/all", settings_aggregator.on_all)
+        server.register_request("i18n/catalog", on_i18n_catalog)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
