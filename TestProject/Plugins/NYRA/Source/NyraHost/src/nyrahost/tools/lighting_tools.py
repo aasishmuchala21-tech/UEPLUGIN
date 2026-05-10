@@ -93,6 +93,10 @@ class LightingAuthoringTool(NyraTool):
     ):
         self._router = backend_router
         self._ws_notifier = ws_notifier or (lambda msg: None)
+        # WR-11: construct the parser once. Re-creating it on every
+        # _resolve_lighting_params call paid the construction cost N times
+        # and produced a fresh logger context per invocation.
+        self._parser = LightingLLMParser(backend_router=backend_router)
 
     def execute(self, params: dict) -> NyraToolResult:
         try:
@@ -134,14 +138,34 @@ class LightingAuthoringTool(NyraTool):
                 raise ValueError(f"Invalid lighting_params_json: {e}")
             return LightingParams.from_dict(d)
         if params.get("reference_image_path"):
-            parser = LightingLLMParser(backend_router=self._router)
-            return run_async_safely(parser.parse_from_image(params["reference_image_path"]))
+            lp = run_async_safely(self._parser.parse_from_image(params["reference_image_path"]))
+            self._maybe_notify_fallback(lp, source="image")
+            return lp
         if params.get("preset_name"):
             return self._preset_to_params(params["preset_name"])
         if params.get("nl_prompt"):
-            parser = LightingLLMParser(backend_router=self._router)
-            return run_async_safely(parser.parse_from_text(params["nl_prompt"]))
+            lp = run_async_safely(self._parser.parse_from_text(params["nl_prompt"]))
+            self._maybe_notify_fallback(lp, source="text")
+            return lp
         raise ValueError("Either nl_prompt, reference_image_path, preset_name, or lighting_params_json must be provided.")
+
+    def _maybe_notify_fallback(self, lp: LightingParams, *, source: str) -> None:
+        """WR-11: surface low-confidence/router-fallback through the WS notifier.
+
+        confidence < 0.5 is the rule-based / router-failure regime; let
+        the chat panel hint the user that the request was downgraded
+        instead of silently presenting the studio_fill default.
+        """
+        if lp.confidence >= 0.5:
+            return
+        try:
+            self._ws_notifier({
+                "type": "lighting_fallback_used",
+                "source": source,
+                "confidence": lp.confidence,
+            })
+        except Exception as e:  # WS failures must never escape into UE
+            log.warning("lighting_fallback_notify_failed", error=str(e))
 
     @staticmethod
     def _preset_to_params(preset_name: str) -> LightingParams:
