@@ -165,8 +165,42 @@ namespace
                         const FString Url = Line.Mid(
                             CloseBracket + 2,
                             CloseParen - (CloseBracket + 2));
+
+                        // BL-01: URL scheme allowlist. SRichTextBlock dispatches
+                        // <link> clicks through FPlatformProcess::LaunchURL which
+                        // happily launches javascript:, file:, unreal:, data:,
+                        // vbscript: schemes. An LLM prompt-injection that emits
+                        // [click](file:///C:/Users/.../id_rsa) would silently
+                        // exfiltrate. Restrict to https/http/mailto and reject
+                        // control characters (\x00-\x1F, \x7F) inside the URL.
+                        // Unsafe schemes degrade to plain text rendering.
+                        const FString UrlTrimmed = Url.TrimStartAndEnd();
+                        bool bSchemeOk =
+                               UrlTrimmed.StartsWith(TEXT("https://"), ESearchCase::IgnoreCase)
+                            || UrlTrimmed.StartsWith(TEXT("http://"),  ESearchCase::IgnoreCase)
+                            || UrlTrimmed.StartsWith(TEXT("mailto:"),  ESearchCase::IgnoreCase);
+                        if (bSchemeOk)
+                        {
+                            for (TCHAR Ch : UrlTrimmed)
+                            {
+                                if (Ch < 0x20 || Ch == 0x7F)
+                                {
+                                    bSchemeOk = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!bSchemeOk)
+                        {
+                            // Render the visible text only; drop the unsafe link.
+                            Out.Append(ParseInline(Text));
+                            I = CloseParen + 1;
+                            continue;
+                        }
+
                         Out.Append(TEXT("<link url=\""));
-                        Out.Append(EscapedSegment(Url, 0, Url.Len()));
+                        Out.Append(EscapedSegment(UrlTrimmed, 0, UrlTrimmed.Len()));
                         Out.Append(TEXT("\">"));
                         Out.Append(ParseInline(Text));
                         Out.Append(TEXT("</link>"));
