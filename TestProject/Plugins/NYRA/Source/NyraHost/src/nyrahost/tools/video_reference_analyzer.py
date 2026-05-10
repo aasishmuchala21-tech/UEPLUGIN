@@ -75,8 +75,18 @@ class VideoReferenceAnalyzer:
     # --- internals ----------------------------------------------------------
 
     async def _download_youtube(self, url: str) -> str:
-        """Download a YouTube video to /tmp via yt-dlp; return local path."""
-        return "/tmp/downloaded_video.mp4"
+        """Download a YouTube video via yt-dlp; return local path.
+
+        v1 has not yet wired up yt-dlp in the sidecar. Until that lands
+        (planned in a follow-up phase), surface a loud NotImplementedError
+        so a YouTube URL never silently routes through the file pipeline
+        with a hardcoded POSIX path. Tests that exercise the YouTube
+        branch monkeypatch this method directly, so they remain unaffected.
+        """
+        raise NotImplementedError(
+            "[-32037] YouTube download via yt-dlp is not yet wired up; "
+            "attach a local mp4 instead."
+        )
 
     def _get_video_duration(self, video_path: str) -> float:
         """Probe duration via FFprobe; tests patch this method."""
