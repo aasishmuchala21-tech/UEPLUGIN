@@ -80,6 +80,7 @@ class ClaudeBackend(AgentBackend):
         claude_path: Path | str = "claude",
         python_exe: Path | str | None = None,
         handshake_file: Path | str | None = None,
+        model_preference: "ModelPreference | None" = None,
     ) -> None:
         self._claude_path: Final[Path] = Path(claude_path)
         self._python_exe: Final[Path] = (
@@ -89,8 +90,24 @@ class ClaudeBackend(AgentBackend):
         self._handshake_file: Final[Path | None] = (
             Path(handshake_file) if handshake_file is not None else None
         )
+        # Per-conversation model pin; None means "use CLI default".
+        # Aura-parity: lets users A/B Sonnet vs Opus per conversation.
+        from nyrahost.model_preference import ModelPreference
+        self._model_preference: ModelPreference = (
+            model_preference if model_preference is not None else ModelPreference()
+        )
         # req_id → asyncio.subprocess.Process (live children)
         self._inflight: dict[str, asyncio.subprocess.Process] = {}
+
+    @property
+    def model_preference(self) -> "ModelPreference":
+        """Expose the per-conversation model preference store.
+
+        Chat handlers route ``settings/set-model`` WS requests through
+        this attribute so the UI's model selector lands at the right
+        place without re-plumbing the backend constructor.
+        """
+        return self._model_preference
 
     # ------------------------------------------------------------------
     # AgentBackend API
@@ -157,6 +174,10 @@ class ClaudeBackend(AgentBackend):
             "--permission-mode", "dontAsk",
             "--permission-prompt-tool", "nyra_permission_gate",
         ]
+        # Splice in --model X if the user has pinned a per-conversation
+        # model preference. Empty extension when no pin = CLI default
+        # picks (preserves "no new bill" — we never force an upgrade).
+        argv.extend(self._model_preference.cli_args(conversation_id))
         # CR-02: argv no longer carries the user-controlled `content`.
         # The prompt is written to stdin below as a JSON-RPC message frame
         # (Claude CLI's documented stream-json input format).
