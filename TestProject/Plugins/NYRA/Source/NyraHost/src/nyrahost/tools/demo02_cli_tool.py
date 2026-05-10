@@ -8,12 +8,13 @@ Demo02CLITool ties the full DEMO-02 pipeline behind a single MCP tool:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
+import subprocess
+from pathlib import Path
 from typing import Any, Optional
 
-from nyrahost.tools.base import NyraTool, NyraToolResult
+from nyrahost.tools.base import NyraTool, NyraToolResult, run_async_safely
 
 log = logging.getLogger("nyrahost.tools.demo02_cli_tool")
 
@@ -22,6 +23,10 @@ _YOUTUBE_PATTERN = re.compile(
     r"^https?://(?:www\.)?(?:youtube\.com|youtu\.be|m\.youtube\.com)/",
     re.IGNORECASE,
 )
+
+# Maximum clip length (seconds) accepted by DEMO-02 before LLM dispatch.
+# Mirrors VideoReferenceAnalyzer.MAX_CLIP_SECONDS.
+MAX_CLIP_SECONDS = 10.0
 
 
 class Demo02CLITool(NyraTool):
@@ -70,7 +75,7 @@ class Demo02CLITool(NyraTool):
             )
 
         try:
-            pipeline_result = asyncio.run(self._run_pipeline(source, source_type))
+            pipeline_result = run_async_safely(self._run_pipeline(source, source_type))
         except RuntimeError as e:
             log.error("demo02_cli_pipeline_failed err=%s", e)
             return NyraToolResult.err(str(e))
@@ -99,8 +104,66 @@ class Demo02CLITool(NyraTool):
         return "youtube_url" if _YOUTUBE_PATTERN.match(source) else "file"
 
     def _validate_file_duration(self, source: str, source_type: str) -> bool:
-        """Stub for tests to patch; production wiring probes via FFprobe."""
-        return True
+        """Reject clips longer than MAX_CLIP_SECONDS via FFprobe.
+
+        WR-12: Skip the cap check entirely for ``youtube_url`` -- the URL
+        is not a probe target, and the post-download VideoReferenceAnalyzer
+        re-applies the cap on the local file. Without this guard, ffprobe
+        would always fail on the URL string and the user would see a
+        spurious "10 seconds" error.
+
+        For local files: probe with ffprobe, reject when
+        ``0 < duration <= MAX_CLIP_SECONDS`` is False AND the duration
+        actually came back from ffprobe. If ffprobe cannot read the file
+        (binary missing, file missing, format unsupported, timeout), pass
+        through and let the downstream pipeline raise its proper error
+        rather than masking it as a cap-violation.
+        """
+        if source_type == "youtube_url":
+            return True
+
+        try:
+            file_path = Path(source)
+            if not file_path.exists():
+                # Defer the missing-file error to the pipeline so the user
+                # gets the actual error from VideoReferenceAnalyzer rather
+                # than a misleading 10-second-cap message.
+                return True
+            out = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    source,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            raw = (out.stdout or "").strip()
+            if not raw or out.returncode != 0:
+                # Probe failed -> pass through; downstream re-checks via
+                # VideoReferenceAnalyzer._get_video_duration which raises
+                # on probe failure (BL-08).
+                log.warning(
+                    "demo02_cli_ffprobe_no_duration source=%s rc=%s err=%s",
+                    source,
+                    out.returncode,
+                    (out.stderr or "")[:200],
+                )
+                return True
+            duration = float(raw)
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
+            log.warning("demo02_cli_ffprobe_failed source=%s err=%s", source, e)
+            return True
+
+        if duration <= 0.0:
+            return True
+        return duration <= MAX_CLIP_SECONDS
 
     async def _run_pipeline(self, source: str, source_type: str) -> dict:
         """Run the full DEMO-02 pipeline. Tests patch this to drive scenarios."""
