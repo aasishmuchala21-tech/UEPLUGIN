@@ -298,10 +298,17 @@ class StagingManifest:
         operation: str,
         input_hash: str,
     ) -> Optional[str]:
-        """Return job_id if an existing pending/completed job matches input_hash.
+        """Return job_id if an existing in-flight or imported job matches input_hash.
 
         Used for idempotency — re-submit of same (tool, operation, input_hash)
         returns the existing job_id without creating a new API call.
+
+        WR-05: drop the dead ``"completed"`` value from the status set
+        — no code path writes that literal. The actual lifecycle is
+        ``pending`` (background poller) → ``imported`` (UE-side import
+        bridge) for the success path, ``failed`` / ``timeout`` for the
+        error paths. ``failed``/``timeout`` are intentionally NOT in
+        the dedup set so a retry after failure can re-submit.
         """
         data = self._load()
         for job in data["jobs"]:
@@ -309,7 +316,7 @@ class StagingManifest:
                 job["tool"] == tool
                 and job["operation"] == operation
                 and job["input_hash"] == input_hash
-                and job["ue_import_status"] in ("pending", "completed", "imported")
+                and job["ue_import_status"] in ("pending", "imported")
             ):
                 return job["id"]
         return None
@@ -323,13 +330,23 @@ class StagingManifest:
         ue_import_status: Optional[str] = None,
         error_message: Optional[str] = None,
     ) -> None:
-        """Update fields on an existing job entry."""
+        """Update fields on an existing job entry.
+
+        WR-06: previously a missing job_id silently no-op'd. Background
+        polling tasks (Meshy, ComfyUI) rely on update_job to record
+        completion state; if the manifest got corrupted or
+        cleanup_old_entries deleted the row mid-poll, the job appeared
+        forever-pending. Raise ``KeyError`` so the caller can log/alert
+        instead of swallowing the inconsistency.
+        """
         if downloaded_path is not None:
             self._validate_path(downloaded_path)
 
         data = self._load()
+        found = False
         for job in data["jobs"]:
             if job["id"] == job_id:
+                found = True
                 if api_response is not None:
                     job["api_response"] = api_response
                 if downloaded_path is not None:
@@ -341,6 +358,11 @@ class StagingManifest:
                 if error_message is not None:
                     job["error_message"] = error_message
                 break
+        if not found:
+            raise KeyError(
+                f"update_job: job_id {job_id!r} not in staging manifest "
+                "(was it cleaned up by cleanup_old_entries?)"
+            )
         self._save(data)
         log.info("staging_job_updated", job_id=job_id, status=ue_import_status)
 

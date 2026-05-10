@@ -201,10 +201,23 @@ async def _poll_comfyui_and_update_manifest(
             download_dir=str(staging_root),
         )
 
+        # WR-10: downloaded_path is a single-path string in the manifest
+        # schema. Pick the first output as the canonical downloaded_path
+        # and surface the full list inside api_response so UE-side
+        # importers can fan out from there. The previous code stuffed
+        # json.dumps(list) into a string-typed field, which broke any
+        # consumer that did Path(job.downloaded_path).
+        primary_image = (
+            result.output_images[0] if result.output_images else None
+        )
         manifest.update_job(
             job_id=job_id,
-            api_response={"prompt_id": result.prompt_id, "outputs": result.raw_outputs},
-            downloaded_path=_json.dumps(result.output_images),
+            api_response={
+                "prompt_id": result.prompt_id,
+                "outputs": result.raw_outputs,
+                "all_output_images": result.output_images,
+            },
+            downloaded_path=primary_image,
             ue_import_status="pending",
         )
         log.info(

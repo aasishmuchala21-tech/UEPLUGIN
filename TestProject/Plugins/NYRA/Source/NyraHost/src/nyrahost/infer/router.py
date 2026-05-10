@@ -182,12 +182,23 @@ class InferRouter:
             await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
             if self._state is None or self._state.handle is None:
                 continue
-            idle_for = time.time() - self._state.last_request_ts
-            if idle_for >= IDLE_SHUTDOWN_SECONDS:
+            # WR-07: re-evaluate the idle threshold AFTER acquiring the
+            # lock. Without this, a chat/send arriving between the
+            # unlocked check and the lock acquisition would update
+            # ``last_request_ts`` to "now" while we were already
+            # committed to terminating the backend — the user's request
+            # would land on a torn-down llama-server. The cheap unlocked
+            # check above is just a fast-path; the locked re-check is
+            # the actual decision point.
+            async with self._lock:
+                if self._state is None or self._state.handle is None:
+                    continue
+                idle_for = time.time() - self._state.last_request_ts
+                if idle_for < IDLE_SHUTDOWN_SECONDS:
+                    continue
                 log.info("llama_server_idle_shutdown", idle_s=idle_for)
-                async with self._lock:
-                    await self._state.handle.terminate()
-                    self._state = None
+                await self._state.handle.terminate()
+                self._state = None
 
     # ---- Streaming ----
     async def stream_chat(

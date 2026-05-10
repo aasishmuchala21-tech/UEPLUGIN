@@ -137,6 +137,28 @@ class ChatHandlers:
                             "attachment_ingest_failed", path=pth, err=str(_e),
                         )
 
+            # WR-06: defend against duplicate req_id collisions. If the
+            # client retried a chat/send with the same req_id (client bug
+            # or NyraHost reconnect), the prior stream's cancel Event was
+            # silently overwritten and chat/cancel could no longer reach
+            # it. Refuse the second send so the client surfaces the
+            # collision instead of leaking a background task.
+            if req_id in self._inflight:
+                return {
+                    "req_id": req_id,
+                    "streaming": False,
+                    "error": {
+                        "code": -32602,
+                        "message": "duplicate_req_id",
+                        "data": {
+                            "remediation": (
+                                f"req_id {req_id!r} is already streaming. "
+                                "Send chat/cancel first or generate a new "
+                                "req_id."
+                            ),
+                        },
+                    },
+                }
             cancel = asyncio.Event()
             self._inflight[req_id] = cancel
 
@@ -199,6 +221,23 @@ class ChatHandlers:
                         "attachment_ingest_failed", path=pth, err=str(_e),
                     )
 
+        # WR-06: same collision check on the gemma path.
+        if req_id in self._inflight:
+            return {
+                "req_id": req_id,
+                "streaming": False,
+                "error": {
+                    "code": -32602,
+                    "message": "duplicate_req_id",
+                    "data": {
+                        "remediation": (
+                            f"req_id {req_id!r} is already streaming. "
+                            "Send chat/cancel first or generate a new "
+                            "req_id."
+                        ),
+                    },
+                },
+            }
         cancel = asyncio.Event()
         self._inflight[req_id] = cancel
 

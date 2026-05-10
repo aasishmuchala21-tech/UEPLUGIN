@@ -229,19 +229,56 @@ class ComfyUIClient:
             if prompt_id in history_resp:
                 outputs = history_resp[prompt_id].get("outputs", {})
 
-                # Download output images to download_dir
+                # WR-09: actually fetch output images from ComfyUI's /view
+                # endpoint instead of assuming the file already exists at
+                # ``download_dir / filename``. The previous flow only
+                # *referenced* outputs that happened to be on the same
+                # filesystem as NyraHost (i.e. only when ComfyUI was on
+                # localhost AND its output dir was the staging dir). For
+                # any remote / containerised ComfyUI, output_images came
+                # back empty and the staging entry pointed at nothing.
                 output_images: list[str] = []
                 if download_dir:
                     d = Path(download_dir)
                     d.mkdir(parents=True, exist_ok=True)
-                    for node_id, output_data in outputs.items():
-                        if isinstance(output_data, dict) and "images" in output_data:
+                    async with httpx.AsyncClient(
+                        timeout=httpx.Timeout(60.0)
+                    ) as dl_client:
+                        for node_id, output_data in outputs.items():
+                            if not (
+                                isinstance(output_data, dict)
+                                and "images" in output_data
+                            ):
+                                continue
                             for img in output_data["images"]:
                                 fname = img.get("filename", "")
-                                if fname:
-                                    src = d / fname
-                                    if src.exists():
-                                        output_images.append(str(src))
+                                subfolder = img.get("subfolder", "")
+                                img_type = img.get("type", "output")
+                                if not fname:
+                                    continue
+                                # Sanitize destination filename so a
+                                # malicious response can't path-traverse
+                                # out of download_dir.
+                                safe_name = Path(fname).name
+                                dest = d / safe_name
+                                try:
+                                    view_resp = await dl_client.get(
+                                        f"{self._base}/view",
+                                        params={
+                                            "filename": fname,
+                                            "subfolder": subfolder,
+                                            "type": img_type,
+                                        },
+                                    )
+                                    view_resp.raise_for_status()
+                                    dest.write_bytes(view_resp.content)
+                                    output_images.append(str(dest))
+                                except (httpx.HTTPError, OSError) as exc:
+                                    log.warning(
+                                        "comfyui_view_download_failed",
+                                        filename=fname,
+                                        err=str(exc),
+                                    )
 
                 log.info(
                     "comfyui_workflow_completed",

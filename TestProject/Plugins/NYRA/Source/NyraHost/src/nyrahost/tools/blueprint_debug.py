@@ -23,67 +23,66 @@ __all__ = ["BlueprintDebugTool"]
 # Error pattern definitions
 # ---------------------------------------------------------------------------
 
-# Maps known UE Blueprint compile error patterns to plain-English explanations
+# Maps known UE Blueprint compile error patterns to plain-English explanations.
+# Phase 4 WR-02: each entry uses NAMED capture groups so a pattern with two
+# captures (e.g. cannot-connect: from/to types) substitutes each placeholder
+# from the right group instead of overwriting both with the last-iterated
+# match. The previous implementation looped `for group in m.groups()` and
+# replaced *every* placeholder with each group, so explanations like
+# "from '{from_type}' to '{to_type}'" both ended up showing the to_type.
 _ERROR_PATTERNS: list[tuple[re.Pattern, str, str | None]] = [
-    # Unknown member / bad pin
     (
-        re.compile(r"Error.*Unknown member\s+'([^']+)'", re.IGNORECASE),
+        re.compile(r"Error.*Unknown member\s+'(?P<member>[^']+)'", re.IGNORECASE),
         "The Blueprint has a reference to '{member}' that doesn't exist on the target type. "
         "This usually happens when a variable was renamed or deleted, or the target class changed.",
         "Check the node's target and replace '{member}' with a valid property.",
     ),
-    # Invalid cast
     (
-        re.compile(r"Error.*Cast\s+.*\s+to\s+([^:]+)\s+Failed", re.IGNORECASE),
+        re.compile(r"Error.*Cast\s+.*\s+to\s+(?P<target>[^:]+)\s+Failed", re.IGNORECASE),
         "A Cast node failed — the object being cast is not of type '{target}'. "
         "The node will return null, which may cause null-ref errors downstream.",
         "Add a validity check (IsValid) before the cast, or find why the wrong type is being passed.",
     ),
-    # Pure node with side effects
     (
         re.compile(r"Error.*Pure\s+function.*cannot\s+have\s+timeline", re.IGNORECASE),
         "A Pure function cannot reference a Timeline asset directly because Timelines have side effects.",
         "Remove the timeline call from the Pure function or mark the function as Non-Pure.",
     ),
-    # Variable not found
     (
-        re.compile(r"Error.*Variable\s+'([^']+)'\s+not\s+found", re.IGNORECASE),
+        re.compile(r"Error.*Variable\s+'(?P<var>[^']+)'\s+not\s+found", re.IGNORECASE),
         "The variable '{var}' was referenced but is not defined in this Blueprint.",
         "Either add the variable to the Blueprint's Variables list, or remove the reference.",
     ),
-    # Recursion limit
     (
         re.compile(r"Error.*recursion\s+limit", re.IGNORECASE),
         "A function calls itself (directly or indirectly) exceeding UE's recursion limit.",
         "Convert tail recursion to a loop, or split the work across multiple frames using Delay.",
     ),
-    # Data type mismatch on pin
     (
-        re.compile(r"Error.*cannot\s+connect\s+([^']+)\s+to\s+([^']+)", re.IGNORECASE),
+        re.compile(
+            r"Error.*cannot\s+connect\s+(?P<from_type>[^']+)\s+to\s+(?P<to_type>[^']+)",
+            re.IGNORECASE,
+        ),
         "Pin type mismatch: a '{from_type}' output is connected to a '{to_type}' input. "
         "UE cannot automatically convert between these types.",
         "Insert a conversion node (e.g., ToString, Float->Int) or use a Cast node.",
     ),
-    # Missing execution pin
     (
         re.compile(r"Error.*Exec\s+pin\s+not\s+connected", re.IGNORECASE),
         "A node's execution (white) pin is not connected. Unconnected exec pins can break flow.",
         "Connect the execution wire or remove the orphaned node.",
     ),
-    # Function not found
     (
-        re.compile(r"Error.*Function\s+'([^']+)'\s+not\s+found", re.IGNORECASE),
+        re.compile(r"Error.*Function\s+'(?P<func>[^']+)'\s+not\s+found", re.IGNORECASE),
         "The function '{func}' is called but doesn't exist on the target class.",
         "Check spelling, ensure the function is defined, or use the correct target class.",
     ),
-    # Parent class issue
     (
         re.compile(r"Error.*CDO.*error.*(?:parent|base)\s+class", re.IGNORECASE),
         "The Blueprint's parent class has changed or is incompatible. "
         "This can happen if the parent was recompiled with incompatible changes.",
         "Re-parent the Blueprint to a compatible class, or revert the parent to its prior state.",
     ),
-    # Generic compile error fallback
     (
         re.compile(r"Error\s+:"),
         "A Blueprint compile error occurred.",
@@ -98,25 +97,33 @@ _SUGGESTION_FALLBACK = (
 
 
 def _explain_error_pattern(raw: str) -> tuple[str, str | None]:
-    """Match raw error against known patterns and return (plain_english, suggested_fix)."""
+    """Match raw error against known patterns and return (plain_english, suggested_fix).
+
+    WR-02: substitute each named capture group into matching placeholder
+    only. ``str.format_map`` with a defaulting mapping handles the case
+    where a pattern doesn't define a placeholder a different pattern's
+    template references.
+    """
+    class _DefaultDict(dict):
+        def __missing__(self, key):
+            return "{" + key + "}"
+
     for pattern, explanation, suggestion in _ERROR_PATTERNS:
         m = pattern.search(raw)
-        if m:
+        if m is None:
+            continue
+        named = _DefaultDict({k: v for k, v in m.groupdict().items() if v})
+        try:
+            filled_explanation = explanation.format_map(named)
+        except (KeyError, IndexError, ValueError):
             filled_explanation = explanation
-            filled_suggestion = suggestion
-            for group in m.groups():
-                if group:
-                    filled_explanation = filled_explanation.replace("{member}", group)
-                    filled_explanation = filled_explanation.replace("{var}", group)
-                    filled_explanation = filled_explanation.replace("{func}", group)
-                    filled_explanation = filled_explanation.replace("{target}", group)
-                    filled_explanation = filled_explanation.replace("{from_type}", m.group(1) or "")
-                    filled_explanation = filled_explanation.replace("{to_type}", m.group(2) or "")
-                    if filled_suggestion:
-                        filled_suggestion = filled_suggestion.replace("{member}", group)
-                        filled_suggestion = filled_suggestion.replace("{var}", group)
-                        filled_suggestion = filled_suggestion.replace("{func}", group)
-            return filled_explanation, filled_suggestion
+        filled_suggestion = suggestion
+        if suggestion:
+            try:
+                filled_suggestion = suggestion.format_map(named)
+            except (KeyError, IndexError, ValueError):
+                filled_suggestion = suggestion
+        return filled_explanation, filled_suggestion
     return (
         "An unexpected compile error occurred. Check the UE Message Log for details.",
         _SUGGESTION_FALLBACK,
@@ -197,26 +204,57 @@ class BlueprintDebugTool(NyraTool):
         if not isinstance(bp, unreal.Blueprint):
             return NyraToolResult.err(f"[-32013] not_a_blueprint: {asset_path}")
 
-        # Attempt compile to get fresh errors
+        # Attempt compile to get fresh errors.
+        # WR-03/WR-05: BlueprintEditorUtilityLibrary doesn't exist in UE
+        # 5.4–5.7 Python — the compile entry point is
+        # ``unreal.KismetEditorUtilities.compile_blueprint(bp)``. The old
+        # `hasattr(unreal, "BlueprintEditorUtilityLibrary")` branch was
+        # always False, which set ``compile_success = False`` but
+        # produced no errors, then the next block tried `FMessageLog`
+        # (also unavailable) and the tool returned ``status=clean`` no
+        # matter what state the Blueprint was actually in (false
+        # success). Try the real APIs in order; if none work, mark the
+        # debug result ``status=unsupported`` so the caller can surface
+        # a clear remediation rather than a dishonest PASS.
         compile_errors: list[str] = []
         compile_warnings: list[str] = []
+        compile_attempted = False
         compile_success = False
 
         try:
-            if hasattr(unreal, "BlueprintEditorUtilityLibrary"):
-                result = unreal.BlueprintEditorUtilityLibrary.recompileBlueprint(bp)
+            if hasattr(unreal, "KismetEditorUtilities"):
+                unreal.KismetEditorUtilities.compile_blueprint(bp)
+                compile_attempted = True
                 compile_success = True
-                if result is not None:
-                    result_str = str(result)
-                    if "error" in result_str.lower():
-                        compile_errors.append(result_str)
-                    elif "warning" in result_str.lower():
-                        compile_warnings.append(result_str)
+            elif hasattr(bp, "recompile_blueprint"):
+                bp.recompile_blueprint()
+                compile_attempted = True
+                compile_success = True
         except Exception as e:
             err_str = str(e)
+            compile_attempted = True
             compile_success = False
             compile_errors.append(err_str)
-            log.warning("blueprint_compile_ran_with_errors", asset=asset_path, error=err_str)
+            log.warning(
+                "blueprint_compile_ran_with_errors",
+                asset=asset_path,
+                error=err_str,
+            )
+
+        if not compile_attempted:
+            return NyraToolResult.ok(
+                {
+                    "status": "unsupported",
+                    "asset_path": asset_path,
+                    "errors": [],
+                    "warnings": [],
+                    "remediation": (
+                        "Blueprint compile via Python is not available in "
+                        "this UE version. Open the Blueprint in the editor "
+                        "and click Compile, then re-run nyra_blueprint_debug."
+                    ),
+                }
+            )
 
         # If we got no errors from compile but the Blueprint might have cached errors,
         # check via message log
