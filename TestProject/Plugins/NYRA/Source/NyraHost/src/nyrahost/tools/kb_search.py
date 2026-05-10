@@ -32,7 +32,17 @@ __all__ = ["KbSearchTool"]
 
 
 def _default_index_paths() -> list[Path]:
-    """Return resolution order for the published index file."""
+    """Return resolution order for the published index file.
+
+    Order:
+      1. ``%LOCALAPPDATA%/NYRA/knowledge/ue5-index.json`` — full-corpus
+         downloaded asset (Phase 3.1 GitHub Releases delivery target)
+      2. ``<cwd>/.nyra-index.json`` — dev/test fixture override
+      3. Bundled seed corpus shipped with NyraHost (``data/ue5-seed-corpus
+         /ue5-seed-index.json``) — small but real, ensures the
+         "beats Aura on docs RAG" claim is true at first install
+         without requiring the user to download anything
+    """
     paths: list[Path] = []
     local_appdata = os.environ.get("LOCALAPPDATA")
     if local_appdata:
@@ -40,6 +50,12 @@ def _default_index_paths() -> list[Path]:
             Path(local_appdata) / "NYRA" / "knowledge" / "ue5-index.json"
         )
     paths.append(Path.cwd() / ".nyra-index.json")
+    # Bundled seed — last in the resolution chain so a downloaded
+    # full-corpus index always wins. Located relative to this module.
+    seed = Path(__file__).resolve().parent.parent.parent.parent / (
+        "data/ue5-seed-corpus/ue5-seed-index.json"
+    )
+    paths.append(seed)
     return paths
 
 

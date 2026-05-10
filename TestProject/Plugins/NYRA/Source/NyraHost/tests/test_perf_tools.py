@@ -513,9 +513,14 @@ class TestPerfExplainHotspotIntegrationWithRealKbSearch:
     """
 
     def test_real_kb_search_no_index_branch(self, tmp_path: Path, monkeypatch):
-        # Force KbSearchTool's index-resolution to find nothing.
-        monkeypatch.delenv("LOCALAPPDATA", raising=False)
-        monkeypatch.chdir(tmp_path)
+        # Force KbSearchTool's resolution chain to find no index at all
+        # — including the bundled seed corpus that ships with NyraHost.
+        from nyrahost.tools import kb_search as kb_module
+        monkeypatch.setattr(
+            kb_module,
+            "_default_index_paths",
+            lambda: [tmp_path / "nope-1.json", tmp_path / "nope-2.json"],
+        )
 
         tool = PerfExplainHotspotTool()
         result = tool.execute({"hotspot_label": "DrawIndexedPrimitive"})

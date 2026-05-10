@@ -34,9 +34,21 @@ def sample_index_file(tmp_path: Path) -> Path:
 
 
 class TestKbSearchTool:
-    def test_no_index_returns_remediation(self, tmp_path: Path, monkeypatch):
-        monkeypatch.delenv("LOCALAPPDATA", raising=False)
-        monkeypatch.chdir(tmp_path)
+    def test_no_index_returns_remediation(
+        self, tmp_path: Path, monkeypatch
+    ):
+        # Force the resolution chain to find no index file at all by
+        # patching _default_index_paths to point at non-existent files.
+        # Pre-seed-bundle, this test passed because the chain naturally
+        # had no third option; now we ship a seed corpus so we must
+        # short-circuit it explicitly.
+        from nyrahost.tools import kb_search as kb_module
+
+        monkeypatch.setattr(
+            kb_module,
+            "_default_index_paths",
+            lambda: [tmp_path / "nope-1.json", tmp_path / "nope-2.json"],
+        )
         tool = KbSearchTool()
         result = tool.execute({"query": "spawn actor"})
         assert result.is_ok
