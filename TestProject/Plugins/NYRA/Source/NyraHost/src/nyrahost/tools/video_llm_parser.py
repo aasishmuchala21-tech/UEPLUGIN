@@ -117,3 +117,55 @@ class VideoReferenceParams:
                 log.warning("video_ref_unknown_shot", shot_id=sb.shot_id)
                 return True
         return False
+
+    def to_json(self) -> str:
+        """Serialize to a JSON string for cross-tool transport.
+
+        Tuples are emitted as lists (JSON has no tuple); enums emit their value.
+        Demo02Orchestrator passes the result to SequencerAuthorShotTool's
+        video_reference_json parameter, which round-trips it via json.loads.
+        """
+        import json
+
+        def _shot(sb: ShotBlock) -> dict:
+            return {
+                "shot_id": sb.shot_id,
+                "camera_move_type": sb.camera_move_type.value,
+                "start_time": sb.start_time,
+                "end_time": sb.end_time,
+                "start_position": list(sb.start_position),
+                "end_position": list(sb.end_position),
+                "start_rotation": list(sb.start_rotation),
+                "end_rotation": list(sb.end_rotation),
+                "fov": sb.fov,
+                "focus_distance": sb.focus_distance,
+                "aperture": sb.aperture,
+                "nl_description": sb.nl_description,
+                "user_confirmed": sb.user_confirmed,
+                "user_override_move_type": (
+                    sb.user_override_move_type.value if sb.user_override_move_type else None
+                ),
+            }
+
+        payload = {
+            "shot_blocks": [_shot(sb) for sb in self.shot_blocks],
+            "subject_position": list(self.subject_position),
+            "framing": self.framing,
+            "rule_of_thirds": self.rule_of_thirds,
+            "headroom": self.headroom,
+            "lighting_mood_tags": list(self.lighting_mood_tags),
+            "primary_color": list(self.primary_color),
+            "primary_temperature_k": self.primary_temperature_k,
+            "fill_ratio": self.fill_ratio,
+            "camera_move_type": self.camera_move_type.value,
+            "camera_move_intensity": self.camera_move_intensity,
+            "camera_move_confidence": self.camera_move_confidence,
+            "environment_type": self.environment_type,
+            "time_of_day": self.time_of_day,
+            "weather": self.weather,
+            "geometry_categories": list(self.geometry_categories),
+            "clip_duration_seconds": self.clip_duration_seconds,
+            "keyframe_count": self.keyframe_count,
+            "analysis_confidence": self.analysis_confidence,
+        }
+        return json.dumps(payload)

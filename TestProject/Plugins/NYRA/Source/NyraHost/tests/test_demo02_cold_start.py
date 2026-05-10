@@ -12,7 +12,7 @@ import pytest
 
 from nyrahost.tools.demo02_orchestrator import Demo02Orchestrator
 from nyrahost.tools.video_llm_parser import CameraMoveType, ShotBlock, VideoReferenceParams
-from nyrahost.tools.shot_block_ui import ShotBlockConfirmationUI
+from nyrahost.tools.shot_block_ui import ShotBlockConfirmationUI, CONFUSION_PAIRS
 from nyrahost.tools.sequencer_tools import SequencerAuthorShotTool
 
 
