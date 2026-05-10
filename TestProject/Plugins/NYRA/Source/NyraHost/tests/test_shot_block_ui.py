@@ -218,9 +218,39 @@ class TestVideoReferenceParamsRequiresConfirmation:
         )
         assert params.requires_user_confirmation() is False
 
-    def test_all_known_high_confidence_no_confirmation(self):
+    def test_all_known_high_confidence_non_confusion_pair_no_confirmation(self):
+        # WR-07: post-fix, DOLLY and TRUCK ALWAYS require confirmation per
+        # PITFALLS Section 6.2. This test exercises the no-confirmation path
+        # using PAN, which is not in CONFUSION_PAIRS.
         shot = ShotBlock(
-            shot_id="shot_known", camera_move_type=CameraMoveType.DOLLY,
+            shot_id="shot_known", camera_move_type=CameraMoveType.PAN,
+            start_time=0.0, end_time=5.0,
+            start_position=(0, 0, 100), end_position=(0, 0, 100),
+            start_rotation=(0, 0, 0), end_rotation=(0, 30, 0),
+            fov=35.0, focus_distance=3.0, aperture=2.8,
+            nl_description="slow pan right",
+        )
+        params = VideoReferenceParams(
+            shot_blocks=[shot],
+            subject_position=(0.5, 0.5), framing="medium",
+            rule_of_thirds=True, headroom="normal",
+            lighting_mood_tags=["test"], primary_color=(1, 1, 1),
+            primary_temperature_k=6500, fill_ratio=0.5,
+            camera_move_type=CameraMoveType.PAN,
+            camera_move_intensity="medium",
+            camera_move_confidence=0.9,
+            environment_type="outdoor", time_of_day="golden_hour",
+            weather="clear", geometry_categories=["urban"],
+            clip_duration_seconds=5.0, keyframe_count=5,
+            analysis_confidence=0.9,
+        )
+        assert params.requires_user_confirmation() is False
+
+    def test_high_confidence_dolly_still_requires_confirmation(self):
+        # WR-07: even at 0.9 confidence, DOLLY trips the confusion-pair
+        # guard so the operator gets a "did you mean TRUCK?" override card.
+        shot = ShotBlock(
+            shot_id="shot_dolly_high", camera_move_type=CameraMoveType.DOLLY,
             start_time=0.0, end_time=5.0,
             start_position=(0, 0, 100), end_position=(0, 0, 50),
             start_rotation=(0, 0, 0), end_rotation=(0, 0, 0),
@@ -241,4 +271,22 @@ class TestVideoReferenceParamsRequiresConfirmation:
             clip_duration_seconds=5.0, keyframe_count=5,
             analysis_confidence=0.9,
         )
-        assert params.requires_user_confirmation() is False
+        assert params.requires_user_confirmation() is True
+
+    def test_high_confidence_truck_still_requires_confirmation(self):
+        # WR-07: TRUCK is the other half of the DOLLY/TRUCK confusion pair.
+        params = VideoReferenceParams(
+            shot_blocks=[],
+            subject_position=(0.5, 0.5), framing="wide",
+            rule_of_thirds=True, headroom="normal",
+            lighting_mood_tags=["test"], primary_color=(1, 1, 1),
+            primary_temperature_k=6500, fill_ratio=0.5,
+            camera_move_type=CameraMoveType.TRUCK,
+            camera_move_intensity="medium",
+            camera_move_confidence=0.95,
+            environment_type="outdoor", time_of_day="midday",
+            weather="clear", geometry_categories=["urban"],
+            clip_duration_seconds=5.0, keyframe_count=5,
+            analysis_confidence=0.95,
+        )
+        assert params.requires_user_confirmation() is True

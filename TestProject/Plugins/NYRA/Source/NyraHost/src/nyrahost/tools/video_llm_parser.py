@@ -106,11 +106,27 @@ class VideoReferenceParams:
         )
 
     def requires_user_confirmation(self) -> bool:
-        """Return True if any shot is UNKNOWN or confidence < 0.7."""
+        """Return True if any shot needs human confirmation.
+
+        Triggers:
+          1. Top-level camera_move_confidence < 0.7 (LLM is unsure).
+          2. Any shot block with UNKNOWN type that hasn't been user-confirmed.
+          3. WR-07: top-level camera_move_type is in the DOLLY/TRUCK
+             confusion pair (per PITFALLS Section 6.2). The two moves are
+             vision-ambiguous - lateral truck and forward dolly produce
+             nearly identical pixel motion - so we ALWAYS surface the
+             confirmation card for those, regardless of LLM confidence.
+             This protects against high-confidence misclassification that
+             would silently auto-author the wrong camera move.
+        """
         if self.camera_move_confidence < 0.7:
             log.warning("video_ref_low_confidence",
                        confidence=self.camera_move_confidence,
                        camera_move=self.camera_move_type.value)
+            return True
+        if self.camera_move_type in (CameraMoveType.DOLLY, CameraMoveType.TRUCK):
+            log.info("video_ref_dolly_truck_always_confirm",
+                     camera_move=self.camera_move_type.value)
             return True
         for sb in self.shot_blocks:
             if sb.camera_move_type == CameraMoveType.UNKNOWN and not sb.user_confirmed:

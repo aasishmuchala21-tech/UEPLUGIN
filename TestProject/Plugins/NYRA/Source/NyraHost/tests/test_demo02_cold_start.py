@@ -27,18 +27,25 @@ class TestDemo02Orchestrator:
         assert isinstance(orch.shot_confirm_ui, ShotBlockConfirmationUI)
 
     def test_run_video_to_sequencer_high_confidence(self):
-        """High confidence video reference should route directly to authoring."""
+        """High confidence video reference (non-confusion-pair) routes directly to authoring.
+
+        WR-07: DOLLY/TRUCK now ALWAYS request confirmation regardless of confidence
+        (per PITFALLS Section 6.2). This test uses PAN to exercise the auto-author
+        path; the always-confirm DOLLY/TRUCK path is covered by the dedicated
+        test_high_confidence_dolly_still_requires_confirmation cases in
+        test_shot_block_ui.py.
+        """
         orch = Demo02Orchestrator()
         ref = VideoReferenceParams(
             shot_blocks=[
                 ShotBlock(
                     shot_id="shot_001",
-                    camera_move_type=CameraMoveType.DOLLY,
+                    camera_move_type=CameraMoveType.PAN,
                     start_time=0.0, end_time=5.0,
-                    start_position=(0, 0, 100), end_position=(0, 0, 50),
-                    start_rotation=(0, 0, 0), end_rotation=(0, 0, 0),
+                    start_position=(0, 0, 100), end_position=(0, 0, 100),
+                    start_rotation=(0, 0, 0), end_rotation=(0, 30, 0),
                     fov=35.0, focus_distance=3.0, aperture=2.8,
-                    nl_description="slow push-in",
+                    nl_description="slow pan right",
                     user_confirmed=False,
                 )
             ],
@@ -50,7 +57,7 @@ class TestDemo02Orchestrator:
             primary_color=(1.0, 0.8, 0.6),
             primary_temperature_k=5600,
             fill_ratio=0.3,
-            camera_move_type=CameraMoveType.DOLLY,
+            camera_move_type=CameraMoveType.PAN,
             camera_move_intensity="slow",
             camera_move_confidence=0.9,
             environment_type="indoor",
