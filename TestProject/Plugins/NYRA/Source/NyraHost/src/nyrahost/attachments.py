@@ -31,14 +31,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-AttachmentKind = Literal["image", "video", "text"]
+AttachmentKind = Literal["image", "video", "text", "document"]
 
 # Allow-list matches CD-04 (image/video/text input types accepted by
 # the Phase 1 chat panel drop zone + [+] picker).
+#
+# Phase 8 PARITY-01 adds the `document` kind (PDF/DOCX/PPTX/XLSX/HTML).
+# `.md` stays under `text` — markdown lives natively as plain text and
+# the document extractor only invokes the markdown library for the
+# embedded-image edge case (handled at the chat-handler layer, not here).
 ALLOWED_EXTENSIONS: dict[AttachmentKind, frozenset[str]] = {
     "image": frozenset({".png", ".jpg", ".jpeg", ".webp"}),
     "video": frozenset({".mp4", ".mov"}),
     "text": frozenset({".md", ".txt"}),
+    "document": frozenset({".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm"}),
 }
 
 
