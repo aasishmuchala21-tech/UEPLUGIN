@@ -453,21 +453,44 @@ class SequencerAuthorShotTool(SequencerToolMixin, NyraTool):
     def _camera_move_to_keyframe_pattern(
         self, shot: ShotBlock, start: float, end: float,
     ) -> list[dict]:
-        """Convert a ShotBlock to keyframe dicts based on CameraMoveType."""
+        """Convert a ShotBlock to keyframe dicts based on CameraMoveType.
+
+        WR-06: prefer the shot's own start_time / end_time when they are
+        sensible (positive end > start) so multi-shot VideoReferenceParams
+        author each shot at its own window instead of overlaying every
+        shot on the outer (start, end) pair. Sentinel cases -- shot has
+        zero or inverted times -- fall back to the outer window so the
+        single-shot path keeps working.
+        """
+        # Sentinel: shot.start_time and shot.end_time both 0.0 (default
+        # ShotBlock) or inverted -> fall back to outer window passed by
+        # the orchestrator.
+        if shot.end_time > shot.start_time and shot.end_time > 0.0:
+            shot_start = shot.start_time
+            shot_end = shot.end_time
+        else:
+            shot_start = start
+            shot_end = end
+
         move_type = shot.user_override_move_type or shot.camera_move_type
-        times = [start, start + (end - start) / 3, start + 2 * (end - start) / 3, end]
+        times = [
+            shot_start,
+            shot_start + (shot_end - shot_start) / 3,
+            shot_start + 2 * (shot_end - shot_start) / 3,
+            shot_end,
+        ]
         if move_type == CameraMoveType.STATIC:
             base_loc = shot.start_position
             return [{"time": t, "location": base_loc, "rotation": shot.start_rotation} for t in times]
         elif move_type in (CameraMoveType.DOLLY, CameraMoveType.TRUCK):
             return [
-                {"time": start, "location": shot.start_position, "rotation": shot.start_rotation},
-                {"time": end, "location": shot.end_position, "rotation": shot.end_rotation},
+                {"time": shot_start, "location": shot.start_position, "rotation": shot.start_rotation},
+                {"time": shot_end, "location": shot.end_position, "rotation": shot.end_rotation},
             ]
         else:
             return [
-                {"time": start, "location": shot.start_position, "rotation": shot.start_rotation},
-                {"time": end, "location": shot.end_position, "rotation": shot.end_rotation},
+                {"time": shot_start, "location": shot.start_position, "rotation": shot.start_rotation},
+                {"time": shot_end, "location": shot.end_position, "rotation": shot.end_rotation},
             ]
 
     def _find_binding_for_actor(self, sequence: Any, actor_path: str) -> Any:
