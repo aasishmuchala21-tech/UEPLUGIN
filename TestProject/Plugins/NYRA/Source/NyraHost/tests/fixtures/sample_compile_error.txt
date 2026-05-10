@@ -1,0 +1,9 @@
+[Live Coding] Starting LiveCoding patch generation
+C:\Users\aasis\Project\Source\MyMod\Private\MyActor.cpp(42): error C2065: 'UndeclaredVar': undeclared identifier
+C:\Users\aasis\Project\Source\MyMod\Private\MyActor.cpp(43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\aasis\Project\Source\MyMod\Public\MyActor.h:17:5: error: use of undeclared identifier 'FNotAType'
+LINK : fatal error LNK1120: 1 unresolved externals
+   Creating library Build/MyMod.lib and object Build/MyMod.exp
+MyActor.cpp.obj : error LNK2019: unresolved external symbol "void __cdecl AMyActor::DoTheThing(int)" referenced in function main
+UnrealHeaderTool failed for target 'MyModEditor' (platform: Win64, module info: MyModEditor.uhtmanifest, exit code: 1)
+[Live Coding] Patch failed

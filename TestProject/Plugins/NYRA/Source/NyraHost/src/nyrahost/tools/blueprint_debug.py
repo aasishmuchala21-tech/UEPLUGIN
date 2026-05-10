@@ -88,6 +88,49 @@ _ERROR_PATTERNS: list[tuple[re.Pattern, str, str | None]] = [
         "A Blueprint compile error occurred.",
         None,
     ),
+    # -----------------------------------------------------------------------
+    # C++ patterns (Plan 08-02 PARITY-02 — extends the catalog for
+    # nyra_cpp_recompile error parsing). MSVC + clang + linker + UHT.
+    # Risk of false-match against Blueprint logs is theoretical — Blueprint
+    # logs do not emit `error C\d{4}` codes, MSVC LNK shapes, or
+    # "UnrealHeaderTool failed" lines. See PLAN.md §"Task 3" Option A
+    # rationale.
+    # -----------------------------------------------------------------------
+    (
+        re.compile(r"error\s+C(?P<code>\d{4})\s*:\s*(?P<msg>.+)$", re.IGNORECASE),
+        "MSVC compile error C{code}: {msg}",
+        "Open the indicated source line and resolve the C{code} error per the message.",
+    ),
+    (
+        re.compile(
+            r"(?P<file>\S+?(?:\.cpp|\.h))"  # file path (greedy-trim allows Windows C:/ paths)
+            r"\s*:(?:\d+\s*:\s*)?(?:\d+\s*:\s*)?\s*"  # :line: or :line:col:
+            r"error\s*:\s*"
+            r"use of undeclared identifier\s+'(?P<ident>[^']+)'",
+            re.IGNORECASE,
+        ),
+        "Clang compile error in {file}: '{ident}' is not declared in this scope.",
+        "Add the missing #include or forward-declare '{ident}' before the use site.",
+    ),
+    (
+        re.compile(r"\bLNK\s*:?\s*fatal\s+error\s+LNK(?P<lnk>\d{4})\s*:\s*(?P<msg>.+)$",
+                   re.IGNORECASE),
+        "MSVC linker fatal error LNK{lnk}: {msg}",
+        "Add the symbol's owning module to PrivateDependencyModuleNames or "
+        "verify the export macro on the declaration.",
+    ),
+    (
+        re.compile(r"\berror\s+LNK(?P<lnk>\d{4})\s*:\s*(?P<msg>.+)$", re.IGNORECASE),
+        "MSVC linker error LNK{lnk}: {msg}",
+        "Resolve the unresolved external — usually a missing implementation, "
+        "a wrong API export macro, or a missing module dependency in Build.cs.",
+    ),
+    (
+        re.compile(r"UnrealHeaderTool\s+failed", re.IGNORECASE),
+        "UnrealHeaderTool failed to generate reflection code for one or more headers.",
+        "Check the indicated header for malformed UCLASS / UFUNCTION / UPROPERTY "
+        "macros and re-run; UHT errors block both Live Coding and Hot Reload.",
+    ),
 ]
 
 _SUGGESTION_FALLBACK = (
