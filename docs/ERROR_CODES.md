@@ -61,3 +61,15 @@ verbatim inside an error bubble.
 3. Buttons referenced as `[Download Gemma]`, `[Restart]`, `[Open log]`
    are mapped to real Slate buttons by the panel — the remediation text
    may contain up to 2 bracketed button hints per message.
+
+## Phase 9 — Aura-killer codes
+
+| Code | Message | Module |
+|---|---|---|
+| -32034 | comfyui_run_failed / inpaint_failed | nyrahost.tools.inpaint_tools |
+| -32035 | input_must_be_url | nyrahost.tools.rigging_tools |
+| -32036 | blockout_empty | nyrahost.tools.level_design_tools |
+| -32037 | blockout_too_large | nyrahost.tools.level_design_tools |
+| -32038 | meshy_rig_failed | nyrahost.tools.rigging_tools |
+| -32039 | retarget_render_failed | nyrahost.tools.retarget_tools |
+| -32040 | blockout_render_failed | nyrahost.tools.level_design_tools |

@@ -24,6 +24,7 @@ import structlog
 log = structlog.get_logger("nyrahost.external.meshy_client")
 
 MESHY_BASE_URL = "https://meshy.ai/api/v1"
+MESHY_RIGGING_URL = "https://api.meshy.ai/openapi/v1/rigging"   # Phase 9 RIG-01
 DEFAULT_TIMEOUT = 600  # 10 minutes
 
 
@@ -192,6 +193,97 @@ class MeshyClient:
                 await asyncio.sleep(delay)
                 delay = min(delay * 1.5, 30.0)
 
+
+    async def auto_rig(
+        self,
+        *,
+        model_url: str,
+        height_meters: float = 1.7,
+        poll_interval_s: float = 5.0,
+    ) -> str:
+        """POST /openapi/v1/rigging then poll; return rigged GLB URL on success.
+
+        Phase 9 RIG-01 (PLAN_aura_killers_1wk.md §3.1). Pro tier required.
+
+        Verified fields (per docs.meshy.ai/en/api/rigging): model_url,
+        height_meters. Other body fields (pose, quadruped) are NOT
+        documented and are explicitly omitted to avoid inventing API
+        surface.
+
+        Confidence note: the response field name for the rigged GLB URL
+        was not directly verified against a live response; this
+        implementation reads ``raw["model_urls"]["glb"]`` first and
+        falls back to ``raw["result"]`` and ``raw["model_url"]`` with a
+        warning log so a future fix can be targeted.
+        """
+        body = {"model_url": model_url, "height_meters": float(height_meters)}
+        async with httpx.AsyncClient(timeout=httpx.Timeout(self._timeout)) as client:
+            # 1. Submit
+            resp = await client.post(
+                MESHY_RIGGING_URL,
+                headers={**self._headers(), "Content-Type": "application/json"},
+                json=body,
+            )
+            if resp.status_code == 401:
+                raise MeshyAuthError(
+                    "Meshy API key invalid or not Pro-tier. "
+                    "Auto-rigging requires Meshy Pro ($20/mo) or higher."
+                )
+            if resp.status_code == 429:
+                retry_after = float(resp.headers.get("Retry-After", "60"))
+                raise MeshyRateLimitError(
+                    f"Meshy rigging rate limit hit. Retry after {retry_after}s.",
+                    retry_after=retry_after,
+                )
+            if not resp.is_success:
+                raise MeshyAPIError(
+                    f"Meshy rigging submit failed (HTTP {resp.status_code})."
+                )
+            sub = resp.json()
+            task_id = sub.get("result") or sub.get("id") or ""
+            if not task_id:
+                raise MeshyAPIError(
+                    "Meshy rigging response missing task id. "
+                    "Verify your account has Pro-tier API access."
+                )
+            log.info("meshy_rigging_submitted", task_id=task_id)
+
+            # 2. Poll
+            poll_url = f"{MESHY_RIGGING_URL}/{task_id}"
+            start = time.monotonic()
+            while True:
+                if time.monotonic() - start > self._timeout:
+                    raise MeshyTimeoutError(
+                        f"Meshy rigging task {task_id} timed out after {self._timeout}s."
+                    )
+                pr = await client.get(poll_url, headers=self._headers())
+                if not pr.is_success:
+                    raise MeshyAPIError(
+                        f"Meshy rigging poll failed (HTTP {pr.status_code})."
+                    )
+                payload = pr.json()
+                status = (payload.get("status") or "").upper()
+                if status in ("SUCCEEDED", "COMPLETED"):
+                    glb_url = (
+                        (payload.get("model_urls") or {}).get("glb")
+                        or payload.get("result_url")
+                        or payload.get("model_url")
+                    )
+                    if not glb_url:
+                        log.warning(
+                            "meshy_rigging_url_field_unknown",
+                            keys=list(payload.keys()),
+                        )
+                        # Fall back to a guess so callers see something rather
+                        # than silently dropping the response.
+                        glb_url = payload.get("result", "")
+                    return glb_url
+                if status in ("FAILED", "CANCELED", "CANCELLED"):
+                    raise MeshyAPIError(
+                        f"Meshy rigging task {task_id} status={status}: "
+                        f"{payload.get('error', '')}"
+                    )
+                await asyncio.sleep(poll_interval_s)
 
 __all__ = [
     "MeshyClient",

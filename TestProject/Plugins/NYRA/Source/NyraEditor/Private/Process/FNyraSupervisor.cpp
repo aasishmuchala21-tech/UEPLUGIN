@@ -106,7 +106,9 @@ void FNyraSupervisor::PerformSpawn()
     // OnReady can reject any handshake whose started_at predates this
     // spawn (defense-in-depth against PID reuse).
     Handshake.CancelPolling();
-    const int32 EditorPid = FPlatformProcess::GetCurrentProcessId();
+    // EditorPid is already bound above (line ~70); reuse that const for
+    // the orphan-cleanup pass to avoid the redeclaration that broke the
+    // BuildPlugin matrix on UE 5.4-5.7.
     FNyraHandshake::DeleteFile(HandshakeDir, EditorPid);
     FNyraHandshake::CleanupOrphans(HandshakeDir);
     const int64 SpawnedAt = FDateTime::UtcNow().ToUnixTimestamp() * 1000;
@@ -121,11 +123,11 @@ void FNyraSupervisor::PerformSpawn()
         // emitted this file -- it must be a stale leftover from a prior
         // editor that the orphan cleanup somehow missed (PID race,
         // antivirus delay).
-        if (Data.StartedAt > 0 && Data.StartedAt < SpawnedAt)
+        if (Data.StartedAtMs > 0 && Data.StartedAtMs < SpawnedAt)
         {
             UE_LOG(LogNyra, Warning,
                 TEXT("[NYRA] Rejecting stale handshake (started_at=%lld < spawned_at=%lld); waiting for fresh"),
-                Data.StartedAt, SpawnedAt);
+                Data.StartedAtMs, SpawnedAt);
             return;
         }
         CurrentHandshake = Data;

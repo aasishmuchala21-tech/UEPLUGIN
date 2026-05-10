@@ -1,0 +1,68 @@
+# NYRA Phase 9 RIG-02 — auto-retarget UE Mannequin animations onto a NYRA-rigged
+# skeletal mesh. Generated from retarget_tools.py; runs inside the UE editor's
+# Python interpreter via the unreal_python_exec WS request (Phase 1 supervisor
+# console handler).
+#
+# All API calls below are verified against:
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/using-python-to-create-and-edit-ik-rigs-in-unreal-engine
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/using-python-to-create-and-edit-ik-retargeter-assets-in-unreal-engine
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/IKRetargetBatchOperation
+#
+# Anti-patterns avoided (see PLAN_aura_killers_1wk.md §3.5):
+#   * Direct mutation of UIKRigDefinition / UIKRetargeter — uses controllers.
+#   * UAnimationBlueprintLibrary for batch retarget — uses IKRetargetBatchOperation.
+
+import unreal
+
+
+def auto_rig_and_retarget(rigged_skel_mesh_path: str,
+                          source_skel_mesh_path: str = "${SOURCE_MESH}",
+                          source_rig_path: str = "${SOURCE_RIG}",
+                          out_path: str = "${OUT_PATH}"):
+    rigged_mesh = unreal.load_asset(rigged_skel_mesh_path)
+    src_mesh    = unreal.load_asset(source_skel_mesh_path)
+    src_rig     = unreal.load_asset(source_rig_path)
+
+    at = unreal.AssetToolsHelpers.get_asset_tools()
+
+    # 1) Build target IK Rig
+    target_rig = at.create_asset(
+        "IK_NYRA_Auto", "/Game/NYRA/Rigs",
+        unreal.IKRigDefinition, unreal.IKRigDefinitionFactory())
+    rig_ctrl = unreal.IKRigController.get_controller(target_rig)
+    rig_ctrl.set_skeletal_mesh(rigged_mesh)
+    rig_ctrl.set_retarget_root("pelvis")
+    # Minimum humanoid mapping per Phase 0.B research.
+    rig_ctrl.add_retarget_chain("Spine",     "spine_01",  "spine_05", "")
+    rig_ctrl.add_retarget_chain("Head",      "neck_01",   "head",     "")
+    rig_ctrl.add_retarget_chain("LeftArm",   "upperarm_l","hand_l",   "hand_l_goal")
+    rig_ctrl.add_retarget_chain("RightArm",  "upperarm_r","hand_r",   "hand_r_goal")
+    rig_ctrl.add_retarget_chain("LeftLeg",   "thigh_l",   "foot_l",   "foot_l_goal")
+    rig_ctrl.add_retarget_chain("RightLeg",  "thigh_r",   "foot_r",   "foot_r_goal")
+    rig_ctrl.add_solver(unreal.IKRigFBIKSolver)
+
+    # 2) Build retargeter and auto-map
+    retargeter = at.create_asset(
+        "RTG_Mannequin_to_NYRA", "/Game/NYRA/Rigs",
+        unreal.IKRetargeter, unreal.IKRetargetFactory())
+    rtg_ctrl = unreal.IKRetargeterController.get_controller(retargeter)
+    rtg_ctrl.set_preview_mesh(unreal.RetargetSourceOrTarget.SOURCE, src_mesh)
+    rtg_ctrl.set_preview_mesh(unreal.RetargetSourceOrTarget.TARGET, rigged_mesh)
+    rtg_ctrl.set_ik_rig(unreal.RetargetSourceOrTarget.SOURCE, src_rig)
+    rtg_ctrl.set_ik_rig(unreal.RetargetSourceOrTarget.TARGET, target_rig)
+    rtg_ctrl.auto_map_chains(unreal.AutoMapChainType.FUZZY, force_remap=True)
+
+    # 3) Batch retarget all anims that use the source skeleton
+    src_skel = src_mesh.skeleton
+    asset_lib = unreal.AssetRegistryHelpers.get_asset_registry()
+    anim_assets = [
+        a.get_asset() for a in asset_lib.get_assets_by_class("AnimSequence")
+        if a.get_asset().get_skeleton() == src_skel
+    ]
+    unreal.IKRetargetBatchOperation.duplicate_and_retarget(
+        anim_assets, src_mesh, rigged_mesh, retargeter,
+        suffix="_NYRA", remap_referenced_assets=True)
+    print(f"NYRA: retargeted {len(anim_assets)} anims to {out_path}")
+
+
+auto_rig_and_retarget("${RIGGED_MESH}")

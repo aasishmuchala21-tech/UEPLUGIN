@@ -28,6 +28,10 @@ from .handlers.download import DownloadHandlers
 from .handlers.session_mode import SessionModeHandler
 from .handlers.transaction import TransactionHandlers
 from .handlers.sessions import SessionHandlers
+from .tools.inpaint_tools import on_inpaint_submit
+from .tools.rigging_tools import on_auto_rig
+from .tools.retarget_tools import on_retarget
+from .tools.level_design_tools import on_blockout
 from .infer.router import InferRouter
 from .router import NyraRouter
 from .safe_mode import NyraPermissionGate
@@ -229,6 +233,13 @@ async def build_and_run(
         server.register_request(
             "sessions/load", session_handlers.on_sessions_load,
         )
+        # Plan 09 INPAINT-01 — SDXL in-painting via local ComfyUI.
+        server.register_request("inpaint/submit", on_inpaint_submit)
+        # Plan 09 RIG-01/02 — Meshy auto-rig + UE-side retarget script renderer.
+        server.register_request("rigging/auto_rig", on_auto_rig)
+        server.register_request("rigging/retarget", on_retarget)
+        # Plan 09 LDA-01 — single-room blockout via UE GeometryScript.
+        server.register_request("level_design/blockout", on_blockout)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
