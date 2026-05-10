@@ -129,13 +129,31 @@ class SceneAssembler(SceneAssemblyOrchestrator):
 
         # Step 4: Finalize
         progress("Finalizing", 1, 1, "summary")
-        result.success = True
+        # CR-03: success must reflect actual outcome. _place_actor returns a
+        # dict containing the "error" key on spawn failure, and the lighting
+        # step records "lighting:error ..." log entries when the lighting tool
+        # raises. Either signal flips success to False so SNyraLogDrawer and
+        # the assembly_complete WS consumer can surface partial failures.
+        actor_errors = [a for a in result.placed_actors if "error" in a]
+        lighting_errors = [
+            entry for entry in result.log_entries if entry.startswith("lighting:error")
+        ]
+        result.success = not actor_errors and not lighting_errors
+        if not result.success:
+            messages: list[str] = []
+            if actor_errors:
+                messages.append(f"{len(actor_errors)} actor spawn(s) failed")
+            if lighting_errors:
+                messages.append(f"{len(lighting_errors)} lighting error(s)")
+            result.error_message = "; ".join(messages)
         self.send_assembly_complete(result)
         log.info(
             "scene_assembler_assemble_ok",
             actors=result.actor_count,
             materials=result.material_count,
             lighting=result.lighting_count,
+            success=result.success,
+            error_message=result.error_message,
         )
         return result
 
