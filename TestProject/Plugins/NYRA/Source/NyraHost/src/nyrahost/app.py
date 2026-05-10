@@ -57,6 +57,16 @@ from .tools.crash_rca import CrashRCAHandlers
 from .tools.test_gen import TestGenHandlers
 from .tools.doc_from_code import DocFromCodeHandlers
 from .tools.replication_scaffolder import ReplicationScaffolderHandlers
+# Phase 15 — encrypted memory, localization, cinematic, health, privacy guard,
+# blueprint static review.
+from .encrypted_memory import EncryptedMemory
+from .handlers.encrypted_memory import EncryptedMemoryHandlers
+from .tools.localization import LocalizationHandlers
+from .tools.cinematic import on_cinematic
+from .health import HealthDashboard
+from .handlers.health import HealthHandlers
+from .privacy_guard import GUARD as PRIVACY_GUARD
+from .tools.blueprint_review import on_review_graph
 from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
@@ -248,6 +258,26 @@ async def build_and_run(
     # Phase 14-H — replication scaffolder (pure-function output).
     repl_handlers = ReplicationScaffolderHandlers()
 
+    # Phase 15-A — encrypted per-project memory.
+    encrypted_memory = EncryptedMemory(project_dir=project_dir)
+    encrypted_memory_handlers = EncryptedMemoryHandlers(encrypted_memory)
+
+    # Phase 15-B — LOCTEXT extractor.
+    localization_handlers = LocalizationHandlers(plugin_source_dir=plugin_source_dir)
+
+    # Phase 15-D — live project health dashboard backend.
+    health_dashboard = HealthDashboard(
+        project_dir=project_dir,
+        audit_log=audit_log,
+        thread_registry=thread_handlers.registry,
+    )
+    health_handlers = HealthHandlers(health_dashboard)
+
+    # Phase 15-E — privacy-guard singleton (PRIVACY_GUARD is process-wide;
+    # imported here so its existence is part of the build-up-and-go log
+    # surface).
+    _ = PRIVACY_GUARD
+
     # Phase 10-3 — model selector handlers (reuse the existing chat-handler ModelPreference).
     model_settings_handlers = ModelSettingsHandlers(
         model_preference=getattr(handlers, "model_preference", None) or __import__(
@@ -382,6 +412,20 @@ async def build_and_run(
         server.register_request("docs/scan_module", doc_handlers.on_scan_module)
         # Phase 14-H — replication scaffolder.
         server.register_request("replication/scaffold", repl_handlers.on_scaffold)
+        # Phase 15-A — encrypted memory.
+        server.register_request("memory/get", encrypted_memory_handlers.on_get)
+        server.register_request("memory/set", encrypted_memory_handlers.on_set)
+        server.register_request("memory/delete", encrypted_memory_handlers.on_delete)
+        server.register_request("memory/dump", encrypted_memory_handlers.on_dump)
+        # Phase 15-B — localization.
+        server.register_request("localization/scan", localization_handlers.on_scan)
+        server.register_request("localization/emit", localization_handlers.on_emit)
+        # Phase 15-C — Cinematic / DOP Agent.
+        server.register_request("cinematic/create", on_cinematic)
+        # Phase 15-D — live project health.
+        server.register_request("health/snapshot", health_handlers.on_snapshot)
+        # Phase 15-F — Blueprint static review.
+        server.register_request("blueprint_review/run", on_review_graph)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)

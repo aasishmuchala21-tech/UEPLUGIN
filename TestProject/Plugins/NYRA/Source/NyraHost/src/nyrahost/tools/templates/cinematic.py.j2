@@ -1,0 +1,81 @@
+# NYRA Phase 15-C — Cinematic / DOP Agent.
+# Sequencer setup + Cine camera + DoF + key/fill lighting from a
+# structured shot spec. Aura ships per-domain agents; whole-shot DOP
+# work spans Sequencer + camera + lights + post-process and is the
+# kind of multi-system orchestration NYRA's whole-project moat
+# enables.
+
+import json
+
+import unreal
+
+
+def _sequencer_subsystem():
+    return unreal.get_editor_subsystem(unreal.LevelSequenceEditorSubsystem)
+
+
+def _new_level_sequence(asset_path: str, asset_name: str) -> unreal.LevelSequence:
+    at = unreal.AssetToolsHelpers.get_asset_tools()
+    return at.create_asset(asset_name, asset_path,
+                           unreal.LevelSequence,
+                           unreal.LevelSequenceFactoryNew())
+
+
+def _add_cine_camera(world):
+    return unreal.EditorActorSubsystem().spawn_actor_from_class(
+        unreal.CineCameraActor,
+        unreal.Vector(0, 0, 100),
+        unreal.Rotator(0, 0, 0),
+    )
+
+
+def main(spec_json: str):
+    spec = json.loads(spec_json)
+    asset_path = spec.get("asset_path", "/Game/NYRA/Cinematics")
+    asset_name = spec.get("asset_name", "LS_NyraShot")
+    focal_mm = float(spec.get("focal_length_mm", 35.0))
+    aperture = float(spec.get("aperture_f", 2.8))
+    focus_dist = float(spec.get("focus_distance_cm", 250.0))
+    duration_s = float(spec.get("duration_s", 5.0))
+
+    world = unreal.UnrealEditorSubsystem().get_editor_world()
+    seq = _new_level_sequence(asset_path, asset_name)
+    # Duration: frame rate from sequencer default (30fps) * duration
+    seq.set_playback_end(int(duration_s * 30))
+
+    cam = _add_cine_camera(world)
+    cam_comp = cam.get_cine_camera_component()
+    cam_comp.set_editor_property("current_focal_length", focal_mm)
+    cam_comp.set_editor_property("current_aperture", aperture)
+    # Manual focus at focus_distance_cm
+    focus_settings = cam_comp.focus_settings
+    focus_settings.focus_method = unreal.CameraFocusMethod.MANUAL
+    focus_settings.manual_focus_distance = focus_dist
+    cam_comp.set_editor_property("focus_settings", focus_settings)
+
+    # Bind the camera to the sequence
+    binding = seq.add_possessable(cam)
+    # Bare-minimum two-track setup: a transform track + a camera-cut track.
+    cam_cut_track = seq.add_master_track(unreal.MovieSceneCameraCutTrack)
+    cam_cut_section = cam_cut_track.add_section()
+    cam_cut_section.set_range(0, int(duration_s * 30))
+    cam_cut_section.set_camera_binding_id(seq.make_binding_id(binding))
+
+    # Optional key + fill lights
+    if spec.get("add_key_light", True):
+        unreal.EditorActorSubsystem().spawn_actor_from_class(
+            unreal.DirectionalLight, unreal.Vector(0, 0, 500),
+            unreal.Rotator(-45, 30, 0),
+        )
+    if spec.get("add_fill_light", False):
+        unreal.EditorActorSubsystem().spawn_actor_from_class(
+            unreal.RectLight, unreal.Vector(200, 0, 200),
+            unreal.Rotator(0, 180, 0),
+        )
+
+    print(f"NYRA CINEMATIC: created {asset_path}/{asset_name} "
+          f"duration={duration_s}s focal={focal_mm}mm f/{aperture}")
+    return seq.get_path_name()
+
+
+main('''${SPEC_JSON}''')
