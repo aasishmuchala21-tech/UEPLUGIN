@@ -90,16 +90,48 @@ emits docs citations.
 schema MUST include a `citations: list[str]` field populated from
 `KbSearchTool.execute(...)` results.
 
-### LOCKED-06: Document attachment text extraction is pure-Python.
+### LOCKED-06: Document attachment parsers are pure-Python with bounded wheel-cache impact.
 **Why locked:** SC#1 explicitly bounds wheel cache impact under 50 MB.
-Pure-Python parsers (`pypdf`, `python-docx`, `python-pptx`, `openpyxl`,
-`markdown`) are all <5 MB combined and need no platform-specific
-binaries. Native PDF tools (poppler, mupdf) are bigger and platform-
-fragmented.
-**How to apply:** Plan 08-01 MUST add only pure-Python deps to
-`requirements.lock`. If any candidate parser pulls a C extension as a
-hard requirement (not an optional accelerator), pick a different
-parser.
+Pure-Python parsers are <10 MB combined; native PDF tools (poppler,
+mupdf) are bigger and platform-fragmented.
+
+**Allowed wheel additions** for Plan 08-01 (verified versions per
+RESEARCH.md, 2026-05-10):
+
+  - `pypdf` 6.11.0 — PDF text + embedded images. Pure-Python (BSD-3).
+  - `python-docx` 1.2.0 — DOCX. Pulls `lxml` transitively; lxml has
+    a C extension. Acceptable: lxml is mature, ships pre-built wheels
+    for Windows x64, and the alternative (`python-docx-ng`) is less
+    maintained.
+  - `python-pptx` 1.0.2 — PPTX. Pulls `Pillow` transitively for
+    embedded-image extraction. Pillow has a C extension. Acceptable
+    for the same reason.
+  - `openpyxl` 3.1.5 — XLSX. Pure-Python.
+  - `markdown` 3.10.2 — MD. Pure-Python.
+  - `beautifulsoup4` 4.x latest — HTML. Pure-Python (with optional C
+    accelerator that we DO NOT enable). Stdlib `html.parser` was
+    considered as an alternative but produces structurally weaker
+    extraction for game-design-doc HTML (footnotes, tables, embedded
+    images) — and it's the parser that bs4 wraps anyway when no
+    accelerator is installed. Net cost: ~370 KB for the bs4 wrapper
+    surface, worth it for the parser quality.
+
+**Amended 2026-05-10 (per plan-checker N1 finding):** the original
+LOCKED-06 said "exactly five" parsers and "any C extension as a hard
+requirement → pick a different parser." Both clauses softened:
+
+  - Six parsers are now allowed (the five above + `beautifulsoup4`).
+  - Transitive C extensions (`lxml`, `Pillow`) are accepted because
+    (a) they're industry-standard, (b) they ship pre-built wheels for
+    Windows x64 (no source-build burden on the offline cache), and
+    (c) the alternative (drop python-docx + python-pptx + use stdlib
+    parsers) significantly weakens DOCX/PPTX extraction quality.
+
+**How to apply:** Plan 08-01 measures the post-add `requirements.lock`
+wheel-cache total. Any addition beyond the six libs above (or any C
+extension that does NOT ship pre-built Windows-x64 wheels) requires a
+new LOCKED-06 amendment. Plans 02–08 do NOT add new wheels — they're
+pure UE Python API consumers.
 
 ### LOCKED-07: drag-drop into chat extends `SNyraImageDropZone`.
 **Why locked:** That widget already implements Slate `OnDragOver` /
@@ -126,6 +158,41 @@ incremental. Shipping only Tier-1 still closes the most damaging gap.
 PARITY-04} all shipped + at least two of {05, 06, 07, 08} shipped. If
 that bar is met, Phase 8 is COMPLETE and Phase 9 (Fab Launch) can
 proceed even if the remaining Tier-2 features slip.
+
+### LOCKED-10: Plans execute in plan-number order within each wave.
+**Why locked:** Two shared files have append-only edits across multiple
+plans:
+
+  1. `TestProject/Plugins/NYRA/Source/NyraEditor/NyraEditor.Build.cs` —
+     plans 02/03/05/07 each add `PrivateDependencyModuleNames` entries
+     (LiveCoding, BehaviorTreeEditor, AIModule, Niagara, NiagaraEditor,
+     AnimGraph, AnimGraphRuntime, BlueprintGraph). Same C# file.
+  2. `TestProject/Plugins/NYRA/Source/NyraHost/src/nyrahost/mcp_server/__init__.py` —
+     plans 02/03/05/06/07/08 each append imports + `_tools` dict entries
+     + `list_tools()` schemas. Append-only and trivially mergeable, but
+     parallel execution within Wave 2 produces guaranteed merge
+     conflicts.
+  3. `FNyraAttachmentRef` enum extension in `NyraMessageModel.h` — 08-01
+     adds `Document`, 08-04 adds `Asset`. Either order works but a
+     plan-number-ordered commit is the predictable rule.
+
+LOCKED-08's "independently shippable" still holds (each plan is
+designable in isolation), but execution sequencing is NOT free.
+
+**How to apply:** Within a single wave, plans execute and commit in
+plan-number order: 08-01 → 08-04 (wave 1); 08-02 → 08-03 → 08-05 →
+08-07 → 08-08 (wave 2); 08-06 (wave 3). Each plan's tasks may run in
+parallel internally; only the inter-plan landing is serialised. The
+gsd-executor honors this via `serial_after` plan frontmatter where
+applicable. If a plan slips and a later-numbered plan in the same
+wave is ready, the later plan commits first ONLY IF it doesn't touch
+the shared files; otherwise it waits.
+
+**Practical note for the executor:** the conflict surface is small
+(one C# file + one Python file + one C++ enum). Resolving merge
+conflicts is mechanical (append in plan-number order). The
+"serialise within wave" rule is a pre-emptive simplification, not a
+hard architectural constraint.
 
 ## Out of Scope
 
