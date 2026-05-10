@@ -198,6 +198,47 @@ async def _poll_meshy_and_update_manifest(
         result = await client.image_to_3d(image_path=image_path, task_type=task_type)
 
         if result.status == "completed" and result.glb_url:
+            # Phase 5 WR-01: SSRF defence. The glb_url is supplied by
+            # Meshy's API response; if that response is tampered with or
+            # the API itself returns a malformed URL, an unchecked GET
+            # would let an attacker pivot through NyraHost to localhost
+            # or an internal network. Restrict to https + the Meshy CDN
+            # domains before issuing the download. The allowlist is
+            # narrow on purpose — Meshy moves files between
+            # `assets.meshy.ai` and S3-fronted CDNs but always over
+            # https on a *.meshy.ai or *.amazonaws.com host.
+            from urllib.parse import urlparse
+            parsed = urlparse(result.glb_url)
+            host = (parsed.hostname or "").lower()
+            scheme_ok = parsed.scheme == "https"
+            host_ok = (
+                host.endswith(".meshy.ai")
+                or host == "meshy.ai"
+                or host.endswith(".amazonaws.com")
+            )
+            if not (scheme_ok and host_ok):
+                manifest.update_job(
+                    job_id=job_id,
+                    ue_import_status="failed",
+                    error_message=(
+                        "Refused to download GLB from untrusted host "
+                        f"{host or '?'}; expected https://*.meshy.ai or "
+                        "https://*.amazonaws.com."
+                    ),
+                )
+                log.warning(
+                    "meshy_glb_url_rejected_ssrf",
+                    job_id=job_id,
+                    host=host,
+                    scheme=parsed.scheme,
+                )
+                return NyraToolResult.ok({
+                    "job_id": job_id,
+                    "task_id": result.task_id,
+                    "status": "failed",
+                    "error": "untrusted_glb_host",
+                })
+
             # Download GLB to staging directory
             staging_root = manifest._root
             glb_path = staging_root / f"{job_id}.glb"

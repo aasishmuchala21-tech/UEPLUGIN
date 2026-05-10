@@ -129,27 +129,32 @@ class ComfyUIClient:
 
         Raises ComfyUIWorkflowValidationError if any unknown node types exist.
         This is the T-05-02 mitigation — workflow injection attack prevention.
+
+        WR-08: bound the number of top-level prompt nodes we'll iterate
+        so a malicious workflow cannot drag NyraHost into a multi-second
+        validation loop. The shape we trust is "prompt is a dict of
+        node-id -> {class_type, inputs}" — class_types nested inside an
+        ``inputs`` value aren't real nodes and intentionally are NOT
+        collected (matches the ComfyUI server's own dispatcher).
         """
         node_info = await self.get_node_info()
         known_types = set(node_info.keys())
         workflow_types: set[str] = set()
 
-        def collect_types(node: dict) -> None:
-            if isinstance(node, dict):
-                if "class_type" in node:
-                    workflow_types.add(node["class_type"])
-                for v in node.values():
-                    if isinstance(v, dict):
-                        collect_types(v)
-                    elif isinstance(v, list):
-                        for item in v:
-                            if isinstance(item, dict):
-                                collect_types(item)
-
+        MAX_NODES = 10_000
         prompt = workflow.get("prompt", workflow)
-        for node_id, node in prompt.items():
+        if not isinstance(prompt, dict):
+            return []
+        if len(prompt) > MAX_NODES:
+            raise ComfyUIWorkflowValidationError(
+                "Workflow has more than 10,000 prompt nodes; refusing "
+                "to validate. Trim or split the workflow."
+            )
+        for node in prompt.values():
             if isinstance(node, dict) and "class_type" in node:
-                workflow_types.add(node["class_type"])
+                ct = node["class_type"]
+                if isinstance(ct, str):
+                    workflow_types.add(ct)
         unknown = workflow_types - known_types
         return list(unknown)
 

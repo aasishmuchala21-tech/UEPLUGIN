@@ -156,6 +156,31 @@ class Storage:
             id=conv_id, title=title, created_at=now, updated_at=now
         )
 
+    def upsert_conversation(
+        self, conv_id: str, *, title: str | None = None
+    ) -> Conversation:
+        """WR-03: insert-if-absent for a caller-supplied conversation id.
+
+        chat/send accepts a UE-generated conv_id and previously reached
+        into ``Storage.conn`` with raw SQL to create the row. That coupled
+        the handler to the DB schema and broke when Storage's transaction
+        semantics changed. This method centralises the pattern: create
+        with the caller's id if missing, return the existing row otherwise.
+        """
+        existing = self.get_conversation(conv_id)
+        if existing is not None:
+            return existing
+        now = int(time.time() * 1000)
+        self._conn.execute(
+            "INSERT INTO conversations(id,title,created_at,updated_at) "
+            "VALUES(?,?,?,?)",
+            (conv_id, title, now, now),
+        )
+        self._conn.commit()
+        return Conversation(
+            id=conv_id, title=title, created_at=now, updated_at=now
+        )
+
     def get_conversation(self, conv_id: str) -> Conversation | None:
         row = self._conn.execute(
             "SELECT id,title,created_at,updated_at FROM conversations "

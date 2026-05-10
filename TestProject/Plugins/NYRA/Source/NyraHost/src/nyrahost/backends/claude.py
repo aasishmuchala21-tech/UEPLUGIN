@@ -29,7 +29,9 @@ No rate-limit fallback logic here — that lands in Plan 02-06.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -197,13 +199,53 @@ class ClaudeBackend(AgentBackend):
         # {"role":"user","content":[{"type":"text","text":"..."}]}}.
         try:
             assert proc.stdin is not None
-            input_frame = json.dumps({
-                "type": "user",
-                "message": {
-                    "role": "user",
-                    "content": [{"type": "text", "text": content}],
-                },
-            })
+            # WR-05: include image attachments alongside the user text in
+            # the stream-json input frame. Each AttachmentRef of kind
+            # "image" becomes an `image/base64` content block; videos and
+            # text attachments aren't natively rendered by the CLI yet, so
+            # they're surfaced as a path footnote in the text block. This
+            # keeps the chat-panel `[+]`-attached references actually
+            # reaching Claude rather than being silently dropped.
+            content_blocks: list[dict] = [{"type": "text", "text": content}]
+            text_footnotes: list[str] = []
+            for ref in attachments:
+                if ref.kind == "image":
+                    try:
+                        media_type = (
+                            mimetypes.guess_type(ref.path)[0] or "image/png"
+                        )
+                        with open(ref.path, "rb") as fh:
+                            b64 = base64.b64encode(fh.read()).decode("ascii")
+                        content_blocks.append(
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": b64,
+                                },
+                            }
+                        )
+                    except OSError as exc:
+                        log.warning(
+                            "claude_attachment_read_failed",
+                            path=ref.path,
+                            error=str(exc),
+                        )
+                else:
+                    text_footnotes.append(
+                        f"[{ref.kind}: {ref.original_filename} -> {ref.path}]"
+                    )
+            if text_footnotes:
+                content_blocks[0]["text"] = (
+                    content + "\n\n" + "\n".join(text_footnotes)
+                )
+            input_frame = json.dumps(
+                {
+                    "type": "user",
+                    "message": {"role": "user", "content": content_blocks},
+                }
+            )
             proc.stdin.write((input_frame + "\n").encode("utf-8"))
             await proc.stdin.drain()
             proc.stdin.close()

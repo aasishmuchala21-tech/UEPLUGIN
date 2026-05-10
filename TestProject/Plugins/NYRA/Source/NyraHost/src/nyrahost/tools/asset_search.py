@@ -157,10 +157,24 @@ class AssetSearchTool(NyraTool):
         return max(name_score, class_score)
 
     def execute(self, params: dict) -> NyraToolResult:
+        # Phase 4 WR-01: bound query/class_filter inputs. The full asset
+        # index can hold 50K+ rows; an unbounded fuzzy match on a 1 MB
+        # input string would burn CPU for seconds. Cap to 256 chars
+        # (longer queries don't improve fuzz.partial_ratio quality).
+        query = params.get("query", "")
+        if not isinstance(query, str):
+            return NyraToolResult.err("query_must_be_string")
+        if len(query) > 256:
+            return NyraToolResult.err("query_too_long_max_256")
+        class_filter = params.get("class_filter")
+        if class_filter is not None and (
+            not isinstance(class_filter, str) or len(class_filter) > 128
+        ):
+            return NyraToolResult.err("class_filter_invalid_or_too_long")
+
         index = self._build_asset_index()
         threshold = params.get("threshold", 70)
         limit = params.get("limit", 20)
-        class_filter = params.get("class_filter")
 
         candidates = index
         if class_filter:
@@ -170,7 +184,7 @@ class AssetSearchTool(NyraTool):
             ]
 
         scored: list[tuple[int, dict[str, Any]]] = [
-            (self._score(a, params["query"]), a) for a in candidates
+            (self._score(a, query), a) for a in candidates
         ]
         scored = [(score, a) for score, a in scored if score >= threshold]
         scored.sort(key=lambda x: x[0], reverse=True)
@@ -178,7 +192,7 @@ class AssetSearchTool(NyraTool):
             {**a, "match_score": score} for score, a in scored[:limit]
         ]
         return NyraToolResult.ok({
-            "query": params["query"],
+            "query": query,
             "total_indexed": len(index),
             "results": results,
         })

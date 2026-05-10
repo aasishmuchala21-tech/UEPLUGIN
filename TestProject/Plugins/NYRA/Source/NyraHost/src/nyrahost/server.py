@@ -88,7 +88,12 @@ class NyraServer:
             )
         except ProtocolError as e:
             await ws.close(AUTH_CLOSE_CODE, AUTH_CLOSE_REASON)
-            log.warning("auth_bad_envelope", err=str(e))
+            # Phase 2 WR-04: log only the exception class name; do NOT
+            # str(e) the parsed Pydantic / json error which can quote the
+            # bad first-frame body back, leaking the auth token through
+            # log files. The class name + a fixed reason string is
+            # sufficient diagnostic without secret-bleed.
+            log.warning("auth_bad_envelope", err_type=type(e).__name__)
             return
         if (
             not isinstance(env, RequestEnvelope)
@@ -140,7 +145,10 @@ class NyraServer:
         try:
             env = parse_envelope(frame)
         except ProtocolError as e:
-            log.warning("dispatch_bad_envelope", err=str(e))
+            # Phase 2 WR-04: same reasoning as auth_bad_envelope — the
+            # parsed envelope can include payload contents we don't want
+            # in logs. Class name only.
+            log.warning("dispatch_bad_envelope", err_type=type(e).__name__)
             return
         if isinstance(env, RequestEnvelope):
             handler = self.request_handlers.get(env.method)

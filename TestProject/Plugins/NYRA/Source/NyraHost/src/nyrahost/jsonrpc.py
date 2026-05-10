@@ -71,8 +71,18 @@ def parse_envelope(frame: str) -> Envelope:
             raise ProtocolError("method_not_string")
         if not isinstance(params, dict):
             raise ProtocolError("params_not_object")
-        if "id" in obj:
-            return RequestEnvelope(id=obj["id"], method=method, params=params)
+        # WR-08: per JSON-RPC 2.0 §4 — id MUST be String, Number, or NULL
+        # if included; absence means notification. Some buggy clients
+        # send `"id": null` to indicate "I don't care about a response"
+        # which is semantically a notification. Treat both the absent and
+        # null cases as notifications so handlers don't reply to a void
+        # id (the spec also forbids using NULL except as the response id
+        # for an error where the request id couldn't be parsed).
+        if "id" in obj and obj["id"] is not None:
+            rid = obj["id"]
+            if not isinstance(rid, (int, str)):
+                raise ProtocolError("id_not_string_or_number")
+            return RequestEnvelope(id=rid, method=method, params=params)
         return NotificationEnvelope(method=method, params=params)
 
     if "result" in obj:

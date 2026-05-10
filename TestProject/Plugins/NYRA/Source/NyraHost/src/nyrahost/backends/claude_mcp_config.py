@@ -151,6 +151,23 @@ def cleanup_stale_configs(
     ``%LOCALAPPDATA%/NYRA/mcp-configs/`` directory does not accumulate
     hundreds of stale JSON files over months.
 
+    WR-06: this directory is shared across every concurrent NyraHost
+    instance on the user's machine (one per UE Editor PID). A naive
+    "delete everything older than N seconds" would yank out an active
+    sibling instance's config mid-stream. We keep this safe by:
+
+      1. Only deleting files whose mtime is older than the threshold —
+         live sessions touch their config at spawn time so a healthy
+         sibling stays comfortably under the cutoff.
+      2. Skipping files currently held open: on Windows ``unlink`` of an
+         open handle raises ``PermissionError`` (sharing violation), which
+         this function logs as ``mcp_config_cleanup_skip`` and continues.
+         The result is best-effort cleanup that never preempts a live run.
+
+    A future cross-process scoping enhancement (e.g. peeking at running
+    NyraHost PIDs and skipping their session_ids) is tracked in
+    ``.planning/research/MCP-CONFIG-SCOPING.md`` for v1.1.
+
     Parameters
     ----------
     mcp_configs_dir
@@ -178,6 +195,9 @@ def cleanup_stale_configs(
                     path.unlink(missing_ok=True)
                     deleted += 1
             except OSError as exc:
+                # PermissionError (Windows sharing violation) lands here
+                # and is the safety net that prevents preempting a live
+                # sibling NyraHost instance.
                 log.warning("mcp_config_cleanup_skip", path=str(path), err=str(exc))
 
     if deleted:

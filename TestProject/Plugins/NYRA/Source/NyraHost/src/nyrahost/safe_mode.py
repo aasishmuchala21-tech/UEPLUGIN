@@ -107,6 +107,12 @@ class NyraPermissionGate:
             log.warning("reject_unknown_plan", plan_id=plan_id)
             return False
         self._previews[plan_id].state = PlanPreviewState.REJECTED
+        # WR-12: clear user_confirmed alongside the state flip so callers
+        # consulting either signal converge. Without this, a plan that was
+        # approve()-then-reject()'d (chat/cancel race, regenerate-after-
+        # approve) would keep user_confirmed=True and leak through any
+        # gate that bypassed the state check.
+        self._previews[plan_id].user_confirmed = False
         if plan_id in self._futures and not self._futures[plan_id].done():
             self._futures[plan_id].set_result({
                 "decision": "rejected",

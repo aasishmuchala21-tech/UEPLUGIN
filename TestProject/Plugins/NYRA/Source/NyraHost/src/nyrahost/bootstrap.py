@@ -20,6 +20,33 @@ VENV_MARKER_FILENAME = "nyra-plugin-version.txt"
 NYRA_PLUGIN_VERSION = "0.1.0"  # bump to trigger venv rebuild on plugin update
 
 
+class BootstrapError(RuntimeError):
+    """Raised when venv creation or wheel install fails.
+
+    WR-11: provides a structured surface (stage, command, stderr,
+    remediation) so the supervisor can map the failure to a JSON-RPC
+    error envelope without scraping subprocess output. ``stage`` is one
+    of ``"create_venv" | "install_wheels"`` so UE-side telemetry can
+    distinguish a missing python_exe from a corrupted wheel cache.
+    """
+
+    def __init__(
+        self,
+        stage: str,
+        *,
+        command: list[str],
+        returncode: int,
+        stderr: str,
+        remediation: str,
+    ) -> None:
+        super().__init__(f"bootstrap_failed[{stage}]: rc={returncode}")
+        self.stage = stage
+        self.command = command
+        self.returncode = returncode
+        self.stderr = stderr
+        self.remediation = remediation
+
+
 def default_venv_path() -> Path:
     """Resolve the default venv location.
 
@@ -73,20 +100,44 @@ def ensure_venv(
     if venv.exists():
         shutil.rmtree(venv, ignore_errors=True)
     venv.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        [str(python_exe), "-m", "venv", "--copies", str(venv)],
-        check=True,
+    create_cmd = [str(python_exe), "-m", "venv", "--copies", str(venv)]
+    create_result = subprocess.run(
+        create_cmd, capture_output=True, text=True,
     )
-    # Offline wheel install
+    if create_result.returncode != 0:
+        raise BootstrapError(
+            "create_venv",
+            command=create_cmd,
+            returncode=create_result.returncode,
+            stderr=(create_result.stderr or "")[-2000:],
+            remediation=(
+                "NyraHost could not create its Python venv. Verify the "
+                "bundled python.exe under Binaries/Win64/NyraHost/python/ "
+                "is intact (Fab updates can occasionally damage it) and "
+                "that %LOCALAPPDATA%/NYRA/ is writable."
+            ),
+        )
     venv_py = _venv_python_exe(venv)
-    subprocess.run(
-        [
-            str(venv_py), "-m", "pip", "install",
-            "--no-index",
-            "--find-links", str(wheels_dir),
-            "-r", str(requirements_lock),
-        ],
-        check=True,
+    install_cmd = [
+        str(venv_py), "-m", "pip", "install",
+        "--no-index",
+        "--find-links", str(wheels_dir),
+        "-r", str(requirements_lock),
+    ]
+    install_result = subprocess.run(
+        install_cmd, capture_output=True, text=True,
     )
+    if install_result.returncode != 0:
+        raise BootstrapError(
+            "install_wheels",
+            command=install_cmd,
+            returncode=install_result.returncode,
+            stderr=(install_result.stderr or "")[-2000:],
+            remediation=(
+                "NyraHost could not install its bundled wheel cache. "
+                "Run 'NYRA: Repair Plugin' from the editor, or delete "
+                "%LOCALAPPDATA%/NYRA/venv/ and reopen the project."
+            ),
+        )
     _write_marker(venv, plugin_version)
     return venv_py

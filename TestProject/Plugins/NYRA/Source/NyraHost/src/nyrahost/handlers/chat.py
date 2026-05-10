@@ -101,16 +101,12 @@ class ChatHandlers:
             # AgentBackend.send() coroutine in a background task that
             # translates BackendEvent objects into chat/stream WS
             # notifications. This used to raise NotImplementedError.
-            now_ms = int(time.time() * 1000)
-            if self.storage.get_conversation(conv_id) is None:
-                self.storage.conn.execute(
-                    "INSERT OR IGNORE INTO conversations(id,title,created_at,updated_at) "
-                    "VALUES(?,?,?,?)",
-                    (conv_id,
-                     content.split("\n", 1)[0][:48].strip() or "(empty)",
-                     now_ms, now_ms),
-                )
-                self.storage.conn.commit()
+            # WR-03: route conversation insert through Storage.upsert_conversation
+            # rather than reaching into self.storage.conn directly.
+            self.storage.upsert_conversation(
+                conv_id,
+                title=content.split("\n", 1)[0][:48].strip() or "(empty)",
+            )
 
             user_msg = self.storage.append_message(
                 conversation_id=conv_id, role="user", content=content,
@@ -167,17 +163,9 @@ class ChatHandlers:
         if await self.router.gemma_not_installed():
             raise GemmaNotInstalledError()
 
-        # Persist user message (auto-create conversation if first time seen)
-        now_ms = int(time.time() * 1000)
-        if self.storage.get_conversation(conv_id) is None:
-            # Caller passed a fresh conv_id — create with default title
-            # (first 48 chars of the user message per the Plan 08 plan)
-            self.storage.conn.execute(
-                "INSERT INTO conversations(id,title,created_at,updated_at) "
-                "VALUES(?,?,?,?)",
-                (conv_id, content[:48], now_ms, now_ms),
-            )
-            self.storage.conn.commit()
+        # WR-03: same conversation upsert pattern — go through Storage so
+        # transaction semantics live in one place.
+        self.storage.upsert_conversation(conv_id, title=content[:48])
 
         user_msg = self.storage.append_message(
             conversation_id=conv_id, role="user", content=content,

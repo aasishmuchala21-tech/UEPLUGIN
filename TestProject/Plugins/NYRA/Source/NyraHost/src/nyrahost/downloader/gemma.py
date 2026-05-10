@@ -74,7 +74,23 @@ class GemmaDownloader:
 
     def _resume_offset(self) -> int:
         if self.partial_path.exists():
-            return self.partial_path.stat().st_size
+            size = self.partial_path.stat().st_size
+            # WR-04: refuse to "resume" from a .partial that is already
+            # at-or-past the expected total size. That state means a
+            # prior download corrupted the file (or the manifest's
+            # total_bytes shrank); a Range request from this offset
+            # would 416 and the user would see an opaque HTTP error.
+            # Clear the corrupt .partial and start over.
+            hint = self.spec.total_bytes_hint
+            if hint > 0 and size >= hint:
+                log.warning(
+                    "gemma_partial_oversize_reset",
+                    partial_size=size,
+                    expected=hint,
+                )
+                self.partial_path.unlink(missing_ok=True)
+                return 0
+            return size
         return 0
 
     async def _download_from(
@@ -211,6 +227,20 @@ class GemmaDownloader:
                     )
                     last_err = e
                     continue
+
+        # WR-10: both URLs exhausted. If the last failure was a SHA
+        # mismatch the .partial is corrupt — clean it up rather than
+        # leaving a stale, never-resumable file. HTTP/network failures
+        # are kept on disk so the next attempt can continue from the
+        # last good byte.
+        if isinstance(last_err, ValueError) and "sha256 mismatch" in str(
+            last_err
+        ):
+            self.partial_path.unlink(missing_ok=True)
+            log.info(
+                "gemma_partial_cleanup_after_sha_mismatch",
+                path=str(self.partial_path),
+            )
 
         await progress.error(
             code=-32005,

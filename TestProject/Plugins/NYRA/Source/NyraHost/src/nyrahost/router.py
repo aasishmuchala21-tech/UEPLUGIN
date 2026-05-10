@@ -13,10 +13,15 @@ Key design constraints:
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 import structlog
+
+# Phase 2 WR-03: server_error retry cap. RESEARCH §10.6 picked 3 — anything
+# higher and the user waits too long for a clearly-failing backend. Sourced
+# here as a constant so the magic number lives in one place.
+SERVER_ERROR_RETRY_CAP = 3
 
 log = structlog.get_logger("nyrahost.router")
 
@@ -43,9 +48,11 @@ class RouterContext:
     rate_limit_retries: int = 0
     last_error: str | None = None
     prior_state_before_privacy: BackendState | None = None
-
-    # Stub: Claude-side backends not available until SC#1 clears
-    _claude_available: bool = field(default=False, repr=False)
+    # Phase 2 WR-01: _claude_available previously lived on this dataclass
+    # AND on NyraRouter (dual ownership — confusing because the field
+    # default never matched the constructor arg). Source of truth is now
+    # NyraRouter._claude_available; this dataclass holds router *state*
+    # only.
 
 
 @dataclass
@@ -232,7 +239,15 @@ class NyraRouter:
             )
 
     async def set_mode(self, mode: str) -> None:
-        """Set routing mode: 'claude' | 'gemma' | 'auto' | 'normal'."""
+        """Set routing mode: 'claude' | 'gemma' | 'auto' | 'normal'.
+
+        Phase 2 WR-02 note: 'gemma' deliberately enters Privacy Mode (no
+        Claude egress) per the Phase 2 locked contract; the user-facing
+        UI in NyraStatusBar exposes 'Privacy Mode' and 'Use Gemma' as the
+        same toggle so users picking gemma to save cost get privacy as a
+        bonus. ``test_set_mode_gemma_enters_privacy`` enforces this. If a
+        future v1.1 needs to decouple the two, also update that test.
+        """
         if mode == "gemma":
             await self.enter_privacy_mode()
         elif mode == "claude":
@@ -291,13 +306,12 @@ class NyraRouter:
 
         if category == "rate_limit":
             self.ctx.rate_limit_retries += 1
-            if attempt >= 3:
+            if attempt >= SERVER_ERROR_RETRY_CAP:
                 await self._transition_and_notify(
                     BackendState.RATE_LIMITED,
                     f"rate_limit_exhausted_attempt_{attempt}",
                     {"error_category": category},
                 )
-            # attempt < 3: stay in CLAUDE_ACTIVE; no transition call needed
         elif category == "authentication_failed":
             await self._transition_and_notify(
                 BackendState.AUTH_DRIFT,
@@ -305,7 +319,7 @@ class NyraRouter:
                 {"error_category": category},
             )
         elif category in ("server_error", "unknown"):
-            if attempt >= 3:
+            if attempt >= SERVER_ERROR_RETRY_CAP:
                 self.ctx.last_error = f"{category}_attempt_{attempt}"
                 await self._do_emit("diagnostics/backend-state", {
                     "state": self.ctx.state.value,
