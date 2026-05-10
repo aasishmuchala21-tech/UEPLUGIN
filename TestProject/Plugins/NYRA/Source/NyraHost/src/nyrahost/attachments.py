@@ -117,11 +117,48 @@ def ingest_attachment(
     returns identical {sha256, path} and only one physical file exists
     on disk (content-addressed dedup).
     """
-    if not src_path.is_file():
+    # BL-03: agent-controlled `attachments` field can hand-pick paths via
+    # the WS request. Reject symlinks at any depth (resolve(strict=True))
+    # and blocklist sensitive parent prefixes (~/.ssh/, /etc/, /root/,
+    # C:\Windows\, C:\Users\Default\). The bytes will still be content-
+    # hashed to the addressable shard, but the *source* must not let
+    # an LLM pick `~/.ssh/id_rsa` and have those bytes land in a
+    # predictable shard path that's also referenced from the SQLite DB.
+    try:
+        src_resolved = src_path.resolve(strict=True)
+    except FileNotFoundError:
         raise FileNotFoundError(src_path)
-    ext = src_path.suffix.lower()
+    if src_path.is_symlink():
+        raise ValueError(
+            f"Symlinked attachment paths are not permitted: {src_path}"
+        )
+    for parent in src_path.parents:
+        if parent.is_symlink():
+            raise ValueError(
+                f"Attachment path contains symlinked parent {parent}; rejected."
+            )
+    abs_lower = str(src_resolved).lower().replace("\\", "/")
+    _PATH_BLOCKLIST = (
+        "/etc/",
+        "/root/",
+        "c:/windows/",
+        "c:/users/default/",
+        # User SSH/AWS/credentials directories on POSIX and Windows.
+        "/.ssh/",
+        "/.aws/",
+        "/appdata/roaming/microsoft/credentials",
+    )
+    for prefix in _PATH_BLOCKLIST:
+        if prefix in abs_lower:
+            raise ValueError(
+                f"Attachment source under sensitive prefix '{prefix}' rejected: {src_resolved}"
+            )
+
+    if not src_resolved.is_file():
+        raise FileNotFoundError(src_path)
+    ext = src_resolved.suffix.lower()
     kind = _classify(ext)
-    sha = _sha256_of_file(src_path)
+    sha = _sha256_of_file(src_resolved)
     prefix = sha[:2]
     dest_dir = project_saved / "NYRA" / "attachments" / prefix
     dest_dir.mkdir(parents=True, exist_ok=True)

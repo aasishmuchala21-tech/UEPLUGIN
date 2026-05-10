@@ -118,16 +118,30 @@ def cleanup_orphan_handshakes(handshake_dir: Path) -> list[int]:
 
 def _pid_running(pid: int) -> bool:
     if sys.platform == "win32":
+        # BL-06: OpenProcess succeeds for terminated-but-not-reaped processes
+        # (zombies) AND for recycled PIDs (the OS reassigned the integer to a
+        # new unrelated process). Always check GetExitCodeProcess for
+        # STILL_ACTIVE (259); otherwise orphan handshake cleanup is broken
+        # and a recycled PID locks out the new editor.
+        STILL_ACTIVE = 259
+        h = None
         try:
             import win32api  # type: ignore[import-not-found]
             import win32con  # type: ignore[import-not-found]
+            import win32process  # type: ignore[import-not-found]
             h = win32api.OpenProcess(
                 win32con.PROCESS_QUERY_LIMITED_INFORMATION, False, pid
             )
-            win32api.CloseHandle(h)
-            return True
+            exit_code = win32process.GetExitCodeProcess(h)
+            return exit_code == STILL_ACTIVE
         except Exception:
             return False
+        finally:
+            if h is not None:
+                try:
+                    win32api.CloseHandle(h)
+                except Exception:
+                    pass
     # POSIX
     try:
         os.kill(pid, 0)
