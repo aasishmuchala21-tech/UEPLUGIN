@@ -7,13 +7,20 @@ Per Plan 05-01:
   - Path traversal protection (T-05-03)
 
 Threat mitigations:
-  T-05-03: _validate_path called before any downloaded_path write
+  T-05-03: _validate_path called before any downloaded_path write (BL-02 fixed
+           the startswith-bypass to use Path.relative_to)
+  BL-03:   atomic write via tempfile + os.replace; schema validation on load;
+           threading.Lock around load+mutate+save sequences (process-local
+           single-writer guarantee). Multi-process safety is documented as
+           single-NyraHost-per-user for v1.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import tempfile
+import threading
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -62,6 +69,14 @@ class StagingManifest:
           ~/.local/share/NYRA/staging/nyra_pending.json on Unix.
     """
 
+    # BL-03: required string fields on every JobEntry. Used by _load to
+    # reject manifests where any entry has been tampered with to omit a
+    # required field or substitute the wrong type.
+    _REQUIRED_ENTRY_FIELDS = (
+        "id", "tool", "operation", "input_ref", "input_hash",
+        "ue_import_status", "created_at",
+    )
+
     def __init__(self, staging_root: Optional[Path] = None) -> None:
         if staging_root:
             self._root = staging_root
@@ -73,14 +88,73 @@ class StagingManifest:
                 self._root = Path.home() / ".local" / "share" / "NYRA" / "staging"
         self._root.mkdir(parents=True, exist_ok=True)
         self._manifest_path = self._root / "nyra_pending.json"
+        # BL-03: serialize load+mutate+save sequences across worker tasks.
+        self._lock = threading.RLock()
 
     def _load(self) -> dict:
-        if self._manifest_path.exists():
-            return json.loads(self._manifest_path.read_text(encoding="utf-8"))
-        return {"version": STAGING_VERSION, "jobs": []}
+        """Load manifest with schema validation (BL-03).
+
+        Empty / missing files return a fresh canonical structure. Anything on
+        disk that fails the schema check raises ValueError -- the caller
+        should NOT silently fall back to an empty manifest because that
+        would mask malicious tampering or genuine corruption.
+        """
+        if not self._manifest_path.exists():
+            return {"version": STAGING_VERSION, "jobs": []}
+        raw = json.loads(self._manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"nyra_pending.json: top-level must be an object (got {type(raw).__name__})"
+            )
+        if raw.get("version") != STAGING_VERSION:
+            raise ValueError(
+                f"nyra_pending.json schema mismatch: expected version {STAGING_VERSION}, "
+                f"found {raw.get('version')!r}"
+            )
+        jobs = raw.get("jobs")
+        if not isinstance(jobs, list):
+            raise ValueError(
+                f"nyra_pending.json: jobs must be a list (got {type(jobs).__name__})"
+            )
+        for j in jobs:
+            if not isinstance(j, dict):
+                raise ValueError(f"nyra_pending.json: job entry not an object: {j!r}")
+            for field in self._REQUIRED_ENTRY_FIELDS:
+                v = j.get(field)
+                if not isinstance(v, str):
+                    raise ValueError(
+                        f"nyra_pending.json: job {j.get('id')!r} missing required string "
+                        f"field '{field}' (got {type(v).__name__})"
+                    )
+        return raw
 
     def _save(self, data: dict) -> None:
-        self._manifest_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        """Atomic write via tempfile + os.replace (BL-03).
+
+        os.replace is atomic on NTFS and POSIX -- a crash, power loss, or
+        concurrent reader during write will see either the previous
+        manifest or the new one, never a half-written truncated JSON.
+        Tempfile lives in the same dir so the rename is intra-volume.
+        """
+        # NamedTemporaryFile delete=False so we own the path through replace().
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", delete=False,
+            dir=str(self._root),
+            prefix=".nyra_pending.", suffix=".tmp",
+        )
+        try:
+            json.dump(data, tmp, indent=2)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+            tmp.close()
+            os.replace(tmp.name, self._manifest_path)
+        except Exception:
+            # Best-effort cleanup; never let the temp file leak on error.
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass
+            raise
 
     def _compute_hash(self, input_ref: str) -> str:
         """Compute sha256:<hex16> of the input reference for idempotency."""
