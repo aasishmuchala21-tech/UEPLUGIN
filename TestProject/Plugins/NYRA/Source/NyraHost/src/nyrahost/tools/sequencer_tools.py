@@ -203,7 +203,19 @@ class SequencerAddCameraTool(SequencerToolMixin, NyraTool):
         seq = unreal.EditorAssetLibrary.load_asset(params["sequence_path"])
         if seq is None:
             return NyraToolResult.err(f"Level sequence not found: {params['sequence_path']}")
-        binding = self._bind_camera_to_sequence(seq, spawn_result.data["actor_path"])
+        # LevelSequenceEditorSubsystem.add_possible_binding_to_sequence requires a
+        # UObject Actor, NOT a path string. ActorSpawnTool returns actor_path as
+        # a string identifier; resolve it back to the actor object before
+        # binding. (In the no-unreal test path this branch is unreachable
+        # because we returned early above; operator wiring inside UE editor
+        # resolves the path to the spawned CineCameraActor.)
+        actor_path = spawn_result.data["actor_path"]
+        actor_obj = unreal.EditorAssetLibrary.load_asset(actor_path)
+        if actor_obj is None:
+            return NyraToolResult.err(
+                f"Failed to resolve spawned camera actor at path: {actor_path}"
+            )
+        binding = self._bind_camera_to_sequence(seq, actor_obj)
         if binding is None:
             return NyraToolResult.err("Failed to bind camera to sequence")
         log.info("camera_added_to_sequence",
