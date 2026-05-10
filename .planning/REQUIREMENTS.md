@@ -67,6 +67,19 @@
 - [ ] **DIST-03**: EV code-signing certificate acquired and build pipeline signs all binaries (plugin DLL, NyraHost executable, NyraInfer executable)
 - [ ] **DIST-04**: Zero-config install — user enables the plugin in UE, runs `claude setup-token` once, and is operational. First-run wizard verifies Claude Code CLI, downloads Gemma on demand, and confirms computer-use readiness
 
+### Competitive Parity vs Aura (Phase 8 — added 2026-05-10 after Aura public-beta comparison)
+
+Each requirement maps 1:1 to a Phase 8 plan. The bar is "matches Aura's documented capability for the same input shape" or better; per-SC framing in `.planning/phases/08-competitive-parity-aura/CONTEXT.md`.
+
+- [ ] **PARITY-01**: Document attachments — chat panel accepts PDF, DOCX, PPTX, XLSX, HTML, Markdown alongside the existing image/video/text. Pure-Python parsers only (pypdf, python-docx, python-pptx, openpyxl, markdown). Embedded images extract to the existing image-attachment vision pipeline. Wheel-cache impact bounded under 50 MB.
+- [ ] **PARITY-02**: C++ authoring + Live Coding — `nyra_cpp_module_create / class_add / function_add / recompile` quartet. Each step undoable via session_transaction. Compile errors surface through nyra_blueprint_debug-style pattern matching extended to C++. Hot Reload fallback for UE versions where Live Coding is unreliable.
+- [ ] **PARITY-03**: Behavior Tree authoring agent — `nyra_bt_create / add_composite / add_task / add_decorator / set_blackboard_key`. Composable + idempotent + post-condition-verified per Phase 4 mutator shape.
+- [ ] **PARITY-04**: Drag-from-Content-Browser into chat — extend `SNyraImageDropZone` Slate widget to accept `FAssetData` payloads from the Content Browser; produce structured asset chips in the chat composer.
+- [ ] **PARITY-05**: Niagara VFX authoring — `nyra_niagara_create_system / add_emitter / set_module_parameter`. GPU + CPU emitter paths covered. Reproduces Aura's documented sprite + ribbon emitter examples.
+- [ ] **PARITY-06**: Performance Profiling agent — `nyra_perf_stat_read / insights_query / explain_hotspot`. Read-only over `stat unit / unitgraph / memory` outputs and Insights `.utrace` files. `explain_hotspot` cites Phase 3 nyra_kb_search results — Aura has no docs RAG.
+- [ ] **PARITY-07**: Animation Blueprint authoring — `nyra_animbp_create / add_state_machine / add_transition`.
+- [ ] **PARITY-08**: Metasounds (audio) authoring — `nyra_metasound_create / add_node / connect`. Smallest surface; included for marketing-comparison parity with explicit acknowledgment that most game audio lives in Wwise/FMOD outside UE.
+
 ## v2 Requirements
 
 Deferred to v1.1+. Tracked but not in current roadmap.
@@ -168,10 +181,18 @@ Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for pha
 | GEN-03 | Phase 5 | Pending |
 | DEMO-01 | Phase 6 | Pending |
 | DEMO-02 | Phase 7 | Pending |
-| DIST-01 | Phase 8 | Pending |
-| DIST-02 | Phase 8 | Pending |
-| DIST-03 | Phase 8 | Pending |
-| DIST-04 | Phase 8 | Pending |
+| DIST-01 | Phase 9 | Pending (was Phase 8 prior to 2026-05-10 reframe) |
+| DIST-02 | Phase 9 | Pending (was Phase 8 prior to 2026-05-10 reframe) |
+| DIST-03 | Phase 9 | Pending (was Phase 8 prior to 2026-05-10 reframe) |
+| DIST-04 | Phase 9 | Pending (was Phase 8 prior to 2026-05-10 reframe) |
+| PARITY-01 | Phase 8 | Pending — document attachments (PDF/DOCX/PPTX/XLSX/HTML/MD) |
+| PARITY-02 | Phase 8 | Pending — C++ authoring + Live Coding |
+| PARITY-03 | Phase 8 | Pending — Behavior Tree agent |
+| PARITY-04 | Phase 8 | Pending — drag-from-Content-Browser |
+| PARITY-05 | Phase 8 | Pending — Niagara VFX agent |
+| PARITY-06 | Phase 8 | Pending — Performance Profiling agent |
+| PARITY-07 | Phase 8 | Pending — Animation Blueprint authoring |
+| PARITY-08 | Phase 8 | Pending — Metasounds (audio) agent |
 
 **Coverage:**
 - v1 requirements: 34 total
@@ -187,7 +208,8 @@ Phase mapping populated by the roadmapper — see `.planning/ROADMAP.md` for pha
 - Phase 5 (External Tool Integrations): 3 (GEN-01, GEN-02, GEN-03)
 - Phase 6 (Image-to-Scene, Fallback Demo): 2 (SCENE-01, DEMO-01)
 - Phase 7 (Video-to-Matched-Shot, LAUNCH DEMO): 2 (SCENE-02, DEMO-02)
-- Phase 8 (Fab Launch Prep): 4 (DIST-01, DIST-02, DIST-03, DIST-04)
+- Phase 8 (Competitive Parity vs Aura): 8 (PARITY-01..08; added 2026-05-10)
+- Phase 9 (Fab Launch Prep): 4 (DIST-01, DIST-02, DIST-03, DIST-04; was Phase 8 before 2026-05-10 reframe)
 
 ---
 *Requirements defined: 2026-04-21*

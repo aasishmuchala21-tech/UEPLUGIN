@@ -1,10 +1,11 @@
 # Roadmap: NYRA
 
 **Defined:** 2026-04-21
+**Last Updated:** 2026-05-10 (Phase 8 reframed: was "Fab Launch Prep", now "Competitive Parity vs Aura". Fab Launch Prep displaced to Phase 9. Rationale: Aura's public beta is shipping a much wider feature surface; launching NYRA against it without parity in document attachments / C++ authoring / BT agents / drag-drop UX risks immediate dismissal as "narrower than Aura". Per CLAUDE.md Quality Bar — parity is failure — but this is feature-surface parity to keep the wedge legible; the wedge itself ("free + your subscription + offline + computer-use + video-to-scene") survives.)
 **Core Value:** Turn a reference (image, video, prompt) into a finished Unreal Engine scene — without the user paying a new AI bill or leaving the editor.
 **Quality Bar:** Every phase's success criteria are framed as "beats competitor X on dimension Y" (not parity) or are an architectural gate that unblocks a future competitor-beating feature. Parity is failure.
-**Granularity:** standard (config), 9 phases justified — Phase 0 is a deliberately short non-code legal gate that runs in parallel with Phase 1, so effective code phases = 8, within the standard band.
-**Timeline target:** Solo full-time builder, 6-9 months to Fab v1 launch.
+**Granularity:** standard (config), 10 phases justified — Phase 0 is a deliberately short non-code legal gate that runs in parallel with Phase 1, so effective code phases = 9, within the standard band.
+**Timeline target:** Solo full-time builder, 6-9 months to Fab v1 launch (extends to ~9-12 months with Phase 8 Competitive Parity insertion).
 
 ---
 
@@ -27,7 +28,8 @@
 - [ ] **Phase 5: External Tool Integrations (API-First)** - Meshy REST, ComfyUI HTTP, computer-use reserved for Substance Sampler + UE modal dialogs, with the computer-use reliability spike gating scope
 - [ ] **Phase 6: Scene Assembly + Image-to-Scene (Fallback Launch Demo)** - Lighting authoring from NL/reference images, end-to-end DEMO-01 that beats Nwiro's fixed-library approach
 - [ ] **Phase 7: Sequencer + Video-to-Matched-Shot (LAUNCH DEMO)** - Video reference analyzer + Sequencer automation delivering DEMO-02, the capability no competitor ships
-- [ ] **Phase 8: Fab Launch Prep** - EV-signed installer, direct-download fallback, zero-config onboarding, Fab listing and AI-disclosure compliance
+- [ ] **Phase 8: Competitive Parity vs Aura** - Document attachments (PDF/DOCX/PPTX/MD) + C++ authoring with Live Coding loop + Behavior Tree agent + drag-from-Content-Browser UX + Niagara VFX agent + Performance Profiling agent + AnimBP authoring + Metasounds agent. Closes the Aura feature-surface gap so the "no new AI bill + offline + computer-use + video" wedge is read as additive, not as substitute for missing tools.
+- [ ] **Phase 9: Fab Launch Prep** - EV-signed installer, direct-download fallback, zero-config onboarding, Fab listing and AI-disclosure compliance (was Phase 8 prior to 2026-05-10 reframe)
 
 ---
 
@@ -151,13 +153,29 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 8: Fab Launch Prep
-**Goal**: NYRA ships to Fab with zero-config install, per-UE-version EV-signed binaries, AI-disclosure-compliant listing, and a direct-download fallback already live on nyra.ai (or temporary host) so a Fab rejection doesn't block launch. Every onboarding path ends in first-successful-action within 10 minutes of install.
-**Depends on**: Phase 7 (launch demo), Phase 2 (EV cert + CI matrix), Phase 0 (Fab pre-clearance + brand guideline compliance)
+### Phase 8: Competitive Parity vs Aura
+**Goal**: Close the Aura feature-surface gap so NYRA's "no new AI bill + offline + computer-use + video-to-scene" wedge reads as ADDITIVE (more capability than Aura, free) rather than substitute (narrower than Aura, but free). Eight feature areas land: document attachments (PDF/DOCX/PPTX/MD), C++ authoring with Live Coding integration, Behavior Tree authoring agent, drag-from-Content-Browser into chat, Niagara VFX authoring agent, Performance Profiling agent (Insights/Stat reads), Animation Blueprint authoring, Metasounds (audio) agent. Each area is a discrete plan; the parity bar is "Aura's documented capability is matched or exceeded on the same input shape."
+**Depends on**: Phase 4 (Tool Catalog dispatcher + permission gate + transactional safety patterns), Phase 5 (External tool integration patterns), Phase 1 (NyraHost MCP surface)
+**Requirements**: PARITY-01 through PARITY-08 (one per feature area; to be added to REQUIREMENTS.md during planning)
+**Success Criteria** (what must be TRUE):
+  1. **Beats Aura on document inputs**: PARITY-01 attachment pipeline accepts PDF + DOCX + PPTX + XLSX + HTML + Markdown (matches Aura's surface) and additionally extracts inline images for vision-routing through the existing image-attachment path (Aura accepts docs but NYRA's attachment flow already routes images to Claude vision — the combination is a clean win). Text extraction uses pure-Python parsers (`pypdf`, `python-docx`, `python-pptx`, `openpyxl`, `markdown`) so the offline wheel cache stays bounded under 50 MB.
+  2. **Beats Aura on C++ authoring + Live Coding**: PARITY-02 ships `nyra_cpp_module_create / nyra_cpp_class_add / nyra_cpp_function_add / nyra_cpp_recompile` quartet wired through UE's Hot Reload + Live Coding subsystems. Where Aura ships C++ generation as one tool, NYRA decomposes into transactional steps (CR-UD pattern from Phase 4 Tool Catalog) — every step is undoable via the session_transaction wrapper. Compile errors flow back through `nyra_blueprint_debug`'s pattern-matching surface, generalised to C++ (existing regex patterns extend cleanly).
+  3. **Beats Aura on Behavior Tree authoring**: PARITY-03 ships `nyra_bt_create / nyra_bt_add_composite / nyra_bt_add_task / nyra_bt_add_decorator / nyra_bt_set_blackboard_key` quintet via UE's `unreal.BehaviorTree` Python API. Aura's BT agent is monolithic; NYRA's surface is composable, idempotent (BL-05 pattern from Phase 4), and post-condition-verified (BL-06).
+  4. **Matches Aura on drag-from-Content-Browser UX**: PARITY-04 wires Slate drag-target on `SNyraComposer` to receive `FAssetData` payloads from the Content Browser; converts to a structured attachment chip referencing the asset path. The existing image-drop-zone pattern extends cleanly. Architectural gate: this unblocks Phase 8 plans that need asset-targeted prompts ("apply this material to the dragged asset").
+  5. **Matches Aura on Niagara VFX authoring**: PARITY-05 ships `nyra_niagara_create_system / nyra_niagara_add_emitter / nyra_niagara_set_module_parameter` triplet. Niagara's Python API surface is large but well-documented; the parity bar is "Aura's GPU sprite + ribbon emitter examples reproduce."
+  6. **Beats Aura on Performance Profiling**: PARITY-06 ships `nyra_perf_stat_read / nyra_perf_insights_query / nyra_perf_explain_hotspot`. Read-only over UE's `stat unit / stat unitgraph / stat memory` outputs and Insights `.utrace` files. Where Aura's profiling agent suggests fixes, NYRA additionally cross-references against the Phase 3 `nyra_kb_search` UE5 docs index — explanations cite specific Epic docs paragraphs. This is a defensible "beats Aura" claim because Aura has no separate docs RAG.
+  7. **Matches Aura on Animation Blueprint authoring**: PARITY-07 ships `nyra_animbp_create / nyra_animbp_add_state_machine / nyra_animbp_add_transition`. Lower marketing visibility than BT but completes the "AI / character / animation" agent triplet.
+  8. **Matches Aura on Audio (Metasounds)**: PARITY-08 ships `nyra_metasound_create / nyra_metasound_add_node / nyra_metasound_connect`. Smallest surface area; included for marketing-comparison parity. (Honest acknowledgment: most game audio lives in Wwise/FMOD outside UE, so this tool is feature-surface gloss more than usage-volume win.)
+**Plans**: TBD (8 plans, one per success criterion; some plans may share research; planner will batch into waves)
+**UI hint**: yes
+
+### Phase 9: Fab Launch Prep
+**Goal**: NYRA ships to Fab with zero-config install, per-UE-version EV-signed binaries, AI-disclosure-compliant listing, and a direct-download fallback already live on nyra-engine.com (or temporary host) so a Fab rejection doesn't block launch. Every onboarding path ends in first-successful-action within 10 minutes of install. (Was Phase 8 prior to 2026-05-10 reframe — content unchanged, number bumped.)
+**Depends on**: Phase 8 (competitive parity), Phase 7 (launch demo), Phase 2 (EV cert + CI matrix), Phase 0 (Fab pre-clearance + brand guideline compliance)
 **Requirements**: DIST-01, DIST-02, DIST-03, DIST-04
 **Success Criteria** (what must be TRUE):
   1. Beats every competitor on first-install experience: DIST-04 zero-config install — user enables plugin in UE, runs `claude setup-token` once, and is operational. First-run wizard verifies Claude Code CLI, downloads Gemma on demand (user-consented progress UI), confirms computer-use readiness. Time-to-first-successful-action target <10 minutes from Fab download click; no competitor has been measured under 15 minutes on Windows.
-  2. Beats every competitor on distribution resilience: DIST-02 direct-download fallback live on nyra.ai BEFORE Fab submission — signed installer is the escape hatch if Fab rejects. Competitors distributing Fab-only (most of them) are exposed to a single point of failure; NYRA is not.
+  2. Beats every competitor on distribution resilience: DIST-02 direct-download fallback live on nyra-engine.com BEFORE Fab submission — signed installer is the escape hatch if Fab rejects. Competitors distributing Fab-only (most of them) are exposed to a single point of failure; NYRA is not.
   3. Beats every competitor on AI-plugin compliance: DIST-01 Fab listing passes on first submission — AI-disclosure copy compliant with Fab's 2026 AI-plugin policy (pre-cleared in Phase 0), per-UE-version binaries (5.4/5.5/5.6/5.7), launch demo trailer shot as a real time-lapsed run (no cherry-picking, no demo-mode flag — per PITFALLS §7.2 demo-driven-development trap prevention), screenshots, marketing assets.
   4. Beats every competitor on install trust: DIST-03 EV code-signing cert signs all binaries (plugin DLL per UE version, NyraHost.exe, NyraInfer.exe) — SmartScreen clears instantly on first install. Competitors without EV certs have a 30-day reputation window that poisons early reviews; NYRA's first-install experience does not warn users away.
   5. Architectural gate: public devlog has been shipping from Month 1 (cross-cutting PITFALLS §7.4 mitigation) so NYRA has a following before Fab submission — if a competitor pips the DEMO-02 reveal, NYRA's audience is already attached.
@@ -178,7 +196,8 @@ Plans:
 | 5. External Tool Integrations (API-First) | 4/4 | Source+docs COMPLETE; 22/22 tests passing | 05-01 (2026-05-07), 05-02 (2026-05-07), 05-03 (2026-05-07), 05-04 (2026-05-07) |
 | 6. Scene Assembly + Image-to-Scene (Fallback Launch Demo) | 5/5 | PLAN-COMPLETE; operator-run pending | 06-00 (2026-05-09), 06-01 (2026-05-08), 06-02 (2026-05-08), 06-03 (2026-05-08), 06-04 (2026-05-09) |
 | 7. Sequencer + Video-to-Matched-Shot (LAUNCH DEMO) | 5/5 | PLAN-COMPLETE; operator-run pending | 07-00 (2026-05-09), 07-01 (2026-05-09), 07-02 (2026-05-09), 07-03 (2026-05-09), 07-04 (2026-05-09) |
-| 8. Fab Launch Prep | 0/? | Not started | - |
+| 8. Competitive Parity vs Aura | 0/8 | Planning in progress (2026-05-10) — was previously "Fab Launch Prep" before the Aura competitive analysis prompted reframe. 8 plans seeded: PARITY-01 docs / PARITY-02 C++ / PARITY-03 BT / PARITY-04 drag-drop / PARITY-05 Niagara / PARITY-06 Perf / PARITY-07 AnimBP / PARITY-08 Metasounds. | - |
+| 9. Fab Launch Prep | 0/? | Not started (was Phase 8 prior to 2026-05-10 reframe; content unchanged, number bumped) | - |
 
 ---
 
@@ -210,11 +229,15 @@ Phase 0 (Legal)               Phase 1 (Plugin Shell + IPC)
                              Phase 7 (Video -> Shot / DEMO-02) (LAUNCH DEMO)
                                     |
                                     v
-                             Phase 8 (Fab Launch Prep) <-------+
+                             Phase 8 (Competitive Parity vs Aura) <- depends on P1 MCP + P4 Tool Catalog + P5 patterns
+                                    |
+                                    v
+                             Phase 9 (Fab Launch Prep) <-------+
                                                      (needs P0 pre-clearance + P2 CI/EV cert)
 ```
 
 Critical path to LAUNCH DEMO (DEMO-02): Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7.
+Critical path to FAB LAUNCH: Phase 7 → Phase 8 → Phase 9 (Phase 8 inserted 2026-05-10 to close the Aura feature-surface gap before going public).
 
 Parallel-safe:
 - Phase 0 runs in parallel with Phase 1 (legal emails in flight while plugin scaffold is built).
