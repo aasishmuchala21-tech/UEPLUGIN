@@ -40,6 +40,12 @@ from .handlers.model_settings import ModelSettingsHandlers
 from .handlers.composer import ComposerHandlers
 from .handlers.mcp_install import McpInstallHandlers
 from .tools.headless_ue import HeadlessUEManager
+# Phase 13 — Multi-thread chats, Timeline, Asset Hygiene, Audit log, Perf Budget.
+from .handlers.threads import ThreadHandlers, ThreadRegistry
+from .tools.timeline_tools import on_add_timeline
+from .tools.asset_hygiene import on_run_hygiene
+from .tools.perf_budget import PerfBudgetHandlers
+from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
 from .safe_mode import NyraPermissionGate
@@ -194,6 +200,15 @@ async def build_and_run(
     # Phase 12-B — headless UE launch (one session per NyraHost process).
     headless_ue_mgr = HeadlessUEManager()
 
+    # Phase 13-A — multi-thread chat thread registry (Aura parity, N=4).
+    thread_handlers = ThreadHandlers(ThreadRegistry())
+
+    # Phase 13-D — append-only audit log per project (Tier 2 privacy moat).
+    audit_log = AuditLog(project_dir=project_dir)
+
+    # Phase 13-E — perf budget handlers (per-project budgets file).
+    perf_budget_handlers = PerfBudgetHandlers(project_dir=project_dir)
+
     # Phase 10-3 — model selector handlers (reuse the existing chat-handler ModelPreference).
     model_settings_handlers = ModelSettingsHandlers(
         model_preference=getattr(handlers, "model_preference", None) or __import__(
@@ -292,6 +307,20 @@ async def build_and_run(
         server.register_request("headless_ue/launch", headless_ue_mgr.launch)
         server.register_request("headless_ue/status", headless_ue_mgr.status)
         server.register_request("headless_ue/shutdown", headless_ue_mgr.shutdown)
+        # Phase 13-A — multi-thread parallel chats.
+        server.register_request("chat/threads/list", thread_handlers.on_list)
+        server.register_request("chat/threads/create", thread_handlers.on_create)
+        server.register_request("chat/threads/close", thread_handlers.on_close)
+        server.register_request("chat/threads/touch", thread_handlers.on_touch)
+        # Phase 13-B — Timeline node authoring.
+        server.register_request("timeline/add", on_add_timeline)
+        # Phase 13-C — whole-project Asset Hygiene Agent (Tier 2 moat).
+        server.register_request("hygiene/run", on_run_hygiene)
+        # Phase 13-E — Performance Budget Agent.
+        server.register_request("perf_budget/render_script", perf_budget_handlers.on_render_script)
+        server.register_request("perf_budget/get", perf_budget_handlers.on_get_budgets)
+        server.register_request("perf_budget/set", perf_budget_handlers.on_set_budget)
+        server.register_request("perf_budget/check", perf_budget_handlers.on_check)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
