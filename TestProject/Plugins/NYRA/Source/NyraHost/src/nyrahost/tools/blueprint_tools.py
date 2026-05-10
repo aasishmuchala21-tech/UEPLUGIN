@@ -74,35 +74,48 @@ def _class_to_dict(uclass: type) -> dict:
 
 
 def _blueprint_ubergraph(bp: unreal.Blueprint) -> list[dict]:
-    """Return all graphs in a Blueprint as list of node dicts."""
-    graphs = []
-    try:
-        bp_i = unreal.PythonBPLibrary
-    except Exception:
-        bp_i = None
+    """Return all graphs in a Blueprint with their function metadata.
 
+    BL-11: previous implementation returned `{nodes: []}` for every graph
+    -- structurally always empty. The LLM saw "nodes: []" and concluded
+    every Blueprint was empty, regardless of actual content. The honest
+    fix is either:
+      (a) actually iterate nodes via BlueprintEditorLibrary.get_all_graphs
+          (UE 5.4+) then graph.get_nodes() -- this requires UE editor
+          context and a working BlueprintEditorLibrary binding;
+      (b) only return graph metadata that is honestly enumerable
+          (graph_name, graph_type, function signature) and OMIT the
+          misleading nodes field entirely.
+
+    Choosing (b) for v1 -- it's better to ship "we list functions but
+    not their nodes; ask nyra_blueprint_debug for compile errors" than
+    "we say there are no nodes anywhere."
+    """
+    graphs: list[dict] = []
     try:
-        from unreal import UK2Node, UEdGraph
-        # Walk all graphs via the BP's compiled class
         generated = _get_blueprint_generated_class(bp)
         if generated is not None:
             for func in generated.get_functions():
                 graphs.append({
                     "graph_name": str(func.get_name()),
                     "graph_type": "function",
-                    "nodes": [],
+                    # BL-11: deliberately no `nodes` key. See docstring.
+                    "node_enumeration": "not_supported_in_v1",
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("blueprint_ubergraph_partial", error=str(e))
 
-    # Fallback: list graphs via EditorSubsystem if available
-    try:
-        editor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-        # Can't use subsystem for graph access; try Python BP library
-        if hasattr(unreal, "KismetSystemLibrary"):
-            pass
-    except Exception:
-        pass
+    # Optional: BlueprintEditorLibrary (5.4+) is the right surface for
+    # actual node iteration. Document it here so a future plan can wire
+    # the proper path; running it in this branch without the right UE
+    # context risks returning misleading partial data.
+    if hasattr(unreal, "BlueprintEditorLibrary"):
+        log.debug(
+            "blueprint_ubergraph_node_iteration_deferred",
+            bp=bp.get_path_name(),
+            note="BlueprintEditorLibrary.get_all_graphs(...) -> graph.get_nodes() "
+                 "is the v1.1 path; not enabled today.",
+        )
 
     return graphs
 
@@ -155,10 +168,15 @@ class BlueprintReadTool(NyraTool):
         generated = _get_blueprint_generated_class(bp)
         if generated:
             class_info = _class_to_dict(generated)
-            result["functions"] = class_info["functions"]
+            # WR-07: avoid duplicating events between `functions` and
+            # `events`. Partition once: events are functions whose flags
+            # carry "BlueprintEvent"; the rest land in functions.
+            all_funcs = class_info["functions"]
+            events = [f for f in all_funcs if "BlueprintEvent" in f.get("flags", [])]
+            non_event_funcs = [f for f in all_funcs if f not in events]
+            result["functions"] = non_event_funcs
+            result["events"] = events
             result["variables"] = class_info["variables"]
-            result["events"] = [f for f in class_info["functions"]
-                                if "BlueprintEvent" in f.get("flags", [])]
 
         if params.get("include_graphs", True):
             result["graphs"] = _blueprint_ubergraph(bp)

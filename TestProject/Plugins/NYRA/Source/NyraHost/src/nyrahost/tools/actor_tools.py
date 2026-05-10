@@ -15,7 +15,14 @@ from typing import Any
 import structlog
 import unreal
 
-from nyrahost.tools.base import NyraTool, NyraToolResult
+from nyrahost.tools.base import (
+    NyraTool,
+    NyraToolResult,
+    idempotent_lookup,
+    idempotent_record,
+    session_transaction,
+    verify_post_condition,
+)
 
 log = structlog.get_logger("nyrahost.tools.actor_tools")
 
@@ -104,6 +111,13 @@ class ActorSpawnTool(NyraTool):
     }
 
     def execute(self, params: dict) -> NyraToolResult:
+        # BL-05: idempotent lookup. Calling spawn twice with identical
+        # params returns the prior result (deduped:True) so an LLM retry
+        # on transient error doesn't double-spawn.
+        cached = idempotent_lookup(self.name, params)
+        if cached is not None:
+            return NyraToolResult.ok({**cached, "deduped": True})
+
         editor_level_lib = unreal.EditorLevelLibrary
 
         loc = params.get("location", {})
@@ -111,35 +125,49 @@ class ActorSpawnTool(NyraTool):
         location = unreal.Vector(float(loc.get("x", 0.0)), float(loc.get("y", 0.0)), float(loc.get("z", 0.0)))
         rotation = unreal.Rotator(float(rot.get("pitch", 0.0)), float(rot.get("yaw", 0.0)), float(rot.get("roll", 0.0)))
 
-        try:
-            if params.get("asset_path"):
-                asset = unreal.EditorAssetLibrary.load_asset(params["asset_path"])
-                if asset is None:
-                    return NyraToolResult.err(f"Asset not found: {params['asset_path']}")
-                actor = editor_level_lib.spawn_actor_from_class(type(asset), location, rotation)
-            else:
-                class_name = params["class_name"]
-                if class_name.startswith("/Script/"):
-                    actor_class = _load_class(class_name)
+        # BL-04: wrap the spawn in a session transaction so chat/cancel
+        # rolls back via UE's UTransBuffer.
+        with session_transaction(f"NYRA: {self.name}"):
+            try:
+                if params.get("asset_path"):
+                    asset = unreal.EditorAssetLibrary.load_asset(params["asset_path"])
+                    if asset is None:
+                        return NyraToolResult.err(f"Asset not found: {params['asset_path']}")
+                    actor = editor_level_lib.spawn_actor_from_class(type(asset), location, rotation)
                 else:
-                    actor_class = unreal.UObject.load_class(f"/Script/Engine.{class_name}")
-                actor = editor_level_lib.spawn_actor_from_class(actor_class, location, rotation)
-        except Exception as e:
-            log.error("actor_spawn_failed", error=str(e))
-            return NyraToolResult.err(f"Failed to spawn actor: {e}")
+                    class_name = params["class_name"]
+                    if class_name.startswith("/Script/"):
+                        actor_class = _load_class(class_name)
+                    else:
+                        actor_class = unreal.UObject.load_class(f"/Script/Engine.{class_name}")
+                    actor = editor_level_lib.spawn_actor_from_class(actor_class, location, rotation)
+            except Exception as e:
+                log.error("actor_spawn_failed", error=str(e))
+                return NyraToolResult.err(f"Failed to spawn actor: {e}")
 
-        if params.get("name"):
-            actor.set_actor_label(params["name"])
+            if params.get("name"):
+                actor.set_actor_label(params["name"])
 
-        log.info("actor_spawned", name=actor.get_name(), path=actor.get_path_name())
-        # BL-08: actor.get_actor_guid() is C++-only; not exposed in the Python
-        # binding. Drop the GUID field; downstream callers (BL-05 idempotency
-        # checks) should key on actor_path which is uniquely a function of
-        # actor + level identity in UE.
-        return NyraToolResult.ok({
+            actor_path = actor.get_path_name()
+
+            # BL-06: post-condition. Re-fetch the actor from the level by
+            # path to confirm it actually persisted before returning ok.
+            post_err = verify_post_condition(
+                f"{self.name}({actor_path})",
+                lambda: _load_actor(actor_path) is not None,
+            )
+            if post_err:
+                return NyraToolResult.err(post_err)
+
+        log.info("actor_spawned", name=actor.get_name(), path=actor_path)
+        # BL-08: drop guid (Python binding doesn't expose get_actor_guid()).
+        result = {
             "actor_name": actor.get_name(),
-            "actor_path": actor.get_path_name(),
-        })
+            "actor_path": actor_path,
+        }
+        # BL-05: cache the successful spawn result for future dedup.
+        idempotent_record(self.name, params, result)
+        return NyraToolResult.ok(result)
 
 
 # -----------------------------------------------------------------------------

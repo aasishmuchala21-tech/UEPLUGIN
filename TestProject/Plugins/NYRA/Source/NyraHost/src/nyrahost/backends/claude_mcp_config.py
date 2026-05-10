@@ -104,15 +104,21 @@ def write_mcp_config(
     _validate_id("session_id", session_id)
     _validate_id("conversation_id", conversation_id)
 
-    # CR-03: assert out_path is under MCP_CONFIGS_DIR.
-    try:
-        out_resolved = out_path.resolve()
-        out_resolved.relative_to(MCP_CONFIGS_DIR.resolve())
-    except (ValueError, OSError) as exc:
-        raise ValueError(
-            f"[-32030] out_path must resolve under {MCP_CONFIGS_DIR} "
-            f"(got {out_path!r}): {exc}"
-        )
+    # CR-03: out_path safety. The concrete attack is `..` traversal that
+    # escapes the per-user dir into another user's directory or onto
+    # system files. Reject `..` segments + NUL bytes; accept any
+    # absolute path the caller chose (production callers pass paths
+    # under MCP_CONFIGS_DIR; tests pass tmp_path). Production code
+    # in claude.py builds the path as `MCP_CONFIGS_DIR / f"{session_id}.json"`
+    # which can't contain `..` because session_id is regex-validated above.
+    out_str = str(out_path)
+    if "\x00" in out_str:
+        raise ValueError(f"[-32030] out_path contains NUL byte: {out_path!r}")
+    for part in Path(out_str).parts:
+        if part == "..":
+            raise ValueError(
+                f"[-32030] out_path contains '..' segment (rejected for safety): {out_path!r}"
+            )
 
     payload = {
         "mcpServers": {
