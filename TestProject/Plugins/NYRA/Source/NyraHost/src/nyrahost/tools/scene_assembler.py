@@ -11,7 +11,7 @@ The orchestrator runs the four fixed assembly steps:
 """
 from __future__ import annotations
 
-import asyncio
+import json
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -108,8 +108,11 @@ class SceneAssembler(SceneAssemblyOrchestrator):
         progress("Setting Up Lighting", 1, 1, "lighting")
         if lighting_plan and self._lighting_tool is not None:
             try:
+                # Honor the LightingParams the caller supplied: serialize via
+                # asdict so LightingDryRunTool / LightingAuthoringTool see the
+                # full custom param set, not a hard-coded preset (CR-02).
                 lt_result = self._lighting_tool.execute({
-                    "preset_name": "studio_fill",
+                    "lighting_params_json": json.dumps(asdict(lighting_plan)),
                     "apply": True,
                 })
                 if lt_result.error is None and lt_result.data:
@@ -118,6 +121,8 @@ class SceneAssembler(SceneAssemblyOrchestrator):
                         f"lighting:{lt_result.data.get('primary_light_type')} mood="
                         f"{','.join(lt_result.data.get('mood_tags', []))}"
                     )
+                elif lt_result.error is not None:
+                    result.log_entries.append(f"lighting:error {lt_result.error}")
             except Exception as e:
                 log.error("scene_assembler_lighting_failed", error=str(e))
                 result.log_entries.append(f"lighting:error {e}")

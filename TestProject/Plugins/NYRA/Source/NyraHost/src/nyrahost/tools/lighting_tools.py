@@ -138,6 +138,10 @@ class LightingAuthoringTool(NyraTool):
                 "type": "string",
                 "description": "Named preset: golden_hour | harsh_overhead | moody_blue | studio_fill | dawn",
             },
+            "lighting_params_json": {
+                "type": "string",
+                "description": "JSON string of a fully-formed LightingParams (used by SceneAssembler to forward an upstream plan).",
+            },
             "apply": {
                 "type": "boolean",
                 "default": True,
@@ -187,6 +191,13 @@ class LightingAuthoringTool(NyraTool):
     # --- Resolution ---------------------------------------------------------
 
     def _resolve_lighting_params(self, params: dict) -> LightingParams:
+        if params.get("lighting_params_json"):
+            from nyrahost.tools.scene_llm_parser import _params_from_dict
+            try:
+                d = json.loads(params["lighting_params_json"])
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid lighting_params_json: {e}")
+            return _params_from_dict(d)
         if params.get("reference_image_path"):
             parser = LightingLLMParser(backend_router=self._router)
             return run_async_safely(parser.parse_from_image(params["reference_image_path"]))
@@ -195,7 +206,7 @@ class LightingAuthoringTool(NyraTool):
         if params.get("nl_prompt"):
             parser = LightingLLMParser(backend_router=self._router)
             return run_async_safely(parser.parse_from_text(params["nl_prompt"]))
-        raise ValueError("Either nl_prompt, reference_image_path, or preset_name must be provided.")
+        raise ValueError("Either nl_prompt, reference_image_path, preset_name, or lighting_params_json must be provided.")
 
     @staticmethod
     def _preset_to_params(preset_name: str) -> LightingParams:

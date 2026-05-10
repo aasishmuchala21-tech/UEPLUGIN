@@ -12,6 +12,7 @@ import structlog
 
 from nyrahost.tools.base import NyraTool, NyraToolResult, run_async_safely
 from nyrahost.tools.scene_assembler import SceneAssembler
+from nyrahost.tools.scene_llm_parser import LightingLLMParser
 
 log = structlog.get_logger("nyrahost.tools.assembly_tools")
 
@@ -76,9 +77,25 @@ class AssembleSceneTool(NyraTool):
                 "message": message,
             })
 
+        # CR-02: derive a LightingParams from the same image (or fall back to
+        # the rule-based default inside LightingLLMParser if no router) so the
+        # assembler honors SC#2 ("match this image's mood") instead of always
+        # firing studio_fill.
+        lighting_plan = None
+        try:
+            lighting_plan = run_async_safely(
+                LightingLLMParser(backend_router=self._router).parse_from_image(image_path)
+            )
+        except Exception as e:
+            log.warning(
+                "assemble_scene_lighting_plan_failed",
+                error=str(e),
+                image=image_path,
+            )
+
         result = self._assembler.assemble(
             blueprint=blueprint,
-            lighting_plan=None,
+            lighting_plan=lighting_plan,
             progress_callback=_emit_progress,
         )
 
