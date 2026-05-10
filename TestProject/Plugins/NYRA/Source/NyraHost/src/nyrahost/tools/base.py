@@ -47,6 +47,18 @@ class NyraToolResult:
     def is_ok(self) -> bool:
         return self.error is None
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-RPC-shaped dict.
+
+        Phase 4 BL-01: mcp_server/__init__.py dispatches every tool result
+        through `result.to_dict()`. Without this method, every tool call
+        raised AttributeError and was wrapped as -32000 internal_error.
+        Errors map to the JSON-RPC error envelope; ok results return data.
+        """
+        if self.error is not None:
+            return {"error": {"code": -32000, "message": self.error}}
+        return self.data or {}
+
 
 class NyraTool:
     """Base class for all NYRA MCP tools.
