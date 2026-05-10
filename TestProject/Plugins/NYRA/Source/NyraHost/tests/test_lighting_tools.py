@@ -26,10 +26,13 @@ def test_preset_to_params_known_returns_expected_preset():
     assert "cool" in lp.mood_tags
 
 
-def test_preset_to_params_unknown_falls_back_to_studio_fill():
-    lp = LightingAuthoringTool._preset_to_params("not_a_real_preset")
-    assert lp.primary_light_type == "rect"
-    assert "studio" in lp.mood_tags
+def test_preset_to_params_unknown_raises_value_error():
+    """WR-04: unknown preset names must raise instead of silently substituting
+    studio_fill. The apply path catches ValueError and returns [-32030] so
+    the user sees the typo instead of unintended lighting."""
+    import pytest
+    with pytest.raises(ValueError, match="Unknown lighting preset"):
+        LightingAuthoringTool._preset_to_params("not_a_real_preset")
 
 
 # -- LightingAuthoringTool.execute (no UE editor present) --------------------

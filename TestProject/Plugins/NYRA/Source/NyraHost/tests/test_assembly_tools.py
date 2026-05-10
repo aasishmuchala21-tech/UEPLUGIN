@@ -150,6 +150,12 @@ def test_assemble_continues_when_lighting_tool_raises():
     )
     assembler = SceneAssembler(lighting_tool=_BoomLighting())
     result = assembler.assemble(blueprint=blueprint, lighting_plan=LightingParams())
-    # Doesn't crash, just logs the error.
-    assert result.success is True
+    # Doesn't crash, but does record the failure.
+    # CR-03: success now reflects whether any spawn / lighting failure
+    # actually occurred. A lighting exception means success=False and
+    # error_message names the failure, so SNyraLogDrawer / WS notifier can
+    # surface it to the user.
+    assert result.success is False
+    assert result.error_message is not None
+    assert "lighting" in result.error_message.lower()
     assert any("lighting:error" in entry for entry in result.log_entries)
