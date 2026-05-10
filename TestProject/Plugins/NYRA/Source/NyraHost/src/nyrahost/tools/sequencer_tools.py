@@ -247,8 +247,24 @@ class SequencerSetKeyframeTool(SequencerToolMixin, NyraTool):
             "transform": {
                 "type": "object",
                 "properties": {
-                    "location": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}},
-                    "rotation": {"pitch": {"type": "number"}, "yaw": {"type": "number"}, "roll": {"type": "number"}},
+                    "location": {
+                        "type": "object",
+                        "properties": {
+                            "x": {"type": "number"},
+                            "y": {"type": "number"},
+                            "z": {"type": "number"},
+                        },
+                        "required": ["x", "y", "z"],
+                    },
+                    "rotation": {
+                        "type": "object",
+                        "properties": {
+                            "pitch": {"type": "number"},
+                            "yaw": {"type": "number"},
+                            "roll": {"type": "number"},
+                        },
+                        "required": ["pitch", "yaw", "roll"],
+                    },
                 },
             },
             "fov_degrees": {"type": "number"},
