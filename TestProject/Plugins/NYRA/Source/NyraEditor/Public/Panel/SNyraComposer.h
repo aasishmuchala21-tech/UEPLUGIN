@@ -32,6 +32,7 @@
 
 class SMultiLineEditableTextBox;
 class SHorizontalBox;
+struct FAssetData;  // Plan 08-04: HandleAssetDropped param type.
 
 /** Fired when the user hits Ctrl/Cmd+Enter OR clicks the Send button. */
 DECLARE_DELEGATE_TwoParams(FOnComposerSubmit,
@@ -63,6 +64,16 @@ private:
     FReply HandleAttachClicked();
     FReply HandleKeyDown(const FGeometry& Geom, const FKeyEvent& InKeyEvent);
     void HandleRemoveAttachment(const FNyraAttachmentRef& Ref);
+
+    /** Plan 08-04 (PARITY-04): receives external-file (Windows Explorer)
+     *  drops forwarded via SNyraImageDropZone's legacy OnImageDropped path.
+     *  Builds an Image-kind FNyraAttachmentRef and routes through AddAttachment. */
+    void HandleImageDropped(const FString& ImagePath);
+
+    /** Plan 08-04 (PARITY-04): receives Content-Browser drops as structured
+     *  FAssetData. Builds an Asset-kind FNyraAttachmentRef carrying AssetPath
+     *  + AssetClass and routes through AddAttachment. */
+    void HandleAssetDropped(const FAssetData& Asset);
 
     TSharedPtr<SMultiLineEditableTextBox> TextBox;
     TSharedPtr<SHorizontalBox> ChipsRow;

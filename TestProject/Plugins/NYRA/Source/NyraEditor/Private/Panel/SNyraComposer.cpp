@@ -28,6 +28,7 @@
 
 #include "Panel/SNyraComposer.h"
 #include "Panel/SNyraAttachmentChip.h"
+#include "Panel/SNyraImageDropZone.h"  // Plan 08-04: drag entry point.
 
 #include "DesktopPlatformModule.h"
 #include "IDesktopPlatform.h"
@@ -42,6 +43,7 @@
 #include "HAL/PlatformFileManager.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "Misc/Paths.h"
+#include "AssetRegistry/AssetData.h"   // Plan 08-04: FAssetData fields.
 
 #define LOCTEXT_NAMESPACE "NyraComposer"
 
@@ -51,6 +53,16 @@ void SNyraComposer::Construct(const FArguments& InArgs)
     ChildSlot
     [
         SNew(SVerticalBox)
+        // Plan 08-04 (PARITY-04): drop zone above the chips row. Receives
+        // both Content-Browser asset drops (-> HandleAssetDropped) and
+        // Windows Explorer external-file drops (-> HandleImageDropped via
+        // the legacy SNyraImageDropZone OnImageDropped path).
+        + SVerticalBox::Slot().AutoHeight()
+        [
+            SNew(SNyraImageDropZone)
+            .OnImageDropped(this, &SNyraComposer::HandleImageDropped)
+            .OnAssetDropped(this, &SNyraComposer::HandleAssetDropped)
+        ]
         + SVerticalBox::Slot().AutoHeight()
         [
             SAssignNew(ChipsRow, SHorizontalBox)
@@ -105,7 +117,17 @@ void SNyraComposer::AddAttachment(const FNyraAttachmentRef& Ref)
 
 void SNyraComposer::HandleRemoveAttachment(const FNyraAttachmentRef& Ref)
 {
-    Attachments.RemoveAll([&](const FNyraAttachmentRef& R){ return R.AbsolutePath == Ref.AbsolutePath; });
+    // Plan 08-04: removal-key strategy. AbsolutePath is empty for Asset
+    // kind, so we tie-break on AssetPath when both are empty equally
+    // (i.e. two asset chips are distinguished by /Game/... path).
+    Attachments.RemoveAll([&](const FNyraAttachmentRef& R)
+    {
+        if (R.Kind == ENyraAttachmentKind::Asset && Ref.Kind == ENyraAttachmentKind::Asset)
+        {
+            return R.AssetPath == Ref.AssetPath;
+        }
+        return R.AbsolutePath == Ref.AbsolutePath;
+    });
     // Rebuild the chips row so the visible layout tracks the Attachments array.
     if (ChipsRow.IsValid())
     {
@@ -117,6 +139,51 @@ void SNyraComposer::HandleRemoveAttachment(const FNyraAttachmentRef& Ref)
             AddAttachment(R);
         }
     }
+}
+
+void SNyraComposer::HandleImageDropped(const FString& ImagePath)
+{
+    // Plan 08-04: external-file (Windows Explorer) drop -> Image chip.
+    // Mirrors HandleAttachClicked's per-file ref construction so the
+    // rendered chip is indistinguishable from a [+] picker attachment.
+    if (ImagePath.IsEmpty()) return;
+    FNyraAttachmentRef Ref;
+    Ref.Kind = ENyraAttachmentKind::Image;
+    Ref.AbsolutePath = ImagePath;
+    Ref.DisplayName = FPaths::GetCleanFilename(ImagePath);
+    const FFileStatData Stat = IPlatformFile::GetPlatformPhysical().GetStatData(*ImagePath);
+    Ref.SizeBytes = Stat.bIsValid ? Stat.FileSize : 0;
+    AddAttachment(Ref);
+}
+
+void SNyraComposer::HandleAssetDropped(const FAssetData& Asset)
+{
+    // Plan 08-04 (PARITY-04): Content-Browser drop -> Asset chip.
+    // FAssetData::AssetClassPath is the FTopLevelAssetPath introduced in
+    // UE 5.1+ (replaces the older AssetClass FName). Its short name is
+    // what NyraHost expects for asset_class (e.g. "StaticMesh"). The
+    // object path returned by GetObjectPathString() is the canonical
+    // /Game/... form (e.g. "/Game/Meshes/SM_Crate.SM_Crate").
+    FNyraAttachmentRef Ref;
+    Ref.Kind        = ENyraAttachmentKind::Asset;
+    Ref.AssetPath   = Asset.GetObjectPathString();
+    Ref.AssetClass  = Asset.AssetClassPath.GetAssetName().ToString();
+    // DisplayName uses "[<Class>] <Name>" so the existing SNyraAttachmentChip
+    // (which renders DisplayName as the chip label and AbsolutePath as the
+    // tooltip) shows enough disambiguation at a glance. Asset thumbnails
+    // via FAssetThumbnailPool are deferred -- per plan, label-only fallback
+    // is acceptable when richer Slate plumbing isn't already in place.
+    const FString AssetName = Asset.AssetName.ToString();
+    Ref.DisplayName = FString::Printf(TEXT("[%s] %s"),
+        Ref.AssetClass.IsEmpty() ? TEXT("Asset") : *Ref.AssetClass,
+        *AssetName);
+    // AbsolutePath stays empty for Asset kind -- /Game/... isn't a fs path.
+    // We mirror AssetPath into AbsolutePath so the chip tooltip (which
+    // reads CurrentRef.AbsolutePath verbatim) still surfaces useful info
+    // without needing a chip-widget rewrite.
+    Ref.AbsolutePath = Ref.AssetPath;
+    Ref.SizeBytes = 0;
+    AddAttachment(Ref);
 }
 
 FReply SNyraComposer::HandleSubmitClicked()
