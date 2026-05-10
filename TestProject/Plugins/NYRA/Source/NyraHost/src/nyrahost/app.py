@@ -32,6 +32,10 @@ from .tools.inpaint_tools import on_inpaint_submit
 from .tools.rigging_tools import on_auto_rig
 from .tools.retarget_tools import on_retarget
 from .tools.level_design_tools import on_blockout
+# Phase 10 — Custom Instructions, three-mode toggle, model selector wiring.
+from .custom_instructions import CustomInstructions
+from .handlers.instructions import InstructionsHandlers
+from .handlers.model_settings import ModelSettingsHandlers
 from .infer.router import InferRouter
 from .router import NyraRouter
 from .safe_mode import NyraPermissionGate
@@ -165,6 +169,16 @@ async def build_and_run(
         project_saved=project_dir / "Saved",
     )
 
+    # Phase 10-1 — per-project Custom Instructions.
+    custom_instructions = CustomInstructions(project_dir=project_dir)
+    instructions_handlers = InstructionsHandlers(custom_instructions)
+    # Phase 10-3 — model selector handlers (reuse the existing chat-handler ModelPreference).
+    model_settings_handlers = ModelSettingsHandlers(
+        model_preference=getattr(handlers, "model_preference", None) or __import__(
+            "nyrahost.model_preference", fromlist=["ModelPreference"]
+        ).ModelPreference()
+    )
+
     # Plan 12b — read-only sessions/list + sessions/load handlers backing the
     # UE history drawer (CD-05). SessionHandlers shares the same Storage the
     # chat handler writes to, so the drawer sees freshly-persisted
@@ -210,7 +224,7 @@ async def build_and_run(
     )
 
     # Phase 2 handlers
-    session_mode_handler = SessionModeHandler(router=nyra_router)
+    session_mode_handler = SessionModeHandler(router=nyra_router, permission_gate=permission_gate)
     tx_handlers = TransactionHandlers(tx_manager=tx_manager)
 
     def register(server: NyraServer) -> None:
@@ -240,6 +254,12 @@ async def build_and_run(
         server.register_request("rigging/retarget", on_retarget)
         # Plan 09 LDA-01 — single-room blockout via UE GeometryScript.
         server.register_request("level_design/blockout", on_blockout)
+        # Phase 10-1 — Custom Instructions.
+        server.register_request("settings/get-instructions", instructions_handlers.on_get)
+        server.register_request("settings/set-instructions", instructions_handlers.on_set)
+        # Phase 10-3 — Model selector.
+        server.register_request("settings/get-model", model_settings_handlers.on_get)
+        server.register_request("settings/set-model", model_settings_handlers.on_set)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
