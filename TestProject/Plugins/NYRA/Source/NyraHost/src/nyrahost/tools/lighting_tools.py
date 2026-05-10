@@ -21,78 +21,14 @@ import structlog
 
 from nyrahost.tools.base import NyraTool, NyraToolResult, run_async_safely
 from nyrahost.tools.scene_llm_parser import LightingLLMParser
-from nyrahost.tools.scene_types import LightingParams
+from nyrahost.tools.scene_types import LIGHTING_PRESETS, LightingParams
 
 log = structlog.get_logger("nyrahost.tools.lighting_tools")
 
 
-_PRESETS: dict[str, LightingParams] = {
-    "golden_hour": LightingParams(
-        primary_light_type="directional",
-        primary_intensity=1.5,
-        primary_color=(0.95, 0.65, 0.3),
-        primary_direction=(45.0, -30.0, 0.0),
-        primary_temperature_k=3500.0,
-        use_shadow=True,
-        use_sky_atmosphere=True,
-        use_exponential_height_fog=True,
-        fog_density=0.01,
-        fog_color=(0.8, 0.7, 0.6),
-        use_post_process=True,
-        exposure_compensation=0.5,
-        mood_tags=["warm", "low sun", "soft shadow"],
-    ),
-    "harsh_overhead": LightingParams(
-        primary_light_type="directional",
-        primary_intensity=2.5,
-        primary_color=(1.0, 1.0, 1.0),
-        primary_direction=(-90.0, 0.0, 0.0),
-        primary_temperature_k=5500.0,
-        use_shadow=True,
-        shadow_cascades=4,
-        use_exponential_height_fog=False,
-        mood_tags=["harsh", "overhead", "high-contrast"],
-    ),
-    "moody_blue": LightingParams(
-        primary_light_type="point",
-        primary_intensity=0.5,
-        primary_color=(0.4, 0.5, 0.9),
-        primary_direction=(0.0, 0.0, 0.0),
-        use_shadow=False,
-        use_exponential_height_fog=True,
-        fog_density=0.04,
-        fog_color=(0.5, 0.6, 0.9),
-        use_post_process=True,
-        exposure_compensation=-1.5,
-        mood_tags=["cool", "moody", "low-key"],
-    ),
-    "studio_fill": LightingParams(
-        primary_light_type="rect",
-        primary_intensity=1.0,
-        primary_color=(1.0, 0.95, 0.9),
-        primary_direction=(0.0, 0.0, 0.0),
-        fill_light_type="point",
-        fill_intensity=0.3,
-        fill_color=(0.6, 0.7, 1.0),
-        use_shadow=True,
-        mood_tags=["neutral", "soft fill", "studio"],
-    ),
-    "dawn": LightingParams(
-        primary_light_type="directional",
-        primary_intensity=0.8,
-        primary_color=(0.7, 0.5, 0.4),
-        primary_direction=(15.0, -60.0, 0.0),
-        primary_temperature_k=2800.0,
-        use_shadow=True,
-        use_sky_atmosphere=True,
-        use_exponential_height_fog=True,
-        fog_density=0.03,
-        fog_color=(0.6, 0.5, 0.5),
-        use_post_process=True,
-        exposure_compensation=0.3,
-        mood_tags=["dawn", "pink", "diffuse"],
-    ),
-}
+# WR-05: single source of truth for the preset library lives in scene_types.
+# Keep the local _PRESETS alias to minimize churn at call sites in this file.
+_PRESETS: dict[str, LightingParams] = LIGHTING_PRESETS
 
 
 _LIGHT_CLASS = {

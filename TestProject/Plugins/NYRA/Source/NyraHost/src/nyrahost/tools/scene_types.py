@@ -2,6 +2,10 @@
 
 All Phase 6 components (SCENE-01 lighting, DEMO-01 assembly) import from here.
 Do not duplicate these definitions in scene_llm_parser.py or scene_assembler.py.
+
+WR-05: LIGHTING_PRESETS and PRESET_TOKENS are the single source of truth for
+the preset library. lighting_tools._PRESETS and scene_llm_parser._FALLBACK_PRESETS
+both reference these tables now.
 """
 from __future__ import annotations
 
@@ -222,3 +226,91 @@ class ProgressUpdate:
             "total": self.total,
             "message": self.message,
         }
+
+
+# ---------------------------------------------------------------------------
+# Canonical lighting preset library (WR-05)
+# ---------------------------------------------------------------------------
+#
+# Single source of truth for the SCENE-01 / DEMO-01 preset library. Both
+# lighting_tools._PRESETS (for direct preset->params application) and
+# scene_llm_parser._FALLBACK_PRESETS (for token-keyed rule-based fallback)
+# now reference these dicts so they cannot drift.
+
+LIGHTING_PRESETS: dict[str, "LightingParams"] = {
+    "golden_hour": LightingParams(
+        primary_light_type="directional",
+        primary_intensity=1.5,
+        primary_color=(0.95, 0.65, 0.3),
+        primary_direction=(45.0, -30.0, 0.0),
+        primary_temperature_k=3500.0,
+        use_shadow=True,
+        use_sky_atmosphere=True,
+        use_exponential_height_fog=True,
+        fog_density=0.01,
+        fog_color=(0.8, 0.7, 0.6),
+        use_post_process=True,
+        exposure_compensation=0.5,
+        mood_tags=["warm", "low sun", "soft shadow"],
+    ),
+    "harsh_overhead": LightingParams(
+        primary_light_type="directional",
+        primary_intensity=2.5,
+        primary_color=(1.0, 1.0, 1.0),
+        primary_direction=(-90.0, 0.0, 0.0),
+        primary_temperature_k=5500.0,
+        use_shadow=True,
+        shadow_cascades=4,
+        use_exponential_height_fog=False,
+        mood_tags=["harsh", "overhead", "high-contrast"],
+    ),
+    "moody_blue": LightingParams(
+        primary_light_type="point",
+        primary_intensity=0.5,
+        primary_color=(0.4, 0.5, 0.9),
+        primary_direction=(0.0, 0.0, 0.0),
+        use_shadow=False,
+        use_exponential_height_fog=True,
+        fog_density=0.04,
+        fog_color=(0.5, 0.6, 0.9),
+        use_post_process=True,
+        exposure_compensation=-1.5,
+        mood_tags=["cool", "moody", "low-key"],
+    ),
+    "studio_fill": LightingParams(
+        primary_light_type="rect",
+        primary_intensity=1.0,
+        primary_color=(1.0, 0.95, 0.9),
+        primary_direction=(0.0, 0.0, 0.0),
+        fill_light_type="point",
+        fill_intensity=0.3,
+        fill_color=(0.6, 0.7, 1.0),
+        use_shadow=True,
+        mood_tags=["neutral", "soft fill", "studio"],
+    ),
+    "dawn": LightingParams(
+        primary_light_type="directional",
+        primary_intensity=0.8,
+        primary_color=(0.7, 0.5, 0.4),
+        primary_direction=(15.0, -60.0, 0.0),
+        primary_temperature_k=2800.0,
+        use_shadow=True,
+        use_sky_atmosphere=True,
+        use_exponential_height_fog=True,
+        fog_density=0.03,
+        fog_color=(0.6, 0.5, 0.5),
+        use_post_process=True,
+        exposure_compensation=0.3,
+        mood_tags=["dawn", "pink", "diffuse"],
+    ),
+}
+
+# Token keyword index for the rule-based parser fallback. Keep aligned with
+# LIGHTING_PRESETS keys.
+PRESET_TOKENS: dict[str, list[str]] = {
+    "golden_hour": ["golden hour", "sunset", "magic hour", "warm sun"],
+    "harsh_overhead": ["harsh", "overhead", "noon", "midday", "studio harsh"],
+    "moody_blue": ["moody", "blue", "cool", "night", "dim"],
+    "studio_fill": ["studio", "fill", "neutral", "even"],
+    "dawn": ["dawn", "morning", "sunrise", "pink", "first light"],
+}

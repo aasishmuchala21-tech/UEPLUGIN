@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 import structlog
 
-from nyrahost.tools.scene_types import LightingParams
+from nyrahost.tools.scene_types import LIGHTING_PRESETS, PRESET_TOKENS, LightingParams
 
 log = structlog.get_logger("nyrahost.tools.scene_llm_parser")
 
@@ -46,94 +46,20 @@ Schema:
 Only output JSON. Do not add explanation."""
 
 
-# Rule-based fallback presets keyed by token matches in the NL prompt.
-_FALLBACK_PRESETS: dict[str, dict[str, Any]] = {
-    "golden_hour": {
-        "tokens": ["golden hour", "sunset", "magic hour", "warm sun"],
-        "params": dict(
-            primary_light_type="directional",
-            primary_intensity=1.5,
-            primary_color=(0.95, 0.65, 0.3),
-            primary_direction=(45.0, -30.0, 0.0),
-            primary_temperature_k=3500.0,
-            use_shadow=True,
-            use_sky_atmosphere=True,
-            use_exponential_height_fog=True,
-            fog_density=0.01,
-            fog_color=(0.8, 0.7, 0.6),
-            use_post_process=True,
-            exposure_compensation=0.5,
-            mood_tags=["warm", "low sun", "soft shadow"],
-            confidence=0.6,
-        ),
-    },
-    "harsh_overhead": {
-        "tokens": ["harsh", "overhead", "noon", "midday", "studio harsh"],
-        "params": dict(
-            primary_light_type="directional",
-            primary_intensity=2.5,
-            primary_color=(1.0, 1.0, 1.0),
-            primary_direction=(-90.0, 0.0, 0.0),
-            primary_temperature_k=5500.0,
-            use_shadow=True,
-            shadow_cascades=4,
-            use_exponential_height_fog=False,
-            mood_tags=["harsh", "overhead", "high-contrast"],
-            confidence=0.6,
-        ),
-    },
-    "moody_blue": {
-        "tokens": ["moody", "blue", "cool", "night", "dim"],
-        "params": dict(
-            primary_light_type="point",
-            primary_intensity=0.5,
-            primary_color=(0.4, 0.5, 0.9),
-            primary_direction=(0.0, 0.0, 0.0),
-            use_shadow=False,
-            use_exponential_height_fog=True,
-            fog_density=0.04,
-            fog_color=(0.5, 0.6, 0.9),
-            use_post_process=True,
-            exposure_compensation=-1.5,
-            mood_tags=["cool", "moody", "low-key"],
-            confidence=0.6,
-        ),
-    },
-    "studio_fill": {
-        "tokens": ["studio", "fill", "neutral", "even"],
-        "params": dict(
-            primary_light_type="rect",
-            primary_intensity=1.0,
-            primary_color=(1.0, 0.95, 0.9),
-            primary_direction=(0.0, 0.0, 0.0),
-            fill_light_type="point",
-            fill_intensity=0.3,
-            fill_color=(0.6, 0.7, 1.0),
-            use_shadow=True,
-            mood_tags=["neutral", "soft fill", "studio"],
-            confidence=0.6,
-        ),
-    },
-    "dawn": {
-        "tokens": ["dawn", "morning", "sunrise", "pink", "first light"],
-        "params": dict(
-            primary_light_type="directional",
-            primary_intensity=0.8,
-            primary_color=(0.7, 0.5, 0.4),
-            primary_direction=(15.0, -60.0, 0.0),
-            primary_temperature_k=2800.0,
-            use_shadow=True,
-            use_sky_atmosphere=True,
-            use_exponential_height_fog=True,
-            fog_density=0.03,
-            fog_color=(0.6, 0.5, 0.5),
-            use_post_process=True,
-            exposure_compensation=0.3,
-            mood_tags=["dawn", "pink", "diffuse"],
-            confidence=0.6,
-        ),
-    },
-}
+# WR-05: Rule-based fallback presets are now derived from the canonical
+# LIGHTING_PRESETS + PRESET_TOKENS tables in scene_types so the apply path
+# and the parser fallback path cannot drift.
+def _build_fallback_presets() -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for key, lp in LIGHTING_PRESETS.items():
+        out[key] = {
+            "tokens": PRESET_TOKENS.get(key, []),
+            "lighting_params": lp,
+        }
+    return out
+
+
+_FALLBACK_PRESETS: dict[str, dict[str, Any]] = _build_fallback_presets()
 
 
 def _params_from_dict(d: dict[str, Any]) -> LightingParams:
@@ -217,7 +143,16 @@ class LightingLLMParser:
         for preset_key, preset in _FALLBACK_PRESETS.items():
             if any(token in prompt_lower for token in preset["tokens"]):
                 log.info("scene_llm_parser_fallback_match", preset=preset_key, prompt=nl_prompt)
-                return _params_from_dict(preset["params"])
+                return _clone_with_confidence(preset["lighting_params"], 0.6)
         # Default: studio fill as the safest neutral choice.
         log.info("scene_llm_parser_fallback_default", prompt=nl_prompt)
-        return _params_from_dict(_FALLBACK_PRESETS["studio_fill"]["params"])
+        return _clone_with_confidence(_FALLBACK_PRESETS["studio_fill"]["lighting_params"], 0.6)
+
+
+def _clone_with_confidence(lp: LightingParams, confidence: float) -> LightingParams:
+    """Return a copy of `lp` with a different confidence (rule-based fallback marker).
+
+    Avoids mutating the canonical LIGHTING_PRESETS entries.
+    """
+    from dataclasses import replace
+    return replace(lp, confidence=confidence)
