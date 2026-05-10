@@ -6,7 +6,7 @@ Do not duplicate these definitions in scene_llm_parser.py or scene_assembler.py.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +147,50 @@ class LightingParams:
             "exposure_compensation": self.exposure_compensation,
             "mood_tags": self.mood_tags,
         }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "LightingParams":
+        """Coerce a JSON-style dict (lists for tuples, missing keys ok) into LightingParams.
+
+        WR-03: public API for cross-module use. scene_llm_parser._params_from_dict
+        delegates here so the canonical conversion lives next to the dataclass.
+        """
+        def to_tuple(v, default):
+            if v is None:
+                return default
+            if isinstance(v, (list, tuple)):
+                return tuple(float(x) for x in v)
+            return default
+
+        primary_color = to_tuple(d.get("primary_color"), (1.0, 1.0, 1.0))
+        primary_direction = to_tuple(
+            d.get("primary_direction") or d.get("primary_direction_deg"),
+            (0.0, 0.0, 0.0),
+        )
+        fog_color = to_tuple(d.get("fog_color"), (0.8, 0.85, 1.0))
+
+        return cls(
+            primary_light_type=d.get("primary_light_type", "directional"),
+            primary_intensity=float(d.get("primary_intensity", 1.0)),
+            primary_color=primary_color,
+            primary_direction=primary_direction,
+            primary_temperature_k=float(d.get("primary_temperature_k", 5500.0)),
+            use_shadow=bool(d.get("use_shadow", True)),
+            shadow_cascades=int(d.get("shadow_cascades", 4)),
+            fill_light_type=d.get("fill_light_type", ""),
+            fill_intensity=float(d.get("fill_intensity", 0.0)),
+            use_sky_atmosphere=bool(d.get("use_sky_atmosphere", False)),
+            sky_atmosphere_composition=d.get("sky_composition", d.get("sky_atmosphere_composition", "earth")),
+            use_volumetric_cloud=bool(d.get("use_volumetric_cloud", False)),
+            cloud_coverage=float(d.get("cloud_coverage", 0.5)),
+            use_exponential_height_fog=bool(d.get("use_exponential_height_fog", False)),
+            fog_density=float(d.get("fog_density", 0.02)),
+            fog_color=fog_color,
+            use_post_process=bool(d.get("use_post_process", False)),
+            exposure_compensation=float(d.get("exposure_compensation", 0.0)),
+            mood_tags=list(d.get("mood_tags", [])),
+            confidence=float(d.get("confidence", 0.0)),
+        )
 
 
 # ---------------------------------------------------------------------------

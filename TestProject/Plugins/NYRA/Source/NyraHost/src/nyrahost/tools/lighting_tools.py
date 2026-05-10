@@ -192,12 +192,11 @@ class LightingAuthoringTool(NyraTool):
 
     def _resolve_lighting_params(self, params: dict) -> LightingParams:
         if params.get("lighting_params_json"):
-            from nyrahost.tools.scene_llm_parser import _params_from_dict
             try:
                 d = json.loads(params["lighting_params_json"])
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid lighting_params_json: {e}")
-            return _params_from_dict(d)
+            return LightingParams.from_dict(d)
         if params.get("reference_image_path"):
             parser = LightingLLMParser(backend_router=self._router)
             return run_async_safely(parser.parse_from_image(params["reference_image_path"]))
@@ -328,14 +327,16 @@ class LightingDryRunTool(NyraTool):
 
     def execute(self, params: dict) -> NyraToolResult:
         if params.get("preset_name"):
-            lp = LightingAuthoringTool._preset_to_params(params["preset_name"])
+            try:
+                lp = LightingAuthoringTool._preset_to_params(params["preset_name"])
+            except ValueError as e:
+                return NyraToolResult.err(f"[-32030] {e}")
         elif params.get("lighting_params_json"):
             try:
                 d = json.loads(params["lighting_params_json"])
             except json.JSONDecodeError as e:
                 return NyraToolResult.err(f"[-32030] Invalid lighting_params_json: {e}")
-            from nyrahost.tools.scene_llm_parser import _params_from_dict
-            lp = _params_from_dict(d)
+            lp = LightingParams.from_dict(d)
         else:
             return NyraToolResult.err("[-32030] Either preset_name or lighting_params_json must be provided.")
 
