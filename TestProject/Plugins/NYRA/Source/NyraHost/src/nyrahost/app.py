@@ -17,6 +17,7 @@ listener, writes the handshake file (D-06), and serves forever.
 from __future__ import annotations
 
 import json
+import pathlib
 from pathlib import Path
 
 import structlog
@@ -37,6 +38,8 @@ from .custom_instructions import CustomInstructions
 from .handlers.instructions import InstructionsHandlers
 from .handlers.model_settings import ModelSettingsHandlers
 from .handlers.composer import ComposerHandlers
+from .handlers.mcp_install import McpInstallHandlers
+from .tools.headless_ue import HeadlessUEManager
 from .infer.router import InferRouter
 from .router import NyraRouter
 from .safe_mode import NyraPermissionGate
@@ -178,6 +181,19 @@ async def build_and_run(
     # Phase 11-C — @-search composer asset lookup.
     composer_handlers = ComposerHandlers()
 
+    # Phase 12-A — one-click IDE MCP installer. python_exe + mcp_script
+    # paths are best-effort; the panel UI will surface them so the user
+    # can override before clicking Install.
+    import sys as _sys
+    _python_exe = pathlib.Path(_sys.executable) if False else __import__("pathlib").Path(_sys.executable)
+    mcp_install_handlers = McpInstallHandlers(
+        python_exe=_python_exe,
+        mcp_script=plugin_binaries_dir.parent.parent / "Source" / "NyraHost" / "src" / "nyrahost" / "mcp_server" / "__init__.py",
+    )
+
+    # Phase 12-B — headless UE launch (one session per NyraHost process).
+    headless_ue_mgr = HeadlessUEManager()
+
     # Phase 10-3 — model selector handlers (reuse the existing chat-handler ModelPreference).
     model_settings_handlers = ModelSettingsHandlers(
         model_preference=getattr(handlers, "model_preference", None) or __import__(
@@ -268,6 +284,14 @@ async def build_and_run(
         server.register_request("settings/set-model", model_settings_handlers.on_set)
         # Phase 11-C — @-search composer asset lookup.
         server.register_request("composer/asset_search", composer_handlers.on_asset_search)
+        # Phase 12-A — IDE MCP installer.
+        server.register_request("mcp_install/list_targets", mcp_install_handlers.on_list_targets)
+        server.register_request("mcp_install/install", mcp_install_handlers.on_install)
+        server.register_request("mcp_install/uninstall", mcp_install_handlers.on_uninstall)
+        # Phase 12-B — headless UE launch (Aura-parity IDE/MCP surface).
+        server.register_request("headless_ue/launch", headless_ue_mgr.launch)
+        server.register_request("headless_ue/status", headless_ue_mgr.status)
+        server.register_request("headless_ue/shutdown", headless_ue_mgr.shutdown)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
