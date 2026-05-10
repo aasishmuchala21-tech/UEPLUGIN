@@ -34,10 +34,27 @@ __all__ = [
 # -----------------------------------------------------------------------------
 
 def _load_actor(path: str) -> Any:
+    """Resolve an actor by path or label.
+
+    BL-07: unreal.EditorLevelLibrary.get_actor_reference does not exist
+    in the UE 5.4-5.7 Python API. Use EditorActorSubsystem.get_actor_reference
+    (canonical) or fall back to iterating get_all_level_actors() and matching
+    by get_path_name() / get_actor_label() to support both label-based and
+    path-based lookups from the LLM tool args.
+    """
     try:
-        return unreal.EditorLevelLibrary.get_actor_reference(path)
-    except Exception:
-        return None
+        subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        if subsystem is not None and hasattr(subsystem, "get_actor_reference"):
+            actor = subsystem.get_actor_reference(path)
+            if actor is not None:
+                return actor
+        # Fallback: iterate level actors and match by path or label.
+        for a in unreal.EditorLevelLibrary.get_all_level_actors():
+            if a.get_path_name() == path or a.get_actor_label() == path:
+                return a
+    except Exception as e:
+        log.warning("load_actor_failed", path=path, error=str(e))
+    return None
 
 
 def _load_class(path: str) -> Any:
@@ -115,10 +132,13 @@ class ActorSpawnTool(NyraTool):
             actor.set_actor_label(params["name"])
 
         log.info("actor_spawned", name=actor.get_name(), path=actor.get_path_name())
+        # BL-08: actor.get_actor_guid() is C++-only; not exposed in the Python
+        # binding. Drop the GUID field; downstream callers (BL-05 idempotency
+        # checks) should key on actor_path which is uniquely a function of
+        # actor + level identity in UE.
         return NyraToolResult.ok({
             "actor_name": actor.get_name(),
             "actor_path": actor.get_path_name(),
-            "guid": str(actor.get_actor_guid()),
         })
 
 
@@ -164,8 +184,9 @@ class ActorDuplicateTool(NyraTool):
             log.error("actor_duplicate_failed", error=str(e))
             return NyraToolResult.err(f"Failed to duplicate actor: {e}")
 
+        # BL-08: drop guid (Python binding doesn't expose get_actor_guid()).
         result = [
-            {"actor_name": a.get_name(), "actor_path": a.get_path_name(), "guid": str(a.get_actor_guid())}
+            {"actor_name": a.get_name(), "actor_path": a.get_path_name()}
             for a in duplicates
         ]
         return NyraToolResult.ok({"duplicates": result})
@@ -242,10 +263,19 @@ class ActorSelectTool(NyraTool):
         if not actors:
             return NyraToolResult.err("No valid actors found for selection")
 
+        # WR-08: EditorLevelLibrary.add_to_selection doesn't exist in 5.4-5.7;
+        # use EditorActorSubsystem.set_selected_level_actors with the merged
+        # list, or iterate select_actor() per actor for additive selection.
+        editor_actor_subsys = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
         if params.get("add_to_selection", False):
-            editor_level_lib.add_to_selection(actors)
+            current = list(editor_actor_subsys.get_selected_level_actors() or [])
+            current_paths = {a.get_path_name() for a in current}
+            for a in actors:
+                if a.get_path_name() not in current_paths:
+                    current.append(a)
+            editor_actor_subsys.set_selected_level_actors(current)
         else:
-            editor_level_lib.set_selected_level_actors(actors)
+            editor_actor_subsys.set_selected_level_actors(actors)
 
         return NyraToolResult.ok({
             "selected": [a.get_path_name() for a in actors],
@@ -287,15 +317,21 @@ class ActorTransformTool(NyraTool):
 
         if params.get("location"):
             loc = params["location"]
+            # WR-10: second arg to set_actor_location is bSweep, not bNoCheck.
+            # False = teleport through collisions (no sweep). The previous
+            # comment was misleading. We pass False here intentionally to
+            # match the snap_ground tool's free-positioning semantics; if
+            # collision-aware movement is wanted, callers should pass an
+            # explicit `sweep` flag (future plan).
             actor.set_actor_location(
                 unreal.Vector(float(loc["x"]), float(loc["y"]), float(loc["z"])),
-                False,  # bNoCheck=false — sweep
+                False,  # bSweep=False — teleport
             )
         if params.get("rotation"):
             rot = params["rotation"]
             actor.set_actor_rotation(
                 unreal.Rotator(float(rot["pitch"]), float(rot["yaw"]), float(rot["roll"])),
-                False,
+                False,  # bSweep=False — teleport
             )
         if params.get("scale"):
             sc = params["scale"]
@@ -336,25 +372,40 @@ class ActorSnapGroundTool(NyraTool):
 
         start = actor.get_actor_location()
         trace_distance = float(params.get("trace_distance", 10000.0))
-        # Trace downward
         end = unreal.Vector(start.x, start.y, start.z - trace_distance)
 
-        # Use World /LineTraceByChannel
+        # WR-04: unreal.MathLibrary.line_trace_by_channel does not exist; the
+        # canonical Python entry point is SystemLibrary.line_trace_single
+        # which returns (bool, hit_result). The previous code mixed
+        # ETraceTypeQuery and ECollisionChannel signatures from two different
+        # API surfaces.
         world = unreal.EditorLevelLibrary.get_editor_world()
-        # Simple single-channel trace using line_trace_by_channel
-        from unreal import FCollisionQueryParams, ECollisionChannel, ETraceTypeQuery
+        try:
+            hit_success, hit_result = unreal.SystemLibrary.line_trace_single(
+                world,
+                start,
+                end,
+                unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,  # Visibility
+                False,         # bTraceComplex
+                [actor],       # ActorsToIgnore — don't self-hit
+                unreal.DrawDebugTrace.NONE,
+                True,          # bIgnoreSelf
+            )
+        except Exception as e:
+            log.error("snap_ground_trace_failed", actor=params["actor_path"], error=str(e))
+            return NyraToolResult.err(f"Line trace failed: {e}")
 
-        query_params = FCollisionQueryParams()
-        trace_channel = ECollisionChannel.CollisionChannel_Static
-
-        hit_result = unreal.MathLibrary.line_trace_by_channel(
-            world, start, end,
-            ETraceTypeQuery.TraceTypeQuery1, False,
-            [], ECollisionChannel.ECC_Visibility, query_params
-        )
-
-        if hit_result.is_valid_block():
-            snap_z = hit_result.get_actor_location().z
+        if hit_success and hit_result is not None:
+            # WR-04: use impact_point (the hit location), not the hit actor's
+            # pivot. A 100m-tall mesh at its top would otherwise snap to the
+            # mesh actor's origin (bottom or arbitrary).
+            try:
+                impact = hit_result.impact_point
+                snap_z = float(impact.z)
+            except AttributeError:
+                # FHitResult Python binding may expose .location instead.
+                impact = getattr(hit_result, "location", None) or hit_result.get_actor_location()
+                snap_z = float(impact.z)
             new_location = unreal.Vector(start.x, start.y, snap_z)
             actor.set_actor_location(new_location, True)
             log.info("actor_snapped_ground", actor=params["actor_path"], new_z=new_location.z)
