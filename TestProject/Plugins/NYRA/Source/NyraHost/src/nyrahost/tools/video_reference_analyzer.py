@@ -6,17 +6,17 @@ sends them to Claude vision for composition / lighting / camera-move
 analysis, and emits a VideoReferenceParams.
 
 The 10-second clip cap (per ROADMAP DEMO-02) is enforced before any
-LLM call. Source is deleted from /tmp after analysis (ephemeral).
+LLM call. Source is deleted after analysis (ephemeral).
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
+from nyrahost.tools.base import run_async_safely
 from nyrahost.tools.ffmpeg_extractor import FFmpegKeyframeExtractor
 from nyrahost.tools.video_llm_parser import (
     CameraMoveType,
@@ -47,27 +47,48 @@ class VideoReferenceAnalyzer:
         """Synchronous entry point.
 
         source_type: "youtube_url" | "file"
+
+        Wraps the entire path -- download -> probe -> extract -> LLM call --
+        in a single try/finally so partial-progress artefacts (downloaded
+        video AND any extracted keyframes) are always cleaned up, even if
+        the duration check or extractor raises.
         """
-        if source_type == "youtube_url":
-            self._video_path = asyncio.run(self._download_youtube(source))
-        else:
-            self._video_path = source
-
-        duration = self._get_video_duration(self._video_path)
-        if duration > MAX_CLIP_SECONDS:
-            self._cleanup(video_path=self._video_path, keyframe_paths=[])
-            raise ValueError(
-                f"Clip is longer than 10 seconds ({duration:.1f}s) - DEMO-02 caps at "
-                f"{MAX_CLIP_SECONDS}s for ephemeral analysis."
-            )
-
-        keyframes = self._extract_keyframes(self._video_path, max_keyframes=16)
-        self._keyframes = keyframes
-
+        keyframes: list[str] = []
         try:
-            raw = asyncio.run(self._analyze_with_claude(self._video_path, keyframes))
+            if source_type == "youtube_url":
+                self._video_path = run_async_safely(self._download_youtube(source))
+            else:
+                self._video_path = source
+
+            # WR-09: validate that we actually got a path back -- if a
+            # future _download_youtube wiring swallows its own exception
+            # and returns None, the ffprobe / extractor calls below would
+            # surface opaque TypeErrors. The on-disk existence check is
+            # delegated to ffprobe (BL-08) which now hard-rejects probe
+            # failures including missing files; that keeps tests that mock
+            # _get_video_duration unaffected while still failing closed in
+            # production where the real probe runs.
+            if not self._video_path:
+                raise RuntimeError(
+                    "[-32035] Video source resolution returned no path."
+                )
+
+            duration = self._get_video_duration(self._video_path)
+            if duration > MAX_CLIP_SECONDS:
+                raise ValueError(
+                    f"Clip is longer than 10 seconds ({duration:.1f}s) - DEMO-02 caps at "
+                    f"{MAX_CLIP_SECONDS}s for ephemeral analysis."
+                )
+
+            keyframes = self._extract_keyframes(self._video_path, max_keyframes=16)
+            self._keyframes = keyframes
+
+            raw = run_async_safely(self._analyze_with_claude(self._video_path, keyframes))
             params = self._raw_to_params(raw, duration=duration, keyframes=keyframes)
         finally:
+            # WR-08: cleanup runs unconditionally so a duration-cap or
+            # extraction failure never leaks the downloaded source or
+            # half-extracted keyframes.
             self._cleanup(video_path=self._video_path, keyframe_paths=keyframes)
 
         return params
@@ -89,17 +110,37 @@ class VideoReferenceAnalyzer:
         )
 
     def _get_video_duration(self, video_path: str) -> float:
-        """Probe duration via FFprobe; tests patch this method."""
+        """Probe duration via FFprobe; tests patch this method.
+
+        BL-08: probe failure is now a HARD reject -- silently returning
+        0.0 caused the upstream cap check ("if duration > MAX_CLIP_SECONDS")
+        to falsely pass an unprobed clip of arbitrary length straight to
+        Claude. Use check=True and let the exception escape, wrapped in a
+        clear RuntimeError that callers can match on the [-32035] sentinel.
+        """
         try:
             out = subprocess.run(
                 ["ffprobe", "-v", "error", "-show_entries", "format=duration",
                  "-of", "default=noprint_wrappers=1:nokey=1", video_path],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, timeout=10, check=True,
             )
-            return float(out.stdout.strip()) if out.stdout.strip() else 0.0
-        except Exception as e:
-            log.warning("ffprobe_failed: %s", e)
-            return 0.0
+        except (OSError, subprocess.SubprocessError) as e:
+            log.error("ffprobe_failed path=%s err=%s", video_path, e)
+            raise RuntimeError(
+                f"[-32035] Could not probe video duration: {e}"
+            ) from e
+        raw = (out.stdout or "").strip()
+        if not raw:
+            log.error("ffprobe_empty_duration path=%s stderr=%s", video_path, out.stderr)
+            raise RuntimeError(
+                "[-32035] Could not probe video duration: ffprobe returned no duration."
+            )
+        try:
+            return float(raw)
+        except ValueError as e:
+            raise RuntimeError(
+                f"[-32035] Could not probe video duration: unexpected ffprobe output {raw!r}"
+            ) from e
 
     def _extract_keyframes(self, video_path: str, max_keyframes: int = 16) -> list[str]:
         return self._ffmpeg.extract_keyframes(video_path, max_keyframes=max_keyframes)
