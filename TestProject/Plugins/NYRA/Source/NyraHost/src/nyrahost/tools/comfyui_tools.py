@@ -97,12 +97,43 @@ class ComfyUIRunWorkflowTool(NyraTool):
             )
 
         manifest = StagingManifest()
+
+        # BL-07: ComfyUI was minting a fresh UUID per call with no dedup,
+        # so an agent retry on transient error burned the user's GPU on
+        # duplicate workflows. Compose the idempotency key from the
+        # canonical workflow string + target_folder + input_image so
+        # distinct generations are not falsely deduped, identical re-
+        # submits return the prior job_id.
+        workflow_str = _json.dumps(workflow_json, sort_keys=True)
+        try:
+            input_hash = manifest.compute_hash(
+                workflow_str,
+                extra=f"target_folder={target_folder}|input_image={input_image_asset_path or ''}",
+            )
+        except ValueError as e:
+            return NyraToolResult.err(f"[-32030] {e}")
+
+        existing_id = manifest.find_by_hash(
+            tool="comfyui",
+            operation="run_workflow",
+            input_hash=input_hash,
+        )
+        if existing_id:
+            log.info("comfyui_idempotent_dedup", job_id=existing_id)
+            return NyraToolResult.ok({
+                "job_id": existing_id,
+                "status": "existing",
+                "message": (
+                    f"ComfyUI job already exists for this workflow. "
+                    f"Use nyra_job_status('{existing_id}') to check status."
+                ),
+                "target_folder": target_folder,
+            })
+
         job_id = str(uuid.uuid4())
 
-        # Compute input_ref from workflow JSON (for idempotency hash)
-        workflow_str = _json.dumps(workflow_json, sort_keys=True)
-
-        # Pitfall 1 mitigation: write pending entry BEFORE returning
+        # Pitfall 1 mitigation: write pending entry BEFORE returning.
+        # BL-07: pass the composed input_hash so dedup re-submits match.
         manifest.add_pending(
             job_id=job_id,
             tool="comfyui",
@@ -112,6 +143,7 @@ class ComfyUIRunWorkflowTool(NyraTool):
                 "target_folder": target_folder,
                 "has_input_image": bool(input_image_asset_path),
             },
+            input_hash=input_hash,
         )
         log.info("comfyui_pending_job_written", job_id=job_id)
 

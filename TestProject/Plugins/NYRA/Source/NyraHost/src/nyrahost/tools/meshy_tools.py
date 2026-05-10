@@ -105,7 +105,19 @@ class MeshyImageTo3DTool(NyraTool):
             )
 
         manifest = StagingManifest()
-        input_hash = manifest._compute_hash(image_path)
+        # BL-04: include task_type and prompt in the dedup key so a
+        # re-submit with different generation parameters does NOT
+        # silently return the prior job's GLB.
+        # BL-05: compute_hash validates extension/size/file-type before
+        # reading the bytes; the LLM cannot point us at a device path
+        # or multi-GB file.
+        try:
+            input_hash = manifest.compute_hash(
+                image_path,
+                extra=f"task_type={task_type}|prompt={prompt}",
+            )
+        except ValueError as e:
+            return NyraToolResult.err(f"[-32030] {e}")
 
         # Idempotency: check for existing job
         existing_id = manifest.find_by_hash(
@@ -128,13 +140,15 @@ class MeshyImageTo3DTool(NyraTool):
         # Fresh job
         job_id = str(uuid.uuid4())
 
-        # Pitfall 1 mitigation: write pending entry BEFORE returning
+        # Pitfall 1 mitigation: write pending entry BEFORE returning.
+        # BL-04: pass the composed input_hash so dedup re-submits match.
         manifest.add_pending(
             job_id=job_id,
             tool="meshy",
             operation="image-to-3d",
             input_ref=image_path,
             api_response={"task_type": task_type, "prompt": prompt},
+            input_hash=input_hash,
         )
         log.info("meshy_pending_job_written", job_id=job_id, image_path=image_path)
 

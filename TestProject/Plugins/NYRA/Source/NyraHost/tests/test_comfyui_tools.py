@@ -38,6 +38,12 @@ class TestComfyUIRunWorkflowTool:
     def test_workflow_submission_returns_job_id(self):
         """nyra_comfyui_run_workflow returns a job_id immediately (non-blocking)."""
         mock_manifest = MagicMock()
+        # BL-07: explicitly mock find_by_hash to None so the new
+        # idempotency dedup branch doesn't short-circuit. The default
+        # MagicMock() return is truthy and would trigger the
+        # "existing job" return path.
+        mock_manifest.find_by_hash.return_value = None
+        mock_manifest.compute_hash.return_value = "sha256:test"
         mock_manifest.add_pending.return_value = MagicMock(id="test-job-xyz")
 
         mock_client = MagicMock()
@@ -70,6 +76,9 @@ class TestComfyUIRunWorkflowTool:
     def test_workflow_with_target_folder(self):
         """target_folder parameter is passed to manifest and returned in result."""
         mock_manifest = MagicMock()
+        # BL-07: opt out of idempotent dedup so add_pending is reached.
+        mock_manifest.find_by_hash.return_value = None
+        mock_manifest.compute_hash.return_value = "sha256:test"
         mock_manifest.add_pending.return_value = MagicMock(id="test-job-folder")
 
         mock_client = MagicMock()
@@ -92,6 +101,31 @@ class TestComfyUIRunWorkflowTool:
         call_kwargs = mock_manifest.add_pending.call_args
         api_resp = call_kwargs.kwargs["api_response"]
         assert api_resp["target_folder"] == "/Game/MyTextures"
+
+    def test_workflow_idempotent_dedup_returns_existing_job(self):
+        """BL-07: re-submitting the same workflow returns the prior job_id."""
+        mock_manifest = MagicMock()
+        mock_manifest.find_by_hash.return_value = "prior-job-abc"
+        mock_manifest.compute_hash.return_value = "sha256:identical"
+
+        mock_client = MagicMock()
+
+        with patch(
+            "nyrahost.tools.comfyui_tools.StagingManifest", return_value=mock_manifest
+        ):
+            with patch.object(
+                ComfyUIClient,
+                "discover",
+                new=AsyncMock(return_value=mock_client),
+            ):
+                tool = ComfyUIRunWorkflowTool()
+                result = tool.execute({"workflow_json": {"prompt": {}}})
+
+        assert result.error is None
+        assert result.data["status"] == "existing"
+        assert result.data["job_id"] == "prior-job-abc"
+        # Crucially: no new pending entry was written.
+        mock_manifest.add_pending.assert_not_called()
 
     def test_comfyui_not_found_returns_error(self):
         """ComfyUI server not found returns NyraToolResult.err with setup instructions."""

@@ -156,15 +156,73 @@ class StagingManifest:
                 pass
             raise
 
-    def _compute_hash(self, input_ref: str) -> str:
-        """Compute sha256:<hex16> of the input reference for idempotency."""
+    # BL-05: image input safety. ingest paths come from agent-controlled
+    # tool args; bound the read by extension allowlist + size cap so an
+    # LLM cannot point us at \\?\PhysicalDrive0, /dev/zero, named pipes,
+    # or multi-GB raw recordings. Hash in 1 MiB chunks rather than
+    # read_bytes() so memory stays bounded for legitimate big inputs.
+    _ALLOWED_IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")
+    _MAX_INPUT_BYTES = 32 * 1024 * 1024  # 32 MiB
+    _HASH_CHUNK_BYTES = 1024 * 1024       # 1 MiB
+
+    def compute_hash(self, input_ref: str, *, extra: str = "") -> str:
+        """Compute sha256 of the input reference for idempotency.
+
+        BL-04: callers compose `extra` from per-tool params (Meshy: prompt
+        + task_type; ComfyUI: workflow JSON serialization + target_folder
+        + input_image_path). Without `extra`, distinct generation requests
+        of the same image get falsely deduped to the prior job.
+
+        BL-05: validates file paths (size cap, extension allowlist, no
+        directories/devices) before reading. Hashes in chunks. Returns
+        the FULL hex digest (WR-04 in the Phase 5 review wanted no
+        [:16] truncation; 64-bit collision space was too tight for
+        billing dedup).
+        """
+        h = hashlib.sha256()
         path = Path(input_ref)
         if path.exists():
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            # Image-file path: validate then chunk-hash.
+            if not path.is_file():
+                raise ValueError(f"Input is not a regular file: {input_ref}")
+            suffix = path.suffix.lower()
+            if suffix and suffix not in self._ALLOWED_IMAGE_SUFFIXES:
+                raise ValueError(
+                    f"Unsupported input extension '{suffix}' for {input_ref}; "
+                    f"allowed: {', '.join(self._ALLOWED_IMAGE_SUFFIXES)}"
+                )
+            size = path.stat().st_size
+            if size > self._MAX_INPUT_BYTES:
+                raise ValueError(
+                    f"Input file too large: {size} bytes > {self._MAX_INPUT_BYTES} cap "
+                    f"({input_ref})"
+                )
+            with path.open("rb") as f:
+                while True:
+                    chunk = f.read(self._HASH_CHUNK_BYTES)
+                    if not chunk:
+                        break
+                    h.update(chunk)
         else:
-            # Non-file input_refs (workflow JSON strings) — hash the string
-            digest = hashlib.sha256(input_ref.encode()).hexdigest()
-        return f"sha256:{digest[:16]}"
+            # Non-file input_refs (workflow JSON strings, prompts) -- hash
+            # the string verbatim. Reject strings larger than the byte cap
+            # to keep hashing bounded.
+            payload = input_ref.encode("utf-8")
+            if len(payload) > self._MAX_INPUT_BYTES:
+                raise ValueError(
+                    f"Input string too large: {len(payload)} bytes > {self._MAX_INPUT_BYTES} cap"
+                )
+            h.update(payload)
+        if extra:
+            h.update(b"|")
+            h.update(extra.encode("utf-8"))
+        return f"sha256:{h.hexdigest()}"
+
+    # Backwards-compatible private alias for callers that still use the
+    # old name. New code should call compute_hash(); this internal
+    # shim drops the [:16] truncation per WR-04.
+    def _compute_hash(self, input_ref: str) -> str:
+        return self.compute_hash(input_ref)
 
     def _validate_path(self, path: str) -> None:
         """Raise PathTraversalError if path resolves outside staging root.
@@ -199,28 +257,38 @@ class StagingManifest:
         operation: str,
         input_ref: str,
         api_response: Optional[dict] = None,
+        input_hash: Optional[str] = None,
     ) -> JobEntry:
         """Write a pending entry to the manifest BEFORE the tool returns.
 
         This is the Pitfall 1 mitigation: the entry exists before the API call
         starts so NyraHost crash mid-polling does not orphan a job.
+
+        BL-04: callers can pass an explicit `input_hash` so the stored hash
+        matches the per-tool composition (e.g. Meshy mixes task_type +
+        prompt; ComfyUI mixes target_folder + input_image_asset_path).
+        Without this, the stored hash drifts from the lookup hash and
+        find_by_hash never matches a re-submit.
         """
-        data = self._load()
-        entry = JobEntry(
-            id=job_id,
-            tool=tool,
-            operation=operation,
-            input_ref=input_ref,
-            input_hash=self._compute_hash(input_ref),
-            api_response=api_response or {},
-            downloaded_path=None,
-            ue_asset_path=None,
-            ue_import_status="pending",
-            error_message=None,
-            created_at=datetime.now(timezone.utc).isoformat() + "Z",
-        )
-        data["jobs"].append(asdict(entry))
-        self._save(data)
+        # Use caller-supplied hash if provided; fall back to default.
+        effective_hash = input_hash if input_hash is not None else self._compute_hash(input_ref)
+        with self._lock:
+            data = self._load()
+            entry = JobEntry(
+                id=job_id,
+                tool=tool,
+                operation=operation,
+                input_ref=input_ref,
+                input_hash=effective_hash,
+                api_response=api_response or {},
+                downloaded_path=None,
+                ue_asset_path=None,
+                ue_import_status="pending",
+                error_message=None,
+                created_at=datetime.now(timezone.utc).isoformat() + "Z",
+            )
+            data["jobs"].append(asdict(entry))
+            self._save(data)
         log.info("staging_job_added", job_id=job_id, tool=tool, operation=operation)
         return entry
 
