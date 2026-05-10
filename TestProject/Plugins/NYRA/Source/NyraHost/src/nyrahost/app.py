@@ -45,6 +45,18 @@ from .handlers.threads import ThreadHandlers, ThreadRegistry
 from .tools.timeline_tools import on_add_timeline
 from .tools.asset_hygiene import on_run_hygiene
 from .tools.perf_budget import PerfBudgetHandlers
+# Phase 14 — repro pin, cost forecast, agent trace, user tools, crash RCA,
+# test gen, doc-from-code, replication scaffolder.
+from .reproducibility import ReproPinStore
+from .handlers.reproducibility import ReproHandlers
+from .handlers.cost import CostHandlers
+from .handlers.agent_trace import AgentTraceHandlers
+from .user_tools import UserToolsLoader
+from .handlers.user_tools import UserToolsHandlers
+from .tools.crash_rca import CrashRCAHandlers
+from .tools.test_gen import TestGenHandlers
+from .tools.doc_from_code import DocFromCodeHandlers
+from .tools.replication_scaffolder import ReplicationScaffolderHandlers
 from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
@@ -209,6 +221,33 @@ async def build_and_run(
     # Phase 13-E — perf budget handlers (per-project budgets file).
     perf_budget_handlers = PerfBudgetHandlers(project_dir=project_dir)
 
+    # Phase 14-A — per-conversation seed + temperature pin (Tier 2).
+    repro_handlers = ReproHandlers(ReproPinStore())
+
+    # Phase 14-B — cost forecaster (read-only, no state).
+    cost_handlers = CostHandlers()
+
+    # Phase 14-C — agent trace view over audit_log.
+    agent_trace_handlers = AgentTraceHandlers(audit_log=audit_log)
+
+    # Phase 14-D — user-installable MCP tools loader. UserTools/ lives
+    # next to the plugin's Source/ tree at install time.
+    user_tools_dir = plugin_binaries_dir.parent.parent / "UserTools"
+    user_tools_handlers = UserToolsHandlers(UserToolsLoader(tools_dir=user_tools_dir))
+
+    # Phase 14-E — crash RCA over <ProjectDir>/Saved/Crashes/.
+    crash_rca_handlers = CrashRCAHandlers(project_dir=project_dir)
+
+    # Phase 14-F — test scaffolding over plugin source tree.
+    plugin_source_dir = plugin_binaries_dir.parent.parent / "Source"
+    test_gen_handlers = TestGenHandlers(plugin_source_dir=plugin_source_dir)
+
+    # Phase 14-G — doc-from-code over plugin source tree.
+    doc_handlers = DocFromCodeHandlers(plugin_source_dir=plugin_source_dir)
+
+    # Phase 14-H — replication scaffolder (pure-function output).
+    repl_handlers = ReplicationScaffolderHandlers()
+
     # Phase 10-3 — model selector handlers (reuse the existing chat-handler ModelPreference).
     model_settings_handlers = ModelSettingsHandlers(
         model_preference=getattr(handlers, "model_preference", None) or __import__(
@@ -321,6 +360,28 @@ async def build_and_run(
         server.register_request("perf_budget/get", perf_budget_handlers.on_get_budgets)
         server.register_request("perf_budget/set", perf_budget_handlers.on_set_budget)
         server.register_request("perf_budget/check", perf_budget_handlers.on_check)
+        # Phase 14-A — reproducibility pin.
+        server.register_request("settings/repro/get", repro_handlers.on_get)
+        server.register_request("settings/repro/set", repro_handlers.on_set)
+        server.register_request("settings/repro/clear", repro_handlers.on_clear)
+        # Phase 14-B — cost forecaster.
+        server.register_request("cost/forecast", cost_handlers.on_forecast)
+        server.register_request("cost/price_table", cost_handlers.on_price_table)
+        # Phase 14-C — agent trace.
+        server.register_request("trace/get", agent_trace_handlers.on_get)
+        # Phase 14-D — user MCP tools.
+        server.register_request("user_tools/list", user_tools_handlers.on_list)
+        server.register_request("user_tools/reload", user_tools_handlers.on_reload)
+        server.register_request("user_tools/invoke", user_tools_handlers.on_invoke)
+        # Phase 14-E — crash RCA.
+        server.register_request("crash_rca/run", crash_rca_handlers.on_run)
+        # Phase 14-F — test scaffolding.
+        server.register_request("test_gen/scan", test_gen_handlers.on_scan)
+        server.register_request("test_gen/render", test_gen_handlers.on_render_spec)
+        # Phase 14-G — doc-from-code.
+        server.register_request("docs/scan_module", doc_handlers.on_scan_module)
+        # Phase 14-H — replication scaffolder.
+        server.register_request("replication/scaffold", repl_handlers.on_scaffold)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
