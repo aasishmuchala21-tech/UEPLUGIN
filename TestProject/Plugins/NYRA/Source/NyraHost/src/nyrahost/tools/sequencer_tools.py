@@ -5,6 +5,8 @@ Per ROADMAP SC#2: SCENE-02 Sequencer automation.
 """
 from __future__ import annotations
 
+import math
+
 import structlog
 from typing import Any, Optional
 
@@ -13,6 +15,29 @@ try:
     HAS_UNREAL = True
 except ImportError:
     HAS_UNREAL = False
+
+
+# Industry-standard 35mm sensor (Super 35 / full-frame photographic) horizontal
+# width in mm. Used by _fov_degrees_to_focal_length_mm to convert from a
+# horizontal FOV in degrees to a focal length in millimetres so the value can
+# be fed to UE's add_keyframe_absolute_focal_length API.
+_DEFAULT_SENSOR_WIDTH_MM = 36.0
+
+
+def _fov_degrees_to_focal_length_mm(
+    fov_degrees: float, sensor_width_mm: float = _DEFAULT_SENSOR_WIDTH_MM,
+) -> float:
+    """Convert a horizontal FOV (degrees) to a focal length (mm).
+
+    Uses the standard pinhole-camera relation
+    ``focal_mm = (sensor_width / 2) / tan(fov_deg * pi / 360)``. UE's
+    Sequencer focal-length keyframe API expects millimetres on a CineCamera
+    component; the LLM emits horizontal FOV in degrees, so every callsite
+    that wants to keyframe FOV must convert first.
+    """
+    fov = max(min(float(fov_degrees), 179.0), 1.0)  # avoid tan(90 deg)
+    half_rad = fov * math.pi / 360.0
+    return (sensor_width_mm / 2.0) / math.tan(half_rad)
 
 from nyrahost.tools.base import NyraTool, NyraToolResult
 from nyrahost.tools.video_llm_parser import CameraMoveType, ShotBlock, VideoReferenceParams
@@ -63,11 +88,20 @@ class SequencerToolMixin:
     def _set_camera_fov_keyframe(
         self, sequence: Any, binding: Any, frame_number: int, fov_degrees: float,
     ) -> None:
-        """Set a FOV keyframe on a CineCameraComponent."""
+        """Set a focal-length keyframe on a CineCameraComponent.
+
+        Input is horizontal FOV in degrees (LLM-emitted, 35mm-equivalent).
+        UE's Sequencer scripting API exposes
+        ``add_keyframe_absolute_focal_length`` which takes millimetres on a
+        CineCameraComponent's current_focal_length channel; convert before
+        the call. (There is no add_keyframe_absolute_focal_focus -- the
+        previous name was a typo and would AttributeError at runtime.)
+        """
         if not HAS_UNREAL:
             return
-        unreal.LevelSequenceEditorBlueprintLibrary.add_keyframe_absolute_focal_focus(
-            binding, sequence, fov_degrees, float(frame_number)
+        focal_mm = _fov_degrees_to_focal_length_mm(fov_degrees)
+        unreal.LevelSequenceEditorBlueprintLibrary.add_keyframe_absolute_focal_length(
+            binding, sequence, focal_mm, float(frame_number)
         )
 
     def _set_light_intensity_keyframe(
