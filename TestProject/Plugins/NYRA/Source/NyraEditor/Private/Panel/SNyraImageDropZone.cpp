@@ -10,6 +10,7 @@
 #include "HAL/PlatformApplicationMisc.h"
 #include "DragAndDrop/AssetDragDropOp.h"
 #include "Input/DragAndDrop.h"
+#include "AssetRegistry/AssetData.h"  // Plan 08-04: explicit include for FAssetData
 
 namespace
 {
@@ -21,6 +22,9 @@ namespace
 void SNyraImageDropZone::Construct(const FArguments& InArgs)
 {
 	OnImageDroppedDelegate = InArgs._OnImageDropped;
+	// Plan 08-04 (PARITY-04): capture the structured-asset delegate so OnDrop
+	// can prefer it when an FAssetDragDropOp arrives from the Content Browser.
+	OnAssetDroppedDelegate = InArgs._OnAssetDropped;
 
 	ChildSlot
 	[
@@ -91,13 +95,31 @@ FReply SNyraImageDropZone::OnDrop(const FGeometry& MyGeometry, const FDragDropEv
 	// verification step.
 	if (TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation())
 	{
-		// Asset Browser drop -- pick the first asset path.
+		// Asset Browser drop -- structured FAssetData payload.
 		if (Operation->IsOfType<FAssetDragDropOp>())
 		{
 			TSharedPtr<FAssetDragDropOp> AssetOp = StaticCastSharedPtr<FAssetDragDropOp>(Operation);
 			if (AssetOp.IsValid() && AssetOp->GetAssets().Num() > 0)
 			{
-				ResolvedPath = AssetOp->GetAssets()[0].GetObjectPathString();
+				const FAssetData& Asset = AssetOp->GetAssets()[0];
+
+				// Plan 08-04 (PARITY-04): prefer the structured asset delegate
+				// when the parent (composer) has bound it. We pass the full
+				// FAssetData so the consumer can read both /Game/... path AND
+				// the asset class (StaticMesh / Material / Blueprint / etc.).
+				// Short-circuit return: when this delegate fires the legacy
+				// OnImageDropped path-string emission MUST NOT also fire (would
+				// produce a duplicate chip).
+				if (OnAssetDroppedDelegate.IsBound())
+				{
+					OnAssetDroppedDelegate.Execute(Asset);
+					return FReply::Handled();
+				}
+
+				// LOCKED-08 backward compat: when the new delegate is unbound,
+				// fall through to the legacy path-string emission so any
+				// existing wiring (DEMO-01 reference-image flow) keeps working.
+				ResolvedPath = Asset.GetObjectPathString();
 			}
 		}
 	}
