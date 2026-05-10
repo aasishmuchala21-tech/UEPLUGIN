@@ -83,15 +83,21 @@ class SceneAssembler(SceneAssemblyOrchestrator):
         progress = progress_callback or (lambda step, c, t, m="": None)
         result = AssemblyResult()
 
-        # Step 1: Place actors
+        # Step 1: Place actors. Track actor handles by role so step 2 can
+        # bind materials to the correct spawned actor (WR-10).
+        actor_lookup: dict[str, Any] = {}
         total_actors = sum(spec.count for spec in blueprint.actor_specs)
         placed = 0
         for spec in blueprint.actor_specs:
             for _ in range(spec.count):
                 placed += 1
                 progress(ASSEMBLY_STEP_PLACING_ACTORS, placed, total_actors, spec.role)
-                placed_entry = self._place_actor(spec)
+                placed_entry, actor_handle = self._place_actor(spec)
                 result.placed_actors.append(placed_entry)
+                if actor_handle is not None:
+                    # First spawned actor for the role wins; subsequent
+                    # duplicates with the same role don't overwrite.
+                    actor_lookup.setdefault(spec.role, actor_handle)
                 result.log_entries.append(
                     f"actor:{spec.role} -> {placed_entry.get('asset_path')} "
                     f"({placed_entry.get('source')})"
@@ -101,7 +107,7 @@ class SceneAssembler(SceneAssemblyOrchestrator):
         total_materials = max(1, len(blueprint.material_specs))
         for idx, mspec in enumerate(blueprint.material_specs, start=1):
             progress(ASSEMBLY_STEP_APPLYING_MATERIALS, idx, total_materials, mspec.material_type)
-            material_entry = self._apply_material(mspec)
+            material_entry = self._apply_material(mspec, actor_lookup)
             result.applied_materials.append(material_entry)
             result.log_entries.append(
                 f"material:{mspec.material_type} -> {material_entry.get('asset_path')} "
@@ -163,19 +169,28 @@ class SceneAssembler(SceneAssemblyOrchestrator):
 
     # --- internals ----------------------------------------------------------
 
-    def _place_actor(self, spec: ActorSpec) -> dict:
+    def _place_actor(self, spec: ActorSpec) -> tuple[dict, Optional[Any]]:
+        """Resolve + spawn one actor.
+
+        Returns (entry_dict, actor_handle). actor_handle is the live
+        unreal actor object when running in-editor (so step 2 can bind a
+        material), or None when not in editor / on spawn failure.
+        """
         resolution = self._fallback.resolve_actor_asset(spec.asset_hint, spec.role)
         # _try_import_unreal: not in editor -> return placeholder metadata.
         try:
             import unreal  # type: ignore
         except ImportError:
-            return {
-                "actor_name": f"NYRA_{spec.role}",
-                "actor_path": resolution.asset_path,
-                "asset_path": resolution.asset_path,
-                "source": resolution.source,
-                "ue_pending_manual_verification": True,
-            }
+            return (
+                {
+                    "actor_name": f"NYRA_{spec.role}",
+                    "actor_path": resolution.asset_path,
+                    "asset_path": resolution.asset_path,
+                    "source": resolution.source,
+                    "ue_pending_manual_verification": True,
+                },
+                None,
+            )
 
         try:
             actor_class = unreal.UObject.load_system_class(spec.class_path)
@@ -186,30 +201,77 @@ class SceneAssembler(SceneAssemblyOrchestrator):
             )
             actor = unreal.EditorLevelLibrary.spawn_actor_from_class(actor_class, transform)
             actor.set_actor_label(f"NYRA_{spec.role}")
-            return {
-                "actor_name": actor.get_name(),
-                "actor_path": actor.get_path_name(),
-                "asset_path": resolution.asset_path,
-                "source": resolution.source,
-                "guid": str(actor.get_actor_guid()),
-            }
+            return (
+                {
+                    "actor_name": actor.get_name(),
+                    "actor_path": actor.get_path_name(),
+                    "asset_path": resolution.asset_path,
+                    "source": resolution.source,
+                    "guid": str(actor.get_actor_guid()),
+                },
+                actor,
+            )
         except Exception as e:
             log.error("scene_assembler_spawn_failed", role=spec.role, error=str(e))
-            return {
-                "actor_name": f"NYRA_{spec.role}_error",
-                "asset_path": resolution.asset_path,
-                "source": resolution.source,
-                "error": str(e),
-            }
+            return (
+                {
+                    "actor_name": f"NYRA_{spec.role}_error",
+                    "asset_path": resolution.asset_path,
+                    "source": resolution.source,
+                    "error": str(e),
+                },
+                None,
+            )
 
-    def _apply_material(self, spec: MaterialSpec) -> dict:
+    def _apply_material(self, spec: MaterialSpec, actor_lookup: dict[str, Any]) -> dict:
+        """Resolve a material and bind it to the spawned actor for spec.target_actor.
+
+        WR-10: previously this only returned metadata without ever calling
+        unreal.set_material, so result.applied_materials counted the spec
+        but no material was visible in the editor. Now load the asset via
+        EditorAssetLibrary and bind it to the StaticMeshComponent of the
+        spawned actor when in-editor.
+        """
         resolution = self._fallback.resolve_material_asset(spec.texture_hint, spec.material_type)
-        return {
+        entry: dict[str, Any] = {
             "target_actor": spec.target_actor,
             "material_type": spec.material_type,
             "asset_path": resolution.asset_path,
             "source": resolution.source,
         }
+
+        target_actor = actor_lookup.get(spec.target_actor)
+        if target_actor is None:
+            entry["bind_status"] = "no_actor"
+            return entry
+
+        try:
+            import unreal  # type: ignore
+        except ImportError:
+            entry["bind_status"] = "not_in_editor"
+            return entry
+
+        try:
+            material = unreal.EditorAssetLibrary.load_asset(resolution.asset_path)
+            if material is None:
+                entry["bind_status"] = "material_load_failed"
+                return entry
+            smc = target_actor.get_component_by_class(unreal.StaticMeshComponent)
+            if smc is None:
+                entry["bind_status"] = "no_static_mesh_component"
+                return entry
+            smc.set_material(0, material)
+            entry["bind_status"] = "ok"
+        except Exception as e:
+            log.error(
+                "scene_assembler_material_bind_failed",
+                target_actor=spec.target_actor,
+                material_type=spec.material_type,
+                error=str(e),
+            )
+            entry["bind_status"] = "error"
+            entry["error"] = str(e)
+        return entry
 
     @staticmethod
     def _stub_blueprint(image_path: str) -> SceneBlueprint:
