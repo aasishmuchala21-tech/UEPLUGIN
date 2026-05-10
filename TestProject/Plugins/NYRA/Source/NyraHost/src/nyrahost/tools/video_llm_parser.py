@@ -94,7 +94,7 @@ class VideoReferenceParams:
             primary_intensity=3.0,
             primary_color=self.primary_color,
             primary_direction=(0.5, -0.5, -1.0),
-            primary_temperature=self.primary_temperature_k,
+            primary_temperature_k=self.primary_temperature_k,
             use_sky_atmosphere=self.environment_type == "outdoor" and self.time_of_day != "night",
             use_exponential_height_fog=self.weather in ("fog", "rain"),
             fog_density=0.1 if self.weather == "fog" else 0.0,
