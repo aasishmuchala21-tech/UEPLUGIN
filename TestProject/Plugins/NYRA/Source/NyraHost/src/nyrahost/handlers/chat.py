@@ -26,7 +26,7 @@ from typing import Any
 import structlog
 from websockets.server import ServerConnection
 
-from ..attachments import ingest_attachment
+from ..attachments import AttachmentRef, ingest_attachment
 from ..backends import BACKEND_REGISTRY, AgentBackend, get_backend
 from ..infer.router import InferRouter
 from ..jsonrpc import build_notification
@@ -34,6 +34,79 @@ from ..session import SessionState
 from ..storage import Storage
 
 log = structlog.get_logger("nyrahost.chat")
+
+
+def _extract_and_link_document(
+    *,
+    ref: AttachmentRef,
+    pth: str,
+    project_saved: Path,
+    storage: "Storage",
+    user_msg_id: str,
+) -> list[AttachmentRef]:
+    """PARITY-01 — extract text + embedded images from a document AttachmentRef.
+
+    Persists the extracted text as a sibling ``text`` AttachmentRef next
+    to the original document in the content-addressed store, then links
+    both the text and every embedded image into the user message via
+    ``storage.link_attachment``. Returns the list of newly-emitted
+    refs (text + images) so the claude-route path can append them to
+    the backend's attachment payload.
+
+    Failures are non-fatal: ``extract_*`` raises ``ValueError`` on
+    malformed input, and the chat handler logs the warning and moves
+    on rather than killing the whole submission. Aura crashes on
+    malformed docs; we don't.
+    """
+    from nyrahost.extractors import dispatch as _doc_dispatch
+
+    new_refs: list[AttachmentRef] = []
+    try:
+        text, image_refs = _doc_dispatch(
+            Path(pth), project_saved=project_saved
+        )
+    except Exception as exc:
+        log.warning("doc_extract_failed", path=pth, err=str(exc))
+        return new_refs
+
+    # Persist extracted text as a sibling .txt next to the doc in the
+    # content-addressed shard. Path naming uses the document sha so the
+    # text file dedups on identical document bytes.
+    text_path = Path(ref.path).with_suffix(".txt")
+    try:
+        text_path.write_text(text, encoding="utf-8")
+    except OSError as exc:
+        log.warning(
+            "doc_extract_text_write_failed", path=str(text_path), err=str(exc)
+        )
+        return new_refs
+
+    text_ref = AttachmentRef(
+        sha256=ref.sha256 + "_txt",  # derived — distinguishes from doc sha
+        path=str(text_path),
+        size_bytes=len(text.encode("utf-8")),
+        kind="text",
+        original_filename=Path(ref.original_filename).stem + ".txt",
+    )
+    storage.link_attachment(
+        message_id=user_msg_id,
+        kind=text_ref.kind,
+        path=text_ref.path,
+        size_bytes=text_ref.size_bytes,
+        sha256=text_ref.sha256,
+    )
+    new_refs.append(text_ref)
+
+    for img_ref in image_refs:
+        storage.link_attachment(
+            message_id=user_msg_id,
+            kind=img_ref.kind,
+            path=img_ref.path,
+            size_bytes=img_ref.size_bytes,
+            sha256=img_ref.sha256,
+        )
+        new_refs.append(img_ref)
+    return new_refs
 
 
 class GemmaNotInstalledError(Exception):
@@ -132,6 +205,21 @@ class ChatHandlers:
                             sha256=ref.sha256,
                         )
                         backend_attachments.append(ref)
+                        # PARITY-01: documents (PDF/DOCX/PPTX/XLSX/HTML)
+                        # get extracted into sibling text + embedded
+                        # image refs that ride the existing image
+                        # vision-routing path. Backend sees all derived
+                        # refs alongside the original document.
+                        if ref.kind == "document":
+                            backend_attachments.extend(
+                                _extract_and_link_document(
+                                    ref=ref,
+                                    pth=pth,
+                                    project_saved=self.project_saved,
+                                    storage=self.storage,
+                                    user_msg_id=user_msg.id,
+                                )
+                            )
                     except Exception as _e:
                         log.warning(
                             "attachment_ingest_failed", path=pth, err=str(_e),
@@ -216,6 +304,19 @@ class ChatHandlers:
                         size_bytes=ref.size_bytes,
                         sha256=ref.sha256,
                     )
+                    # PARITY-01: same document branch as the claude
+                    # path above. The gemma backend doesn't currently
+                    # consume backend_attachments, so we don't need to
+                    # collect the derived refs — link_attachment alone
+                    # persists them for later UI display.
+                    if ref.kind == "document":
+                        _extract_and_link_document(
+                            ref=ref,
+                            pth=pth,
+                            project_saved=self.project_saved,
+                            storage=self.storage,
+                            user_msg_id=user_msg.id,
+                        )
                 except Exception as _e:  # noqa: BLE001
                     log.warning(
                         "attachment_ingest_failed", path=pth, err=str(_e),
