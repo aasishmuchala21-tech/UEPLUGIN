@@ -6,12 +6,11 @@ updates to the Slate panel via the WS notifier, returns an AssemblyResult.
 """
 from __future__ import annotations
 
-import asyncio
 from typing import Any, Callable, Optional
 
 import structlog
 
-from nyrahost.tools.base import NyraTool, NyraToolResult
+from nyrahost.tools.base import NyraTool, NyraToolResult, run_async_safely
 from nyrahost.tools.scene_assembler import SceneAssembler
 
 log = structlog.get_logger("nyrahost.tools.assembly_tools")
@@ -61,7 +60,7 @@ class AssembleSceneTool(NyraTool):
             return NyraToolResult.err("[-32030] reference_image_path is required.")
 
         try:
-            blueprint = asyncio.run(self._assembler.analyze_image(image_path))
+            blueprint = run_async_safely(self._assembler.analyze_image(image_path))
         except FileNotFoundError as e:
             return NyraToolResult.err(f"[-32030] {e}")
         except Exception as e:

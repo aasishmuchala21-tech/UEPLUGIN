@@ -19,7 +19,7 @@ from typing import Any, Callable, Optional
 
 import structlog
 
-from nyrahost.tools.base import NyraTool, NyraToolResult
+from nyrahost.tools.base import NyraTool, NyraToolResult, run_async_safely
 from nyrahost.tools.scene_llm_parser import LightingLLMParser
 from nyrahost.tools.scene_types import LightingParams
 
@@ -189,12 +189,12 @@ class LightingAuthoringTool(NyraTool):
     def _resolve_lighting_params(self, params: dict) -> LightingParams:
         if params.get("reference_image_path"):
             parser = LightingLLMParser(backend_router=self._router)
-            return asyncio.run(parser.parse_from_image(params["reference_image_path"]))
+            return run_async_safely(parser.parse_from_image(params["reference_image_path"]))
         if params.get("preset_name"):
             return self._preset_to_params(params["preset_name"])
         if params.get("nl_prompt"):
             parser = LightingLLMParser(backend_router=self._router)
-            return asyncio.run(parser.parse_from_text(params["nl_prompt"]))
+            return run_async_safely(parser.parse_from_text(params["nl_prompt"]))
         raise ValueError("Either nl_prompt, reference_image_path, or preset_name must be provided.")
 
     @staticmethod
