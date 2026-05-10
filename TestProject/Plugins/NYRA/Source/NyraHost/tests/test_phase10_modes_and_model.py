@@ -1,16 +1,6 @@
 """Phase 10-2 + 10-3 — operating mode + model selector handlers."""
 from __future__ import annotations
 
-# --- Python 3.10 compat shim (sandbox runs 3.10; production targets 3.12) ---
-import enum as _enum
-import sys as _sys
-if not hasattr(_enum, "StrEnum") and _sys.version_info < (3, 11):
-    class _StrEnum(str, _enum.Enum):
-        def _generate_next_value_(name, start, count, last_values):
-            return name.lower()
-    _enum.StrEnum = _StrEnum  # type: ignore[attr-defined]
-# ---------------------------------------------------------------------------
-
 
 import asyncio
 from unittest.mock import AsyncMock, MagicMock

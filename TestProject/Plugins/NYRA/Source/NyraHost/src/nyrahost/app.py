@@ -36,6 +36,7 @@ from .tools.level_design_tools import on_blockout
 from .custom_instructions import CustomInstructions
 from .handlers.instructions import InstructionsHandlers
 from .handlers.model_settings import ModelSettingsHandlers
+from .handlers.composer import ComposerHandlers
 from .infer.router import InferRouter
 from .router import NyraRouter
 from .safe_mode import NyraPermissionGate
@@ -163,15 +164,20 @@ async def build_and_run(
     )
     await router.start()
 
+    # Phase 10-1 / 11-B — per-project Custom Instructions, constructed BEFORE
+    # ChatHandlers so the chat path can prepend them to the system prompt.
+    custom_instructions = CustomInstructions(project_dir=project_dir)
+    instructions_handlers = InstructionsHandlers(custom_instructions)
+
     handlers = ChatHandlers(
         storage=storage,
         router=router,
         project_saved=project_dir / "Saved",
+        custom_instructions=custom_instructions,
     )
+    # Phase 11-C — @-search composer asset lookup.
+    composer_handlers = ComposerHandlers()
 
-    # Phase 10-1 — per-project Custom Instructions.
-    custom_instructions = CustomInstructions(project_dir=project_dir)
-    instructions_handlers = InstructionsHandlers(custom_instructions)
     # Phase 10-3 — model selector handlers (reuse the existing chat-handler ModelPreference).
     model_settings_handlers = ModelSettingsHandlers(
         model_preference=getattr(handlers, "model_preference", None) or __import__(
@@ -260,6 +266,8 @@ async def build_and_run(
         # Phase 10-3 — Model selector.
         server.register_request("settings/get-model", model_settings_handlers.on_get)
         server.register_request("settings/set-model", model_settings_handlers.on_set)
+        # Phase 11-C — @-search composer asset lookup.
+        server.register_request("composer/asset_search", composer_handlers.on_asset_search)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)
