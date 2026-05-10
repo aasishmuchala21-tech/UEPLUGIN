@@ -96,9 +96,19 @@ class StagingManifest:
         """Raise PathTraversalError if path resolves outside staging root.
 
         T-05-03: Every downloaded_path is validated before write.
+
+        BL-02: previous implementation used `str.startswith` which has the
+        sibling-prefix bypass: when staging root is `<root>/staging`, the
+        path `<root>/staging-evil/foo.glb` passed the check because the
+        string starts with `<root>/staging`. Replaced with the proper
+        path-component check via Path.relative_to (which raises ValueError
+        for any path not strictly under root).
         """
         resolved = Path(path).resolve()
-        if not str(resolved).startswith(str(self._root.resolve())):
+        root_resolved = self._root.resolve()
+        try:
+            resolved.relative_to(root_resolved)
+        except ValueError:
             raise PathTraversalError(
                 f"Path '{path}' resolves to '{resolved}' which is outside "
                 f"staging root '{self._root}'. Rejected for security."

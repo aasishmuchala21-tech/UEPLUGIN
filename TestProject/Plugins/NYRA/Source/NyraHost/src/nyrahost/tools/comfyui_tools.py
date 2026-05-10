@@ -17,7 +17,7 @@ from typing import Optional
 
 import structlog
 
-from nyrahost.tools.base import NyraTool, NyraToolResult
+from nyrahost.tools.base import NyraTool, NyraToolResult, run_async_safely
 from nyrahost.external.comfyui_client import (
     ComfyUIClient,
     ComfyUIConnectionError,
@@ -87,7 +87,9 @@ class ComfyUIRunWorkflowTool(NyraTool):
 
         # Discover ComfyUI server (probe 8188, 8189, 8190)
         try:
-            client = asyncio.run(ComfyUIClient.discover())
+            # BL-06: route through run_async_safely so this works whether
+            # invoked from a sync test or from NyraHost's async dispatcher.
+            client = run_async_safely(ComfyUIClient.discover())
         except ComfyUIConnectionError as e:
             return NyraToolResult.err(
                 f"[-32040] ComfyUI server not found. {str(e)}\n"
@@ -126,8 +128,9 @@ class ComfyUIRunWorkflowTool(NyraTool):
                 )
             )
         except RuntimeError:
-            # No running event loop in test context — run synchronously
-            asyncio.run(
+            # No running event loop in test context — run synchronously via
+            # the safe helper (BL-06).
+            run_async_safely(
                 _poll_comfyui_and_update_manifest(
                     job_id=job_id,
                     workflow_json=workflow_json,
@@ -221,7 +224,9 @@ class ComfyUIGetNodeInfoTool(NyraTool):
 
     def execute(self, params: dict) -> NyraToolResult:
         try:
-            client = asyncio.run(ComfyUIClient.discover())
+            # BL-06: route through run_async_safely so this works whether
+            # invoked from a sync test or from NyraHost's async dispatcher.
+            client = run_async_safely(ComfyUIClient.discover())
         except ComfyUIConnectionError as e:
             return NyraToolResult.err(
                 f"[-32040] ComfyUI server not found. {str(e)}\n"
@@ -229,7 +234,8 @@ class ComfyUIGetNodeInfoTool(NyraTool):
             )
 
         try:
-            node_info = asyncio.run(client.get_node_info())
+            # BL-06
+            node_info = run_async_safely(client.get_node_info())
         except ComfyUIAPIError as e:
             return NyraToolResult.err(f"[-32041] ComfyUI API error: {str(e)}")
 
