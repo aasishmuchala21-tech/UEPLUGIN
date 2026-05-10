@@ -1,8 +1,31 @@
 """nyrahost.tools.base — Base tool classes for NYRA MCP tools."""
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Awaitable, Optional, TypeVar
+
+
+_T = TypeVar("_T")
+
+
+def run_async_safely(coro: Awaitable[_T]) -> _T:
+    """Block-and-await a coroutine from any context.
+
+    NyraTool.execute is sync-by-contract (returns NyraToolResult, not a
+    coroutine). When the calling thread is already inside a running event loop
+    (e.g. NyraHost dispatches the tool from an async WebSocket handler),
+    `asyncio.run` raises RuntimeError. This helper detects that case and
+    runs the coroutine in a one-shot worker thread so the call always
+    completes synchronously without deadlocking.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 @dataclass
