@@ -91,7 +91,7 @@ class SequencerToolMixin:
             binding, sequence, color, float(frame_number))
 
 
-class SequencerCreateTool(NyraTool):
+class SequencerCreateTool(SequencerToolMixin, NyraTool):
     """Create a new ULevelSequence in the current editor level."""
     name = "nyra_sequencer_create"
     description = (
@@ -127,7 +127,7 @@ class SequencerCreateTool(NyraTool):
         })
 
 
-class SequencerAddCameraTool(NyraTool):
+class SequencerAddCameraTool(SequencerToolMixin, NyraTool):
     """Add a CineCamera actor to a level sequence and bind it."""
     name = "nyra_sequencer_add_camera"
     description = (
@@ -185,7 +185,7 @@ class SequencerAddCameraTool(NyraTool):
         })
 
 
-class SequencerSetKeyframeTool(NyraTool):
+class SequencerSetKeyframeTool(SequencerToolMixin, NyraTool):
     """Set a keyframe on a CineCamera or light in a level sequence."""
     name = "nyra_sequencer_set_keyframe"
     description = (
@@ -256,7 +256,7 @@ class SequencerSetKeyframeTool(NyraTool):
         return None
 
 
-class SequencerAuthorShotTool(NyraTool):
+class SequencerAuthorShotTool(SequencerToolMixin, NyraTool):
     """Author a shot block from NL or VideoReferenceParams."""
     name = "nyra_sequencer_author_shot"
     description = (
