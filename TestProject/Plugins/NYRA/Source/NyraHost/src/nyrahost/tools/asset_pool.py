@@ -5,6 +5,7 @@ NOT a full asset database - wraps nyra_asset_search with caching.
 """
 from __future__ import annotations
 
+import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,6 +49,11 @@ class AssetPool:
         self._root.mkdir(parents=True, exist_ok=True)
         self._pool_path = self._root / self.POOL_FILE
         self._cache: OrderedDict[str, PoolEntry] = OrderedDict()
+        # WR-02: serialize cache mutations + disk persistence so concurrent
+        # NyraHost worker tasks cannot race a torn JSON write. This is
+        # process-local; multi-process safety is documented as
+        # single-writer for v1.
+        self._lock = threading.RLock()
         self._load_from_disk()
 
     def _make_key(self, hint: str, role: str) -> str:
@@ -60,12 +66,16 @@ class AssetPool:
     def get(self, hint: str, role: str) -> Optional[AssetResolutionResult]:
         """Return cached resolution result if exists, evicting if stale."""
         key = self._make_key(hint, role)
-        if key in self._cache:
-            self._cache.move_to_end(key)
-            self._save_to_disk()
-            entry = self._cache[key]
-            log.info("asset_pool_hit", key=key, source=entry.result.source, hint=hint, role=role)
-            return entry.result
+        with self._lock:
+            if key in self._cache:
+                # WR-01: LRU re-ordering on read is in-memory only. Saving on
+                # every read produces N disk syncs per assembly and a write
+                # interruption corrupts the entire pool. Persistence happens
+                # in put() / clear() instead.
+                self._cache.move_to_end(key)
+                entry = self._cache[key]
+                log.info("asset_pool_hit", key=key, source=entry.result.source, hint=hint, role=role)
+                return entry.result
         return None
 
     def put(self, hint: str, role: str, result: AssetResolutionResult) -> None:
@@ -74,22 +84,24 @@ class AssetPool:
         import datetime
         entry = PoolEntry(
             result=result,
-            resolved_at=datetime.datetime.utcnow().isoformat() + "Z"
+            resolved_at=datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
         )
-        self._cache[key] = entry
-        self._cache.move_to_end(key)
+        with self._lock:
+            self._cache[key] = entry
+            self._cache.move_to_end(key)
 
-        while len(self._cache) > self.MAX_ENTRIES:
-            evicted_key, evicted_entry = self._cache.popitem(last=False)
-            log.info("asset_pool_evicted", key=evicted_key, source=evicted_entry.result.source)
+            while len(self._cache) > self.MAX_ENTRIES:
+                evicted_key, evicted_entry = self._cache.popitem(last=False)
+                log.info("asset_pool_evicted", key=evicted_key, source=evicted_entry.result.source)
 
-        self._save_to_disk()
+            self._save_to_disk()
         log.info("asset_pool_put", key=key, source=result.source, hint=hint, role=role)
 
     def clear(self) -> None:
         """Clear the entire cache. Use when user wants a fresh start."""
-        self._cache.clear()
-        self._save_to_disk()
+        with self._lock:
+            self._cache.clear()
+            self._save_to_disk()
         log.info("asset_pool_cleared")
 
     def _load_from_disk(self) -> None:
@@ -110,7 +122,7 @@ class AssetPool:
             self._cache.clear()
 
     def _save_to_disk(self) -> None:
-        """Persist cache to asset_pool.json."""
+        """Persist cache to asset_pool.json (atomic temp-file rename)."""
         import json
         data = {
             "version": 1,
@@ -127,7 +139,11 @@ class AssetPool:
                 for key, entry in self._cache.items()
             }
         }
-        self._pool_path.write_text(json.dumps(data, indent=2))
+        # WR-01: write atomically via temp-file + rename so an interrupted
+        # write cannot leave the manifest half-written and unparseable.
+        tmp = self._pool_path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.replace(self._pool_path)
 
     def stats(self) -> dict:
         """Return pool statistics for diagnostics."""
