@@ -3,8 +3,10 @@
 
 #include "Panel/SNyraLightingPanel.h"
 #include "Panel/SNyraLightingSelector.h"
+#include "WS/FNyraWsClient.h"
 
 #include "Dom/JsonObject.h"
+#include "Misc/Paths.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
@@ -91,7 +93,14 @@ void SNyraLightingPanel::Construct(const FArguments& InArgs)
 
 FReply SNyraLightingPanel::HandleApplyClicked()
 {
-	if (CurrentPreset.IsEmpty() && CurrentImagePath.IsEmpty())
+	// CR-06 / WR-09: validate the path actually exists before treating it as
+	// configured. After CR-05 the drop zone fails closed when no path is
+	// extractable, but local clipboard / paste paths still need a positive
+	// existence check before sending to NyraHost.
+	const bool bHasPreset = !CurrentPreset.IsEmpty();
+	const bool bHasImage = !CurrentImagePath.IsEmpty()
+		&& FPaths::FileExists(CurrentImagePath);
+	if (!bHasPreset && !bHasImage)
 	{
 		SetState(ENyraLightingPanelState::Error, TEXT("Select a preset or attach a reference image first."));
 		return FReply::Handled();
@@ -99,14 +108,27 @@ FReply SNyraLightingPanel::HandleApplyClicked()
 
 	SetState(ENyraLightingPanelState::Applying);
 
-	// Forward to NyraHost via WS. The actual JSON-RPC envelope is built inside
-	// FNyraWsClient::SendMessage; the response handler (registered elsewhere)
-	// dispatches assembly_complete back into OnLightingAppliedMessage.
+	// CR-06: actually dispatch the JSON-RPC call instead of an empty branch.
+	// Method: nyra_lighting_authoring. Params are built from the panel's
+	// current state -- preset_name and/or reference_image_path -- and apply
+	// is true so NyraHost places real actors.
 	if (TSharedPtr<FNyraWsClient> Pinned = WsClient.Pin())
 	{
-		// FNyraWsClient::SendMessage(method, params) — pattern from Phase 1.
-		// Method: nyra_lighting_authoring; params chosen by available state.
-		// (Wire-up completed via the chat panel's existing WS plumbing.)
+		TSharedRef<FJsonObject> Params = MakeShared<FJsonObject>();
+		if (bHasPreset)
+		{
+			Params->SetStringField(TEXT("preset_name"), CurrentPreset);
+		}
+		if (bHasImage)
+		{
+			Params->SetStringField(TEXT("reference_image_path"), CurrentImagePath);
+		}
+		Params->SetBoolField(TEXT("apply"), true);
+		Pinned->SendRequest(TEXT("nyra_lighting_authoring"), Params);
+	}
+	else
+	{
+		SetState(ENyraLightingPanelState::Error, TEXT("WebSocket client unavailable."));
 	}
 
 	return FReply::Handled();
@@ -120,9 +142,12 @@ void SNyraLightingPanel::HandlePresetSelected(const FString& PresetKey)
 
 void SNyraLightingPanel::HandleDryRunHover(const FString& PresetKey)
 {
+	// CR-06: actually dispatch the dry-run preview request.
 	if (TSharedPtr<FNyraWsClient> Pinned = WsClient.Pin())
 	{
-		// nyra_lighting_dry_run_preview { preset_name: PresetKey }
+		TSharedRef<FJsonObject> Params = MakeShared<FJsonObject>();
+		Params->SetStringField(TEXT("preset_name"), PresetKey);
+		Pinned->SendRequest(TEXT("nyra_lighting_dry_run_preview"), Params);
 	}
 	SetState(ENyraLightingPanelState::PreviewingDryRun, PresetKey);
 }
