@@ -66,10 +66,44 @@ class SpawnPoint:
 
 
 @dataclass(frozen=True)
+class SpiralStaircaseSpec:
+    """Phase 16-C — spiral staircase via append_curved_stairs."""
+    inner_radius_cm: float = 50.0
+    width_cm:        float = 120.0
+    angle_deg:       float = 360.0
+    height_cm:       float = 300.0
+    num_steps:       int   = 16
+    counter_cw:      bool  = False
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ArchSpec:
+    """Phase 16-C — arch via append_arc + sweep.
+
+    ``wall`` is one of north/south/east/west and tells the placement
+    which room wall the arch is anchored to. ``offset_along_wall_cm``
+    moves the arch laterally so a single wall can host multiple arches.
+    """
+    width_cm:               float = 200.0
+    height_cm:              float = 250.0
+    thickness_cm:           float = 20.0
+    wall:                   str   = "north"
+    offset_along_wall_cm:   float = 0.0
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class BlockoutSpec:
-    rooms:      tuple[RoomSpec, ...] = field(default_factory=tuple)
-    staircases: tuple[StaircaseSpec, ...] = field(default_factory=tuple)
-    spawn_at:   SpawnPoint = field(default_factory=SpawnPoint)
+    rooms:             tuple[RoomSpec, ...] = field(default_factory=tuple)
+    staircases:        tuple[StaircaseSpec, ...] = field(default_factory=tuple)
+    spiral_staircases: tuple[SpiralStaircaseSpec, ...] = field(default_factory=tuple)
+    arches:            tuple[ArchSpec, ...] = field(default_factory=tuple)
+    spawn_at:          SpawnPoint = field(default_factory=SpawnPoint)
 
     @classmethod
     def from_dict(cls, raw: dict) -> "BlockoutSpec":
@@ -91,19 +125,33 @@ class BlockoutSpec:
             raise BlockoutValidationError("'staircases' must be a list")
         stairs = tuple(_parse_stair(s) for s in stairs_raw)
 
+        spirals_raw = raw.get("spiral_staircases", []) or []
+        if not isinstance(spirals_raw, list):
+            raise BlockoutValidationError("'spiral_staircases' must be a list")
+        spirals = tuple(_parse_spiral(s) for s in spirals_raw)
+
+        arches_raw = raw.get("arches", []) or []
+        if not isinstance(arches_raw, list):
+            raise BlockoutValidationError("'arches' must be a list")
+        arches = tuple(_parse_arch(a) for a in arches_raw)
+
         spawn_raw = raw.get("spawn_at", {}) or {}
         spawn = SpawnPoint(
             float(spawn_raw.get("x", 0.0)),
             float(spawn_raw.get("y", 0.0)),
             float(spawn_raw.get("z", 0.0)),
         )
-        return cls(rooms=rooms, staircases=stairs, spawn_at=spawn)
+        return cls(rooms=rooms, staircases=stairs,
+                   spiral_staircases=spirals, arches=arches,
+                   spawn_at=spawn)
 
     def to_dict(self) -> dict:
         return {
-            "rooms":      [r.to_dict() for r in self.rooms],
-            "staircases": [s.to_dict() for s in self.staircases],
-            "spawn_at":   asdict(self.spawn_at),
+            "rooms":             [r.to_dict() for r in self.rooms],
+            "staircases":        [s.to_dict() for s in self.staircases],
+            "spiral_staircases": [s.to_dict() for s in self.spiral_staircases],
+            "arches":            [a.to_dict() for a in self.arches],
+            "spawn_at":          asdict(self.spawn_at),
         }
 
 
@@ -134,6 +182,43 @@ def _parse_room(raw: dict) -> RoomSpec:
     return out
 
 
+def _parse_spiral(raw: dict) -> SpiralStaircaseSpec:
+    if not isinstance(raw, dict):
+        raise BlockoutValidationError(
+            f"spiral_staircase must be an object, got {type(raw).__name__}"
+        )
+    return SpiralStaircaseSpec(
+        inner_radius_cm=float(raw.get("inner_radius_cm", 50.0)),
+        width_cm=float(raw.get("width_cm", 120.0)),
+        angle_deg=float(raw.get("angle_deg", 360.0)),
+        height_cm=float(raw.get("height_cm", 300.0)),
+        num_steps=int(raw.get("num_steps", 16)),
+        counter_cw=bool(raw.get("counter_cw", False)),
+    )
+
+
+_ALLOWED_ARCH_WALLS = frozenset({"north", "south", "east", "west"})
+
+
+def _parse_arch(raw: dict) -> ArchSpec:
+    if not isinstance(raw, dict):
+        raise BlockoutValidationError(
+            f"arch must be an object, got {type(raw).__name__}"
+        )
+    wall = str(raw.get("wall", "north")).lower()
+    if wall not in _ALLOWED_ARCH_WALLS:
+        raise BlockoutValidationError(
+            f"invalid arch wall {wall!r}; must be one of {sorted(_ALLOWED_ARCH_WALLS)}"
+        )
+    return ArchSpec(
+        width_cm=float(raw.get("width_cm", 200.0)),
+        height_cm=float(raw.get("height_cm", 250.0)),
+        thickness_cm=float(raw.get("thickness_cm", 20.0)),
+        wall=wall,
+        offset_along_wall_cm=float(raw.get("offset_along_wall_cm", 0.0)),
+    )
+
+
 def _parse_stair(raw: dict) -> StaircaseSpec:
     if not isinstance(raw, dict):
         raise BlockoutValidationError(
@@ -153,6 +238,8 @@ __all__ = [
     "BlockoutValidationError",
     "RoomSpec",
     "StaircaseSpec",
+    "SpiralStaircaseSpec",
+    "ArchSpec",
     "SpawnPoint",
     "ALLOWED_DOOR_WALLS",
     "MAX_ROOMS_PER_BLOCKOUT",

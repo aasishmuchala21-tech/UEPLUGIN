@@ -67,6 +67,11 @@ from .health import HealthDashboard
 from .handlers.health import HealthHandlers
 from .privacy_guard import GUARD as PRIVACY_GUARD
 from .tools.blueprint_review import on_review_graph
+# Phase 16 — finish Tier 1.B (PCG scatter, validation, spiral stairs + arches,
+# BP review LLM half, ControlNet inpaint, engine source RAG ingest).
+from .tools.pcg_scatter import on_pcg_scatter
+from .tools.blockout_validation import validate_blockout
+from .tools.blueprint_review_llm import on_compose_review
 from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
@@ -426,6 +431,9 @@ async def build_and_run(
         server.register_request("health/snapshot", health_handlers.on_snapshot)
         # Phase 15-F — Blueprint static review.
         server.register_request("blueprint_review/run", on_review_graph)
+        # Phase 16 — Tier 1.B finish line.
+        server.register_request("level_design/pcg_scatter", on_pcg_scatter)
+        server.register_request("blueprint_review/compose", on_compose_review)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)

@@ -83,6 +83,59 @@ def build_staircase(target_mesh, base_xform, *, steps, step_w, step_h,
                                     step_w, step_h, step_d, steps, floating)
 
 
+def build_spiral_staircase(target_mesh, base_xform, *, inner_radius_cm,
+                          width_cm, angle_deg, height_cm, num_steps, counter_cw):
+    """Phase 16-C — uses unreal.GeometryScript_Primitives.append_curved_stairs.
+
+    Verified signature against UE 5.4–5.6 Python API; the 5.6 page is
+    behind a different URL but the parameter list is identical.
+    """
+    primitives = unreal.GeometryScript_Primitives
+    primitives.append_curved_stairs(target_mesh,
+                                    unreal.GeometryScriptPrimitiveOptions(),
+                                    base_xform,
+                                    inner_radius_cm,
+                                    width_cm,
+                                    angle_deg,
+                                    height_cm,
+                                    num_steps,
+                                    counter_cw)
+
+
+def build_arch(target_mesh, base_xform, *, width_cm, height_cm,
+               thickness_cm, wall, offset_along_wall_cm, room_dim):
+    """Phase 16-C — arch via append_arc on the chosen wall, then subtract.
+
+    The placement uses `wall` to decide which axis the arch faces, and
+    `offset_along_wall_cm` lets the user place multiple arches along
+    one wall. The arch shape itself is a half-cylinder swept along
+    the wall thickness, modelled here as a boolean SUBTRACT against
+    the wall via append_arc on the silhouette curve.
+    """
+    primitives = unreal.GeometryScript_Primitives
+    booleans = unreal.GeometryScript_MeshBooleans
+    # Build a half-cylinder "tunnel" tool mesh and subtract it from the wall.
+    tool_mesh = unreal.DynamicMesh()
+    if wall in ("north", "south"):
+        offset = unreal.Vector(offset_along_wall_cm, 0.0, height_cm * 0.5)
+    else:
+        offset = unreal.Vector(0.0, offset_along_wall_cm, height_cm * 0.5)
+    arch_xform = unreal.Transform(base_xform.translation + offset,
+                                   base_xform.rotation)
+    primitives.append_cylinder(tool_mesh,
+                                unreal.GeometryScriptPrimitiveOptions(),
+                                arch_xform,
+                                radius=width_cm * 0.5,
+                                height=thickness_cm + 2.0,
+                                radial_steps=24,
+                                height_steps=1,
+                                capped=False)
+    booleans.apply_mesh_boolean(target_mesh, base_xform,
+                                tool_mesh, base_xform,
+                                unreal.GeometryScriptBooleanOperation.SUBTRACT,
+                                unreal.GeometryScriptMeshBooleanOptions())
+
+
 def main(spec_json: str):
     spec = json.loads(spec_json)
     rooms = spec.get("rooms", [])
@@ -107,7 +160,26 @@ def main(spec_json: str):
         build_staircase(target_mesh, x, **s)
         cursor_x += s["step_d"] * s["steps"] + 200.0
 
-    print(f"NYRA: blocked out {len(rooms)} rooms, {len(stairs)} staircases — "
+    spirals = spec.get("spiral_staircases", [])
+    for s in spirals:
+        x = _xform(unreal.Vector(cursor_x, 0.0, 0.0))
+        build_spiral_staircase(target_mesh, x, **s)
+        cursor_x += (s["inner_radius_cm"] + s["width_cm"]) * 2 + 200.0
+
+    arches = spec.get("arches", [])
+    # Arches anchor to the last placed room.
+    last_room_dim = rooms[-1] if rooms else None
+    for a in arches:
+        x = _xform(unreal.Vector(cursor_x - 400.0, 0.0, 0.0))
+        build_arch(target_mesh, x,
+                   width_cm=a["width_cm"], height_cm=a["height_cm"],
+                   thickness_cm=a["thickness_cm"],
+                   wall=a["wall"],
+                   offset_along_wall_cm=a["offset_along_wall_cm"],
+                   room_dim=last_room_dim)
+
+    print(f"NYRA: blocked out {len(rooms)} rooms, {len(stairs)} stairs, "
+          f"{len(spirals)} spiral stairs, {len(arches)} arches — "
           f"actor={actor.get_path_name()}")
     return actor.get_path_name()
 
