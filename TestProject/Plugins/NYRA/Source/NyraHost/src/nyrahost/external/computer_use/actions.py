@@ -81,9 +81,10 @@ class ScreenCapture:
     """BitBlt the client area of a BoundedWindow into a PNG.
 
     Output is downscaled to MAX_SCREENSHOT_LONG_EDGE_PX along the long
-    edge (T-05-06: bound the exfiltration surface). The shipped
-    implementation uses pure-Win32 GDI so we don't add a dependency on
-    Pillow/mss; that keeps the offline wheel cache small.
+    edge (T-05-06: bound the exfiltration surface). The implementation
+    uses pure Win32 GDI + the stdlib ``zlib``/``struct`` modules so we
+    don't add a Pillow / mss dependency; that keeps the offline wheel
+    cache small.
     """
 
     def __init__(self, window: BoundedWindow) -> None:
@@ -96,15 +97,133 @@ class ScreenCapture:
         Raises:
             RuntimeError: if the window is no longer visible / valid.
         """
-        # Implementation note: a full BitBlt + PNG encode without Pillow
-        # uses ctypes against gdi32 + zlib. The skeleton here documents
-        # the contract and falls back to a clear NotImplementedError so
-        # tests can inject a fake. v1.1 wires the real BitBlt path.
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        raise NotImplementedError(
-            "ScreenCapture.grab is wired in v1.1 — inject a fake in "
-            "tests via dependency injection on ComputerUseLoop."
+        rgba, w, h = _bitblt_window(self.window)
+        # Downscale (nearest-neighbour) to bound the exfiltration
+        # surface per T-05-06 — Anthropic's Opus 4.7 computer_20251124
+        # tool tops out at 2576 px on the long edge, so anything over
+        # that is wasted bandwidth + token cost.
+        long_edge = max(w, h)
+        if long_edge > MAX_SCREENSHOT_LONG_EDGE_PX:
+            scale = MAX_SCREENSHOT_LONG_EDGE_PX / long_edge
+            new_w = max(1, int(w * scale))
+            new_h = max(1, int(h * scale))
+            rgba = _resize_nearest(rgba, w, h, new_w, new_h)
+            w, h = new_w, new_h
+        png_bytes = _encode_png_rgba(rgba, w, h)
+        out_path.write_bytes(png_bytes)
+        return out_path
+
+
+# ----- Win32 GDI capture --------------------------------------------------
+# Constants from wingdi.h
+_SRCCOPY = 0x00CC0020
+_DIB_RGB_COLORS = 0
+_BI_RGB = 0
+
+
+def _bitblt_window(window: "BoundedWindow") -> tuple[bytes, int, int]:
+    """BitBlt the client area of ``window`` into RGBA bytes."""
+    user32 = ctypes.windll.user32
+    gdi32 = ctypes.windll.gdi32
+
+    hwnd = ctypes.c_void_p(window.hwnd)
+    if not user32.IsWindow(hwnd):
+        raise RuntimeError(f"hwnd {window.hwnd} is no longer a window")
+
+    width, height = window.width, window.height
+    if width <= 0 or height <= 0:
+        raise RuntimeError(
+            f"window has non-positive client area {width}x{height}"
         )
+
+    src_dc = user32.GetDC(hwnd)
+    if not src_dc:
+        raise RuntimeError("GetDC returned NULL")
+    try:
+        mem_dc = gdi32.CreateCompatibleDC(src_dc)
+        bmp = gdi32.CreateCompatibleBitmap(src_dc, width, height)
+        try:
+            gdi32.SelectObject(mem_dc, bmp)
+            ok = gdi32.BitBlt(mem_dc, 0, 0, width, height, src_dc, 0, 0, _SRCCOPY)
+            if not ok:
+                raise RuntimeError("BitBlt failed")
+
+            # BITMAPINFOHEADER for 32bpp top-down BGRA readout
+            bmi = (ctypes.c_byte * 40)()
+            ctypes.memset(bmi, 0, 40)
+            ctypes.cast(bmi, ctypes.POINTER(ctypes.c_uint32))[0] = 40  # biSize
+            ctypes.cast(bmi, ctypes.POINTER(ctypes.c_int32))[1] = width
+            # negative height = top-down
+            ctypes.cast(bmi, ctypes.POINTER(ctypes.c_int32))[2] = -height
+            ctypes.cast(bmi, ctypes.POINTER(ctypes.c_uint16))[6] = 1  # planes
+            ctypes.cast(bmi, ctypes.POINTER(ctypes.c_uint16))[7] = 32  # bitCount
+            ctypes.cast(bmi, ctypes.POINTER(ctypes.c_uint32))[5] = _BI_RGB
+
+            stride = width * 4
+            buf = (ctypes.c_uint8 * (stride * height))()
+            got = gdi32.GetDIBits(
+                mem_dc, bmp, 0, height,
+                buf, ctypes.byref(bmi), _DIB_RGB_COLORS,
+            )
+            if got == 0:
+                raise RuntimeError("GetDIBits returned 0")
+            # GetDIBits gives BGRA top-down; convert to RGBA in place.
+            rgba = bytearray(stride * height)
+            for i in range(0, len(buf), 4):
+                rgba[i] = buf[i + 2]      # R
+                rgba[i + 1] = buf[i + 1]  # G
+                rgba[i + 2] = buf[i]      # B
+                rgba[i + 3] = 255         # A — desktop has no alpha
+            return bytes(rgba), width, height
+        finally:
+            gdi32.DeleteObject(bmp)
+            gdi32.DeleteDC(mem_dc)
+    finally:
+        user32.ReleaseDC(hwnd, src_dc)
+
+
+def _resize_nearest(
+    rgba: bytes, src_w: int, src_h: int, dst_w: int, dst_h: int
+) -> bytes:
+    """Nearest-neighbour resize for RGBA. Cheap, no Pillow."""
+    out = bytearray(dst_w * dst_h * 4)
+    for y in range(dst_h):
+        sy = (y * src_h) // dst_h
+        for x in range(dst_w):
+            sx = (x * src_w) // dst_w
+            si = (sy * src_w + sx) * 4
+            di = (y * dst_w + x) * 4
+            out[di:di + 4] = rgba[si:si + 4]
+    return bytes(out)
+
+
+def _encode_png_rgba(rgba: bytes, width: int, height: int) -> bytes:
+    """Minimal PNG encoder: IHDR + IDAT (zlib) + IEND.
+
+    Filters every scanline with filter type 0 (None). Adequate for our
+    use case (model input, not photo storage).
+    """
+    import struct
+    import zlib
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + tag + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
+
+    sig = b"\x89PNG\r\n\x1a\n"
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+    # Per-scanline filter byte (0 = None) + raw RGBA row
+    stride = width * 4
+    raw = bytearray()
+    for y in range(height):
+        raw.append(0)
+        raw.extend(rgba[y * stride:(y + 1) * stride])
+    idat = zlib.compress(bytes(raw), level=6)
+    return sig + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
 
 
 class Win32Actions:

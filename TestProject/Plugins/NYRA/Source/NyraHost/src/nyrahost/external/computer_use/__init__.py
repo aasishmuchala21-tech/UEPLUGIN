@@ -56,6 +56,12 @@ from .loop import (
     LoopResult,
 )
 
+# AnthropicComputerUseBackend imports the optional ``anthropic`` package
+# at construction. We export the symbol unconditionally so callers can
+# instantiate it; the import-time failure surfaces as a clear
+# RuntimeError with remediation rather than ImportError on package load.
+from .backend_anthropic import AnthropicComputerUseBackend
+
 __all__ = [
     "ActionResult",
     "BoundedWindow",
@@ -66,4 +72,5 @@ __all__ = [
     "ComputerUsePaused",
     "ComputerUseSessionLimitExceeded",
     "LoopResult",
+    "AnthropicComputerUseBackend",
 ]

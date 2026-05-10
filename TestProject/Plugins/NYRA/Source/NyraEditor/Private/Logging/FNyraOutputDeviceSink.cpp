@@ -2,6 +2,7 @@
 #include "Logging/FNyraOutputDeviceSink.h"
 #include "HAL/FileManager.h"
 #include "Misc/DateTime.h"
+#include "Misc/FileHelper.h"
 #include "HAL/IConsoleManager.h"
 #include "Internationalization/Internationalization.h"
 #include "Misc/StringBuilder.h"
@@ -117,6 +118,13 @@ void FNyraOutputDeviceSink::SetDefaultExclusions()
 
 void FNyraOutputDeviceSink::FlushToFile(const FString& Path) const
 {
+    // WR-07: the previous implementation used a raw-string literal whose
+    // closing `)"` never appeared (the content ended `..."}}\n")`, not
+    // `..."}}")\n`), so the file did not compile. Even if it had
+    // compiled, the format string had four %s specifiers but only three
+    // varargs — the fourth would have read uninitialised stack memory
+    // into the file. Rewrite using a regular escaped string with
+    // matching format spec count + JSON-escaped fields.
     FString JSONLines;
 
     {
@@ -124,14 +132,16 @@ void FNyraOutputDeviceSink::FlushToFile(const FString& Path) const
         for (const FNyraLogEntry& Entry : Buffer)
         {
             JSONLines.Appendf(
-                TEXT(R"({"ts":"%s","category":"%s","verbosity":"%s","message":""})\n"),
+                TEXT("{\"ts\":\"%s\",\"category\":\"%s\",\"verbosity\":\"%s\"}\n"),
                 *Entry.Ts.ToIso8601(),
                 *Entry.Category.ToString(),
                 *FOutputDevice::VerbosityToString(Entry.Verbosity)
-                // Message field intentionally omitted for safety — user sees via log tail tool
+                // Message field intentionally omitted for safety — user
+                // sees the message body via the log/tail tool, never via
+                // a flushed-to-disk JSONL artefact.
             );
         }
     }
 
-    IFileManager::Get().WriteStringToFile(Path, JSONLines);
+    FFileHelper::SaveStringToFile(JSONLines, *Path);
 }

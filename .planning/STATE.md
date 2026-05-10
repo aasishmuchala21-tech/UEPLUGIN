@@ -5,13 +5,17 @@ milestone_name: milestone
 current_phase: 06
 current_plan: 0
 status: planned
-last_updated: "2026-05-07T14:30:00.000Z"
+last_updated: "2026-05-10T20:00:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 39
   completed_plans: 48
   percent: 100
+notes:
+  - "2026-05-10: WARNING sweep landed across phases 1, 2, 3, 4, 5 — see commits 19d4157, 1279628, 7d95cef, 363ef0d. 394 tests passing; 2 pre-existing Windows path-separator failures unchanged."
+  - "2026-05-10: Phase 3 RAG floor shipped — BM25 KnowledgeIndex + nyra_kb_search MCP tool. Replaces the prior zero-source-on-disk state; LanceDB schema-compatible for v1.1 BGE upgrade."
+  - "2026-05-10: Plan 05-03 computer-use scaffold shipped — ComputerUseLoop orchestrator, Win32Actions, real BitBlt ScreenCapture (no Pillow), AnthropicComputerUseBackend with computer_20251124. Still v1.1 work: RegisterHotKey for Ctrl+Alt+Space, Substance/UE-modal recipe libraries, live model verification."
 ---
 
 # Project State: NYRA

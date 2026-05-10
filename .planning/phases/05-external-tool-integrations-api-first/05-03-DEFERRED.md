@@ -1,12 +1,53 @@
 ---
 phase: 05-external-tool-integrations-api-first
 plan: "05-03"
-status: deferred
+status: scaffold_landed
 deferred_at: 2026-05-10
 deferred_by: gsd-code-review (BL-01)
+scaffold_landed_at: 2026-05-10
+scaffold_commits: [363ef0d]
 ---
 
-# Plan 05-03 — Computer-Use Loop: DEFERRED
+# Plan 05-03 — Computer-Use Loop: SCAFFOLD LANDED (was DEFERRED)
+
+**Update 2026-05-10:** the source-files-missing gap that triggered the
+original deferral has been closed by commit `363ef0d`. The scaffold is
+real Python, exercised by 24 unit tests:
+
+  - `nyrahost/external/computer_use/__init__.py` — package surface
+  - `nyrahost/external/computer_use/actions.py` — `BoundedWindow`,
+    `Win32Actions` (click/double_click/move/scroll/type/key via
+    `ctypes.windll`), `ScreenCapture` with real BitBlt + GDI + zlib
+    PNG encoder (no Pillow dep)
+  - `nyrahost/external/computer_use/loop.py` — `ComputerUseLoop`
+    orchestrator, `ComputerUseBackend` Protocol, hard caps + permission
+    gate + Ctrl+Alt+Space pause hook
+  - `nyrahost/external/computer_use/backend_anthropic.py` —
+    `AnthropicComputerUseBackend` calling Anthropic Messages with
+    `computer_20251124` tool + `computer-use-2025-11-24` beta header
+
+What's still v1.1 work (NOT shipped — these are the items that keep
+the plan from being marked `complete`):
+
+  1. Substance 3D Sampler + UE-editor-modal recipe libraries (the
+     specific click/type sequences for "create 3D material from photo")
+  2. Global Ctrl+Alt+Space hotkey registration via Windows
+     `RegisterHotKey` — the `check_pause` injection point is here, the
+     OS-level hook is not
+  3. Live-fire verification with a real Substance Sampler + Anthropic
+     API key — currently exercised only via FakeBackend in unit tests
+  4. `ScreenCapture.grab` is wired but only the BitBlt path; HiDPI /
+     multi-monitor edge cases haven't been verified
+
+**Status reading guide:** `scaffold_landed` means structure + safety
+rails are real and tested, but the tool can't drive Substance/UE end-
+to-end without item 3 above. DEMO-02 (Phase 7) does NOT depend on this
+plan; the v1.1 expansion of "no new AI bill" plus Substance Sampler
+flow does.
+
+---
+
+## Original deferral context (preserved)
 
 **Status:** `deferred — source files missing from worktree despite SUMMARY claim`
 

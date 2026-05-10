@@ -60,6 +60,7 @@ from nyrahost.tools.comfyui_tools import (
     ComfyUIRunWorkflowTool,
     ComfyUIGetNodeInfoTool,
 )
+from nyrahost.tools.kb_search import KbSearchTool
 
 
 __version__ = "0.1.0"
@@ -95,6 +96,8 @@ class NyraMCPServer:
             # GEN-02: ComfyUI HTTP
             "nyra_comfyui_run_workflow": ComfyUIRunWorkflowTool(),
             "nyra_comfyui_get_node_info": ComfyUIGetNodeInfoTool(),
+            # Phase 3: UE5 Knowledge RAG (BM25 floor; LanceDB-compatible)
+            "nyra_kb_search": KbSearchTool(),
         }
 
     def set_ws_emit(self, emit_fn: callable) -> None:
@@ -485,6 +488,29 @@ def create_server() -> Server:
                             "type": "string",
                             "description": "Optional: filter to a specific node type. If omitted, returns all node types.",
                         },
+                    },
+                },
+            },
+            # === Phase 3 tools ===
+            # nyra_kb_search — UE5 knowledge BM25 retrieval
+            {
+                "name": "nyra_kb_search",
+                "description": (
+                    "Search the bundled UE5 knowledge index for documentation, "
+                    "tutorials, and forum guidance relevant to a natural-language "
+                    "query. Returns ranked passages with source paths so Claude "
+                    "can cite them. Use this BEFORE asking the user about UE "
+                    "behavior — the index is built from current UE 5.x docs and "
+                    "is more reliable than the model's training cutoff."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["query"],
+                    "properties": {
+                        "query": {"type": "string"},
+                        "limit": {"type": "integer", "default": 6},
+                        "min_score": {"type": "number", "default": 0.5},
+                        "index_path": {"type": "string"},
                     },
                 },
             },
