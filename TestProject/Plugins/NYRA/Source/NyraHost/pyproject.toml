@@ -28,6 +28,17 @@ dependencies = [
     "pydantic>=2.7",
     "structlog>=24.1",
     "pywin32; sys_platform == 'win32'",
+    # Phase 8 PARITY-01: document attachment parsers (LOCKED-06 amended).
+    # Pure-Python parsers; transitive C-extensions (lxml, Pillow) accepted
+    # because both ship pre-built Windows-x64 wheels (no source-build burden
+    # on the offline cache). Wheel-cache budget: <75 MB total
+    # (T-08-02 fail-loud — see tests/test_wheel_cache_budget.py).
+    "pypdf==6.11.0",
+    "python-docx==1.2.0",
+    "python-pptx==1.0.2",
+    "openpyxl==3.1.5",
+    "markdown==3.10.2",
+    "beautifulsoup4>=4.12,<5",
 ]
 
 [project.optional-dependencies]

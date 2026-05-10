@@ -23,3 +23,20 @@ structlog==24.1.0
 annotated-types==0.7.0
 typing-extensions==4.12.2
 pywin32==306 ; sys_platform == 'win32'
+
+# Phase 8 PARITY-01: document attachment parsers (LOCKED-06 amended 2026-05-10).
+# pure-Python core libraries; lxml + Pillow are transitive C-extensions but
+# ship pre-built Windows-x64 wheels (zero source-build on the offline cache).
+# Estimated wheel-cache delta: ~9.1 MB (well under T-08-02's 75 MB ceiling).
+pypdf==6.11.0
+python-docx==1.2.0
+python-pptx==1.0.2
+openpyxl==3.1.5
+markdown==3.10.2
+beautifulsoup4==4.14.3
+# Transitive — pinned to current Windows x64 wheel versions verified 2026-05-10.
+lxml==6.1.0          ; sys_platform == 'win32'   # python-docx + python-pptx
+Pillow==12.2.0       ; sys_platform == 'win32'   # python-pptx (image extraction)
+soupsieve==2.8.3                                 # beautifulsoup4
+XlsxWriter==3.2.9                                # python-pptx (xlsx output paths)
+et-xmlfile==2.0.0                                # openpyxl
