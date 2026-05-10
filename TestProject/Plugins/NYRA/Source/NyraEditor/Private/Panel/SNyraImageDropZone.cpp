@@ -53,13 +53,24 @@ void SNyraImageDropZone::Construct(const FArguments& InArgs)
 
 FReply SNyraImageDropZone::OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
 {
-	bDragOverActive = true;
+	// WR-08: explicitly invalidate so the BorderBackgroundColor lambda is
+	// re-evaluated; otherwise SLATE_NEW_INVALIDATION builds may not visibly
+	// toggle the highlight until another paint event happens.
+	if (!bDragOverActive)
+	{
+		bDragOverActive = true;
+		Invalidate(EInvalidateWidget::Paint);
+	}
 	return FReply::Handled();
 }
 
 void SNyraImageDropZone::OnDragLeave(const FDragDropEvent& DragDropEvent)
 {
-	bDragOverActive = false;
+	if (bDragOverActive)
+	{
+		bDragOverActive = false;
+		Invalidate(EInvalidateWidget::Paint);
+	}
 }
 
 FReply SNyraImageDropZone::OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
