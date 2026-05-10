@@ -3,15 +3,18 @@
 // Phase 5 (Plan 05-04): Validates 4 Phase 5 MCP tool registrations (Meshy, ComfyUI)
 // Phase 6 (Plan 06-04): Validates 3 Phase 6 MCP tool registrations (SCENE-01 + DEMO-01)
 
-#include "NyraEditorModule.h"
-#include "NyraEditorLogging.h"
-#include "EditorScriptingUtilities/BlueprintEditorUtilityLibrary.h"
-#include "AssetRegistry/IAssetRegistry.h"
-#include "Kismet/BlueprintEditorSubsystem.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Kismet/KismetMaterialLibrary.h"
+#include "CoreMinimal.h"
+#include "Logging/LogMacros.h"
+#include "Containers/Array.h"
+#include "Containers/UnrealString.h"
+#include "Math/UnrealMathUtility.h"
 
-DECLARE_STDOUT_CHANNEL(LogNyraToolCanary);
+// CR-07: DECLARE_STDOUT_CHANNEL is not a UE macro. Use the canonical
+// DEFINE_LOG_CATEGORY_STATIC for a cpp-local log category. Dead includes
+// (EditorScriptingUtilities/BlueprintEditorUtilityLibrary.h, AssetRegistry,
+// BlueprintEditorSubsystem, Kismet*) are removed -- none of the symbols
+// they expose are referenced in this file.
+DEFINE_LOG_CATEGORY_STATIC(LogNyraToolCanary, Log, All);
 
 // ---------------------------------------------------------------------------
 // Phase 4 tool registry (13 tools across ACT-01..ACT-05)
