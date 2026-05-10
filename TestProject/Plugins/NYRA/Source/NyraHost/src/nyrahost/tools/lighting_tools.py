@@ -192,6 +192,8 @@ class LightingAuthoringTool(NyraTool):
         if lp.use_sky_atmosphere:
             placed.append(self._spawn_actor(
                 unreal,
+                # WR-07: SkyAtmosphere actor lives at /Script/Engine.SkyAtmosphere
+                # in 5.4-5.7. Confirmed actor class.
                 class_name="/Script/Engine.SkyAtmosphere",
                 label="NYRA_SkyAtmosphere",
             ))
@@ -204,6 +206,10 @@ class LightingAuthoringTool(NyraTool):
         if lp.use_exponential_height_fog:
             placed.append(self._spawn_actor(
                 unreal,
+                # WR-07: actor class is ExponentialHeightFog (the *Actor* suffix
+                # variant in older docs is the C++ symbol AExponentialHeightFog;
+                # the reflected actor path that load_system_class resolves is
+                # /Script/Engine.ExponentialHeightFog in UE 5.4-5.7).
                 class_name="/Script/Engine.ExponentialHeightFog",
                 label="NYRA_ExpHeightFog",
             ))
@@ -225,7 +231,21 @@ class LightingAuthoringTool(NyraTool):
             unreal.Rotator(*rotation),
             unreal.Vector(1.0, 1.0, 1.0),
         )
-        actor = unreal.EditorLevelLibrary.spawn_actor_from_class(actor_class, transform)
+        # WR-07: EditorLevelLibrary is deprecated in UE 5.5+. Prefer
+        # EditorActorSubsystem.spawn_actor_from_class. Fall back to the legacy
+        # API on UE 5.4 where the subsystem may not yet expose the method.
+        actor = None
+        get_subsystem = getattr(unreal, "get_editor_subsystem", None)
+        editor_actor_subsystem_cls = getattr(unreal, "EditorActorSubsystem", None)
+        if get_subsystem and editor_actor_subsystem_cls:
+            try:
+                subsystem = get_subsystem(editor_actor_subsystem_cls)
+                if subsystem is not None:
+                    actor = subsystem.spawn_actor_from_class(actor_class, transform.translation)
+            except Exception:
+                actor = None
+        if actor is None:
+            actor = unreal.EditorLevelLibrary.spawn_actor_from_class(actor_class, transform)
         actor.set_actor_label(label)
         return {
             "actor_name": actor.get_name(),
