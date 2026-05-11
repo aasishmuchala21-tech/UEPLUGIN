@@ -302,14 +302,9 @@ async def build_and_run(
     # Phase 19-I todo list MCP tools.
     todos_handlers = TodosHandlers(TodosStore(project_dir=project_dir))
 
-    settings_aggregator = SettingsAggregatorHandlers(
-        instructions=instructions_handlers,
-        model=model_settings_handlers,
-        repro=repro_handlers,
-        session_mode=session_mode_handler,
-        user_tools=user_tools_handlers,
-        mcp_install=mcp_install_handlers,
-    )
+    # Phase 18-D settings/all aggregator construction moved below — its
+    # `model=` and `session_mode=` dependencies are not yet assigned at this
+    # point. See fix #1 from the code-review on PR #1.
 
     # Phase 15-A — encrypted per-project memory.
     encrypted_memory = EncryptedMemory(project_dir=project_dir)
@@ -385,6 +380,18 @@ async def build_and_run(
     # Phase 2 handlers
     session_mode_handler = SessionModeHandler(router=nyra_router, permission_gate=permission_gate)
     tx_handlers = TransactionHandlers(tx_manager=tx_manager)
+
+    # Phase 18-D settings/all aggregator — constructed here (post-fix) so
+    # `model_settings_handlers` (assigned ~line 335) and `session_mode_handler`
+    # (line above) are both bound before this kwarg-only constructor runs.
+    settings_aggregator = SettingsAggregatorHandlers(
+        instructions=instructions_handlers,
+        model=model_settings_handlers,
+        repro=repro_handlers,
+        session_mode=session_mode_handler,
+        user_tools=user_tools_handlers,
+        mcp_install=mcp_install_handlers,
+    )
 
     def register(server: NyraServer) -> None:
         # chat/send uses the per-session websocket attached via session._ws
