@@ -43,7 +43,29 @@ class AnthropicComputerUseBackend:
         display_height_px: int = 1080,
         model: str = ANTHROPIC_MODEL,
         max_tokens: int = DEFAULT_MAX_TOKENS,
+        allow_anthropic_api_billing: Optional[bool] = None,
     ) -> None:
+        # P1 from PR #2 follow-up: the "no new AI bill" wedge in CLAUDE.md
+        # says NYRA's primary path is the user's Claude subscription via
+        # the Claude Code CLI — direct Anthropic Messages-API access bills
+        # the user separately. To keep an accidentally-present
+        # ANTHROPIC_API_KEY env (e.g. left over from another project)
+        # from quietly enabling this path, require an explicit opt-in:
+        #   * pass allow_anthropic_api_billing=True at construction, OR
+        #   * set NYRA_ALLOW_ANTHROPIC_API_KEY=1 in the environment.
+        if allow_anthropic_api_billing is None:
+            env_flag = os.environ.get("NYRA_ALLOW_ANTHROPIC_API_KEY", "")
+            allow_anthropic_api_billing = env_flag.strip().lower() in (
+                "1", "true", "yes", "on",
+            )
+        if not allow_anthropic_api_billing:
+            raise RuntimeError(
+                "AnthropicComputerUseBackend refused: this path bills the "
+                "user's Anthropic API account separately from their Claude "
+                "subscription (CLAUDE.md 'no new AI bill' wedge). Opt in "
+                "explicitly via allow_anthropic_api_billing=True or by "
+                "setting NYRA_ALLOW_ANTHROPIC_API_KEY=1."
+            )
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not self._api_key:
             raise RuntimeError(

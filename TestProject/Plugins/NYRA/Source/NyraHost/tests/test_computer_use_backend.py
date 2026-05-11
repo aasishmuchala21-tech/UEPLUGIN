@@ -166,3 +166,36 @@ class TestTranslateAnthropicResponse:
         out = _translate_response(SimpleNamespace(content=[tool_use]))
         assert out["action"] == "done"
         assert "wave_hello" in out["summary"]
+
+
+# P1 from PR #2 follow-up: the "no new AI bill" wedge in CLAUDE.md
+# means AnthropicComputerUseBackend must NOT be reachable just because
+# an ANTHROPIC_API_KEY env is set; the user has to explicitly opt in.
+class TestAnthropicBackendOptInGate:
+    def test_refused_when_only_api_key_set(self, monkeypatch):
+        from nyrahost.external.computer_use.backend_anthropic import (
+            AnthropicComputerUseBackend,
+        )
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        monkeypatch.delenv("NYRA_ALLOW_ANTHROPIC_API_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="no new AI bill"):
+            AnthropicComputerUseBackend()
+
+    def test_refused_when_env_flag_false(self, monkeypatch):
+        from nyrahost.external.computer_use.backend_anthropic import (
+            AnthropicComputerUseBackend,
+        )
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        monkeypatch.setenv("NYRA_ALLOW_ANTHROPIC_API_KEY", "0")
+        with pytest.raises(RuntimeError, match="no new AI bill"):
+            AnthropicComputerUseBackend()
+
+    def test_refused_with_explicit_false_kwarg(self, monkeypatch):
+        from nyrahost.external.computer_use.backend_anthropic import (
+            AnthropicComputerUseBackend,
+        )
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        monkeypatch.setenv("NYRA_ALLOW_ANTHROPIC_API_KEY", "1")
+        # Explicit kwarg overrides env truthy flag.
+        with pytest.raises(RuntimeError, match="no new AI bill"):
+            AnthropicComputerUseBackend(allow_anthropic_api_billing=False)
