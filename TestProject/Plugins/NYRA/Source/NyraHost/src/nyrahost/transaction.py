@@ -85,6 +85,56 @@ class NyraTransactionManager:
         # the editor has had a chance to push its current PIE state.
         self._pie_state_seen = False
 
+    async def begin(
+        self,
+        session_id: str,
+        parent_id: Optional[str] = None,
+    ) -> NyraTransaction:
+        """R1.C2 fix from the full-codebase review: explicit non-context-manager
+        entrypoint used by the WS handler. begin_transaction (the
+        @asynccontextmanager below) cannot be awaited directly — doing so
+        raises TypeError because @asynccontextmanager returns an
+        _AsyncGeneratorContextManager that is not awaitable. The handler
+        needs separate begin / commit / rollback JSON-RPC calls, so this
+        helper performs the same setup steps (PIE guard, super_tx_id,
+        NyraTransaction allocation, _active assignment) without the
+        try/yield/commit-or-rollback wrapper.
+
+        Returns the freshly-created NyraTransaction, already stored in
+        self._active. Subsequent commit() / rollback() calls consume it.
+        Raises PIEActiveError if PIE is active, matching the
+        @asynccontextmanager contract.
+        """
+        self._super_tx_counter += 1
+        super_tx_id = f"super-{self._super_tx_counter:06d}"
+
+        if self._pie_active:
+            log.warning(
+                "transaction_pie_guard_refused",
+                super_tx_id=super_tx_id,
+                session_id=session_id,
+            )
+            await self._emit("diagnostics/transaction-rejected", {
+                "transaction_id": super_tx_id,
+                "session_id": session_id,
+                "reason": "pie_active",
+            })
+            raise PIEActiveError(
+                "[-32014] pie_active: refusing mutation while UE is in Play-In-Editor"
+            )
+
+        tx = NyraTransaction(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            state=TransactionState.ACTIVE,
+            plan_steps=[],
+            super_transaction_id=super_tx_id,
+            created_at=int(time.time() * 1000),
+        )
+        self._active = tx
+        log.info("transaction_begun", tx_id=tx.id, super_tx_id=super_tx_id)
+        return tx
+
     @asynccontextmanager
     async def begin_transaction(
         self,
