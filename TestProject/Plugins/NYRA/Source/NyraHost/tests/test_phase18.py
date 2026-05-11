@@ -136,6 +136,37 @@ def test_snapshot_handler_export_then_list(tmp_path):
     assert len(out["snapshots"]) == 1
 
 
+def test_snapshot_extras_name_with_parent_traversal_rejected(tmp_path):
+    """L1 from PR #2 follow-up: extras name with '..' must not pop out of
+    the extras/ prefix; the entry is silently skipped."""
+    snap = export_snapshot(
+        project_dir=tmp_path,
+        settings={},
+        extra_files={"../evil.txt": b"payload", "ok.txt": b"hi"},
+    )
+    with zipfile.ZipFile(snap.path) as zf:
+        names = set(zf.namelist())
+    assert "extras/ok.txt" in names
+    assert "../evil.txt" not in names
+    # No entry should reach outside extras/
+    assert not any(n.startswith("..") for n in names)
+
+
+def test_snapshot_extras_absolute_name_rejected(tmp_path):
+    """L1: extras name starting with '/' is skipped (would otherwise
+    create an entry at the zip root with an empty extras/ prefix on
+    extraction)."""
+    snap = export_snapshot(
+        project_dir=tmp_path,
+        settings={},
+        extra_files={"/etc/passwd": b"payload"},
+    )
+    with zipfile.ZipFile(snap.path) as zf:
+        names = set(zf.namelist())
+    assert "/etc/passwd" not in names
+    assert "extras/etc/passwd" not in names
+
+
 # ---------- 18-C recovery ----------
 
 def test_recovery_save_load_clear(tmp_path):
