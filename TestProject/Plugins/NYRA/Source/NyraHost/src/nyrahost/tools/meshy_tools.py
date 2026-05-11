@@ -247,6 +247,12 @@ async def _poll_meshy_and_update_manifest(
             glb_path = staging_root / f"{job_id}.glb"
 
             import httpx
+            # Fix #3 from PR #1 code review: honour Privacy Mode for the
+            # GLB download too, not only the API submit/poll. SSRF host
+            # allowlist above remains the first line of defence; this is
+            # the air-gapped-install gate (Phase 15-E).
+            from nyrahost.privacy_guard import GUARD as PRIVACY_GUARD
+            PRIVACY_GUARD.assert_allowed(result.glb_url)
             async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as http_client:
                 resp = await http_client.get(result.glb_url)
                 resp.raise_for_status()

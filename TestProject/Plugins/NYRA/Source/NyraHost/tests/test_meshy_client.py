@@ -191,3 +191,35 @@ class TestMeshyClientInit:
         """Custom timeout via constructor param."""
         client = MeshyClient(api_key="test-key", timeout=300.0)
         assert client._timeout == 300.0
+
+
+# Fix #3 from PR #1 code review — MeshyClient honours Privacy Mode.
+# Previously every outbound call went through httpx with no PRIVACY_GUARD
+# gate, silently breaking the "air-gapped install" promise in Phase 15-E.
+class TestMeshyClientHonoursPrivacyMode:
+    def test_request_raises_outbound_refused_when_privacy_on(self):
+        """When PRIVACY_GUARD is enabled, _request must fail before httpx."""
+        from nyrahost.privacy_guard import GUARD as PRIVACY_GUARD, OutboundRefused
+
+        client = MeshyClient(api_key="test-key")
+        PRIVACY_GUARD.enable()
+        try:
+            with pytest.raises(OutboundRefused):
+                async def _go():
+                    async with httpx.AsyncClient() as http:
+                        await client._request("GET", "/tasks", client=http)
+                asyncio.run(_go())
+        finally:
+            PRIVACY_GUARD.disable()
+
+    def test_auto_rig_raises_outbound_refused_when_privacy_on(self):
+        """auto_rig() must fail before posting to the rigging endpoint."""
+        from nyrahost.privacy_guard import GUARD as PRIVACY_GUARD, OutboundRefused
+
+        client = MeshyClient(api_key="test-key")
+        PRIVACY_GUARD.enable()
+        try:
+            with pytest.raises(OutboundRefused):
+                asyncio.run(client.auto_rig(model_url="https://example.com/m.glb"))
+        finally:
+            PRIVACY_GUARD.disable()

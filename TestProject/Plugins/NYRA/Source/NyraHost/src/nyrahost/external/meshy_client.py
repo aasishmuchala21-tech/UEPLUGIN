@@ -21,6 +21,8 @@ from typing import Optional
 import httpx
 import structlog
 
+from nyrahost.privacy_guard import GUARD as PRIVACY_GUARD
+
 log = structlog.get_logger("nyrahost.external.meshy_client")
 
 MESHY_BASE_URL = "https://meshy.ai/api/v1"
@@ -90,6 +92,10 @@ class MeshyClient:
         **kwargs,
     ) -> httpx.Response:
         url = f"{self._base_url}{path}"
+        # Fix #3 from PR #1 code review: honour Privacy Mode (Phase 15-E).
+        # Loopback hosts pass; external hosts raise OutboundRefused when
+        # the guard is on, surfacing as -32072 at the handler boundary.
+        PRIVACY_GUARD.assert_allowed(url)
         resp = await client.request(method, url, headers=self._headers(), **kwargs)
         if resp.status_code == 401:
             # T-05-01: Do NOT include key in error message
@@ -237,7 +243,8 @@ class MeshyClient:
         """
         body = {"model_url": model_url, "height_meters": float(height_meters)}
         async with httpx.AsyncClient(timeout=httpx.Timeout(self._timeout)) as client:
-            # 1. Submit
+            # 1. Submit (Privacy Mode gate per fix #3).
+            PRIVACY_GUARD.assert_allowed(MESHY_RIGGING_URL)
             resp = await client.post(
                 MESHY_RIGGING_URL,
                 headers={**self._headers(), "Content-Type": "application/json"},
@@ -275,6 +282,7 @@ class MeshyClient:
                     raise MeshyTimeoutError(
                         f"Meshy rigging task {task_id} timed out after {self._timeout}s."
                     )
+                PRIVACY_GUARD.assert_allowed(poll_url)  # fix #3
                 pr = await client.get(poll_url, headers=self._headers())
                 if not pr.is_success:
                     raise MeshyAPIError(
