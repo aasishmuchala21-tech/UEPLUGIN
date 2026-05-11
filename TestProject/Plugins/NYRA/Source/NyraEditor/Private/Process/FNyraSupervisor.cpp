@@ -24,7 +24,30 @@ FNyraSupervisor::FNyraSupervisor()
 FNyraSupervisor::FNyraSupervisor(TSharedRef<INyraClock> InClock)
     : Clock(InClock) {}
 
-FNyraSupervisor::~FNyraSupervisor() = default;
+FNyraSupervisor::~FNyraSupervisor()
+{
+    // R4.C2 fix from the full-codebase review: belt-and-suspenders teardown
+    // in case a caller destroys this supervisor without calling
+    // RequestShutdown() first (or while RequestShutdown is mid-flight and
+    // the wait loop unwound via exception).
+    //
+    // R4.I3: clear HostProcess->OnCompleted() before any wait — the
+    // FMonitoredProcess fires that callback from a monitoring thread on
+    // exit, which can race past our destructor.
+    if (HostProcess.IsValid())
+    {
+        HostProcess->OnOutput().Unbind();
+        HostProcess->OnCompleted().Unbind();
+        if (HostProcess->IsRunning())
+        {
+            HostProcess->Cancel(/*bKillTree=*/true);
+        }
+    }
+    // FNyraHandshake's own dtor now calls CancelPolling() (R4.C2 fix),
+    // and FNyraWsClient's own dtor calls Disconnect() (R4.I1 fix), so
+    // simple destruction order suffices here. Explicit calls would be
+    // redundant but harmless.
+}
 
 void FNyraSupervisor::SetState(ENyraSupervisorState NewState)
 {
@@ -205,6 +228,16 @@ void FNyraSupervisor::RequestShutdown()
 {
     bShutdownRequested = true;
     SetState(ENyraSupervisorState::ShuttingDown);
+
+    // R4.I3 fix from the full-codebase review: clear HostProcess->OnCompleted
+    // BEFORE the grace-period wait. FMonitoredProcess fires that callback
+    // from its monitoring thread the moment the child exits — which may
+    // happen fractionally after Cancel() returns but before this supervisor
+    // is destroyed, and the lambda captures `this` raw.
+    if (HostProcess.IsValid())
+    {
+        HostProcess->OnCompleted().Unbind();
+    }
 
     if (WsClient.IsConnected())
     {

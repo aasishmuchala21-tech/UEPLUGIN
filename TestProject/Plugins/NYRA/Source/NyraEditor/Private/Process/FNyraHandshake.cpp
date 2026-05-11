@@ -18,6 +18,15 @@ constexpr double HANDSHAKE_TOTAL_BUDGET_S = 30.0;
 constexpr float  HANDSHAKE_MAX_INTERVAL_S = 2.0f;
 constexpr float  HANDSHAKE_BACKOFF_MULTIPLIER = 1.5f;
 
+FNyraHandshake::~FNyraHandshake()
+{
+    // R4.C2 fix from the full-codebase review: the FTSTicker registered
+    // by BeginPolling captured `this` raw; if the owner destroys this
+    // FNyraHandshake without first calling CancelPolling, the ticker
+    // would fire Tick() into a freed object on the next game-thread tick.
+    CancelPolling();
+}
+
 void FNyraHandshake::BeginPolling(const FString& InHandshakeDir, int32 InEditorPid)
 {
     HandshakeDir = InHandshakeDir;

@@ -36,6 +36,14 @@ DECLARE_DELEGATE_TwoParams(FOnNyraClosed, int32 /*CloseCode*/, const FString& /*
 class NYRAEDITOR_API FNyraWsClient
 {
 public:
+    /** R4.I1 fix from the full-codebase review: Disconnect() is the only
+     *  thing that clears socket delegate bindings. If a caller destroys
+     *  this client without first calling Disconnect(), the IWebSocket
+     *  still holds a raw `this` pointer in its OnMessage/OnClosed
+     *  delegates, and a libwebsockets game-thread tick after destruction
+     *  triggers a UAF. */
+    ~FNyraWsClient();
+
     void Connect(const FString& Host, int32 Port, const FString& AuthToken);
     void Disconnect();
     bool IsConnected() const;
