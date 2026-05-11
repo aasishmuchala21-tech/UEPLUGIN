@@ -68,6 +68,8 @@ class NyraPermissionGate:
         self._previews: dict[str, PlanPreview] = {}
         self._futures: dict[str, asyncio.Future] = {}
         self._safe_mode_default = True  # CHAT-04: safe-mode is DEFAULT
+        # Phase 10-2 operating mode (Aura parity); default matches the legacy plan-first behaviour.
+        self._operating_mode: str = "plan"
         # Plan-as-markdown directory. Default lives under <cwd>/Saved/NYRA/plans
         # so it co-locates with the existing CD-07 storage convention; the
         # chat handler can override at construction time with the project_saved
@@ -77,6 +79,24 @@ class NyraPermissionGate:
     def is_safe_mode(self) -> bool:
         """Safe mode is always True in v1 — plan-first-by-default cannot be disabled."""
         return self._safe_mode_default
+
+    def set_operating_mode(self, mode: str) -> None:
+        """Aura-parity operating mode (ask/plan/agent).
+
+        ``ask``   — refuse mutating tools at preview time (-32011 plan_rejected).
+        ``plan``  — current default; user must Approve every preview.
+        ``agent`` — auto-resolve preview futures as approved.
+
+        Safe mode itself stays ON unconditionally (CHAT-04 invariant).
+        """
+        if mode not in ("ask", "plan", "agent"):
+            raise ValueError(f"invalid operating mode {mode!r}")
+        self._operating_mode = mode
+        log.info("permission_gate_operating_mode_set", mode=mode)
+
+    @property
+    def operating_mode(self) -> str:
+        return self._operating_mode
 
     async def generate_preview(
         self,

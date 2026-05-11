@@ -61,6 +61,8 @@
 #include "Panel/SNyraDownloadModal.h"
 #include "Panel/SNyraDiagnosticsDrawer.h"
 #include "Panel/SNyraBackendStatusStrip.h"
+#include "Panel/SNyraModeToggle.h"
+#include "Panel/SNyraModelSelector.h"
 #include "Process/FNyraSupervisor.h"
 #include "NyraLog.h"
 
@@ -144,6 +146,24 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
                     .OnClaudeClick_Lambda([this]() { OpenClaudePopover(); })
                     .OnGemmaClick_Lambda([this]() { OpenGemmaPopover(); })
                     .OnPrivacyClick_Lambda([this]() { OpenPrivacyPopover(); })
+            ]
+            // Phase 12-D: Aura-parity Ask/Plan/Agent toggle + per-conversation
+            // model selector pill, sitting just under the backend status strip.
+            // Both widgets fire JSON-RPC over GNyraSupervisor and are otherwise
+            // self-contained — no per-message wiring needed in this panel.
+            + SVerticalBox::Slot().AutoHeight().Padding(4, 2)
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot().AutoWidth().Padding(2)
+                [
+                    SAssignNew(ModeToggle, SNyraModeToggle)
+                ]
+                + SHorizontalBox::Slot().FillWidth(1.0f).Padding(2)
+                + SHorizontalBox::Slot().AutoWidth().Padding(2)
+                [
+                    SAssignNew(ModelSelector, SNyraModelSelector)
+                    .ConversationId_Lambda([this]() { return CurrentConversationId; })
+                ]
             ]
             // Message list + download-modal overlay occupy the main fill area.
             + SVerticalBox::Slot().FillHeight(1.0f)

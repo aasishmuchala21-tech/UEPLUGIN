@@ -136,7 +136,30 @@ class ChatHandlers:
     storage: Storage
     router: InferRouter
     project_saved: Path  # <ProjectDir>/Saved — needed for ingest_attachment (CD-04)
+    # Phase 11-B — Custom Instructions injected into the system prompt
+    # at chat/send time. None means "no project instructions". Constructed
+    # by app.py::build_and_run from the per-project Saved/NYRA/instructions.md.
+    custom_instructions: "object | None" = None
     _inflight: dict[str, asyncio.Event] = field(default_factory=dict)
+
+    def _instructions_prefix(self) -> str:
+        """Return the project Custom Instructions prefix (Aura parity).
+
+        Empty string when no instructions are configured so callers can
+        unconditionally concatenate. Reads cached body — does NOT touch
+        disk on the chat hot path. Refresh the cache via the
+        settings/set-instructions WS handler, which calls
+        CustomInstructions.save → updates the cached body.
+        """
+        ci = self.custom_instructions
+        if ci is None:
+            return ""
+        try:
+            return ci.system_prompt_prefix()
+        except Exception:  # noqa: BLE001
+            # Custom Instructions are non-essential context — never let a
+            # malformed instructions.md kill the chat path.
+            return ""
 
     async def on_chat_send(
         self, params: dict, session: SessionState, ws: ServerConnection

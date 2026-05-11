@@ -1,38 +1,46 @@
 {
-	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "0.1.0",
-	"FriendlyName": "NYRA",
-	"Description": "Turn a reference into a finished Unreal Engine scene — without a new AI bill.",
-	"Category": "AI",
-	"CreatedBy": "NYRA",
-	"CreatedByURL": "https://nyra.ai",
-	"DocsURL": "https://nyra.ai/docs",
-	"MarketplaceURL": "",
-	"SupportURL": "https://nyra.ai/support",
-	"EngineVersion": "5.6.0",
-	"CanContainContent": false,
-	"IsBetaVersion": true,
-	"IsExperimentalVersion": false,
-	"Installed": false,
-	"Modules": [
-		{
-			"Name": "NyraEditor",
-			"Type": "Editor",
-			"LoadingPhase": "PostEngineInit",
-			"PlatformAllowList": ["Win64"]
-		},
-		{
-			"Name": "NyraRuntime",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"PlatformAllowList": ["Win64"]
-		}
-	],
-	"Plugins": [
-		{
-			"Name": "WebSockets",
-			"Enabled": true
-		}
-	]
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "0.1.0",
+    "FriendlyName": "NYRA",
+    "Description": "Turn a reference into a finished Unreal Engine scene \u2014 without a new AI bill.",
+    "Category": "AI",
+    "CreatedBy": "NYRA",
+    "CreatedByURL": "https://nyra.ai",
+    "DocsURL": "https://nyra.ai/docs",
+    "MarketplaceURL": "",
+    "SupportURL": "https://nyra.ai/support",
+    "EngineVersion": "5.6.0",
+    "CanContainContent": false,
+    "IsBetaVersion": true,
+    "IsExperimentalVersion": false,
+    "Installed": false,
+    "Modules": [
+        {
+            "Name": "NyraEditor",
+            "Type": "Editor",
+            "LoadingPhase": "PostEngineInit",
+            "PlatformAllowList": [
+                "Win64"
+            ]
+        },
+        {
+            "Name": "NyraRuntime",
+            "Type": "Runtime",
+            "LoadingPhase": "Default",
+            "PlatformAllowList": [
+                "Win64"
+            ]
+        }
+    ],
+    "Plugins": [
+        {
+            "Name": "WebSockets",
+            "Enabled": true
+        },
+        {
+            "Name": "GeometryScripting",
+            "Enabled": true
+        }
+    ]
 }

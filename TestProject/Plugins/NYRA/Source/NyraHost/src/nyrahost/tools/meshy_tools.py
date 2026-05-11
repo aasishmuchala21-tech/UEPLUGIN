@@ -195,7 +195,10 @@ async def _poll_meshy_and_update_manifest(
     manifest = StagingManifest()
     try:
         client = MeshyClient(api_key=api_key)
-        result = await client.image_to_3d(image_path=image_path, task_type=task_type)
+        # Phase 19-D smart low-poly toggle.
+        _low_poly = bool(params.get("low_poly", False))
+        _target_polycount = params.get("target_polycount")
+        result = await client.image_to_3d(image_path=image_path, low_poly=_low_poly, target_polycount=_target_polycount, task_type=task_type)
 
         if result.status == "completed" and result.glb_url:
             # Phase 5 WR-01: SSRF defence. The glb_url is supplied by

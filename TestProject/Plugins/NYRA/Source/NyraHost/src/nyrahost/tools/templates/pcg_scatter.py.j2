@@ -1,0 +1,112 @@
+# NYRA Phase 16-A — PCG scatter via UE5 PCG graph emitter.
+# Surface scatter / Volume fill / Spline scatter. Verified against:
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/procedural-content-generation-overview-in-unreal-engine
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/PCGGraph
+#
+# The template emits a UE-Python script that:
+#   1. Spawns an APCGVolume (or APCGComponent on the active actor)
+#   2. Creates a PCGGraph asset configured for the requested mode
+#   3. Wires Sample[Surface|Volume|Spline] -> SpawnMesh nodes
+#   4. Triggers Generate() so the scatter realises immediately
+
+import json
+
+import unreal
+
+
+def _spawn_pcg_volume(world, location):
+    return unreal.EditorActorSubsystem().spawn_actor_from_class(
+        unreal.PCGVolume,
+        unreal.Vector(*location),
+        unreal.Rotator(0, 0, 0),
+    )
+
+
+def _create_pcg_graph(asset_path: str, asset_name: str) -> unreal.PCGGraph:
+    at = unreal.AssetToolsHelpers.get_asset_tools()
+    return at.create_asset(asset_name, asset_path,
+                           unreal.PCGGraph,
+                           unreal.PCGGraphFactory())
+
+
+def build_surface_scatter(graph: unreal.PCGGraph, *, mesh_path: str,
+                          density: float, scale_min: float, scale_max: float):
+    """Build a surface-scatter graph onto an existing PCGGraph asset.
+
+    Phase 16-A v0 emits the verbal contract for the four nodes; the
+    UE-side calls land them in the editor's PCG graph builder. The
+    actual node-wiring API (`add_node` / `add_edge`) is the documented
+    UE 5.6 surface — confirmed in the PCG Python API docs.
+    """
+    bp = graph.get_editor_property("graph_default_grid_size")
+    # Documented v5.6 sequence; the editor builds the inputs from spec.
+    surface = graph.add_node(unreal.PCGSurfaceSamplerSettings)
+    surface.set_editor_property("points_per_squared_meter", float(density))
+    spawn = graph.add_node(unreal.PCGStaticMeshSpawnerSettings)
+    mesh = unreal.SoftObjectPath(mesh_path)
+    spawn.set_editor_property("meshes", [mesh])
+    spawn.set_editor_property("scale_min", float(scale_min))
+    spawn.set_editor_property("scale_max", float(scale_max))
+    graph.add_edge(surface, "Out", spawn, "In")
+
+
+def build_volume_fill(graph: unreal.PCGGraph, *, mesh_path: str,
+                      count: int, anchor: str):
+    """Volume fill anchored to floor/ceiling/walls of the PCG volume bounds."""
+    sampler = graph.add_node(unreal.PCGVolumeSamplerSettings)
+    sampler.set_editor_property("points_count", int(count))
+    sampler.set_editor_property("voxel_anchor", anchor)  # "floor"|"ceiling"|"walls"|"any"
+    spawn = graph.add_node(unreal.PCGStaticMeshSpawnerSettings)
+    spawn.set_editor_property("meshes", [unreal.SoftObjectPath(mesh_path)])
+    graph.add_edge(sampler, "Out", spawn, "In")
+
+
+def build_spline_scatter(graph: unreal.PCGGraph, *, mesh_path: str,
+                         spacing_cm: float):
+    """Scatter along a spline; the user supplies the spline actor via
+    PCGComponent's data interface inside the editor."""
+    spline = graph.add_node(unreal.PCGSplineSamplerSettings)
+    spline.set_editor_property("spacing", float(spacing_cm))
+    spawn = graph.add_node(unreal.PCGStaticMeshSpawnerSettings)
+    spawn.set_editor_property("meshes", [unreal.SoftObjectPath(mesh_path)])
+    graph.add_edge(spline, "Out", spawn, "In")
+
+
+def main(spec_json: str):
+    spec = json.loads(spec_json)
+    asset_path = spec.get("asset_path", "/Game/NYRA/PCG")
+    asset_name = spec.get("asset_name", "PCG_NyraScatter")
+    mode = spec.get("mode")
+    mesh_path = spec.get("mesh_path", "/Engine/BasicShapes/Cube")
+
+    world = unreal.UnrealEditorSubsystem().get_editor_world()
+    location = spec.get("location", [0.0, 0.0, 0.0])
+    volume = _spawn_pcg_volume(world, location)
+    graph = _create_pcg_graph(asset_path, asset_name)
+
+    if mode == "surface":
+        build_surface_scatter(graph,
+                              mesh_path=mesh_path,
+                              density=float(spec.get("density", 0.5)),
+                              scale_min=float(spec.get("scale_min", 0.8)),
+                              scale_max=float(spec.get("scale_max", 1.2)))
+    elif mode == "volume":
+        build_volume_fill(graph,
+                          mesh_path=mesh_path,
+                          count=int(spec.get("count", 100)),
+                          anchor=str(spec.get("anchor", "floor")))
+    elif mode == "spline":
+        build_spline_scatter(graph,
+                             mesh_path=mesh_path,
+                             spacing_cm=float(spec.get("spacing_cm", 200.0)))
+    else:
+        raise ValueError(f"unsupported scatter mode: {mode!r}")
+
+    volume.get_pcg_component().set_graph(graph)
+    volume.get_pcg_component().generate()
+    print(f"NYRA PCG: {mode} scatter graph={graph.get_path_name()} "
+          f"volume={volume.get_path_name()}")
+    return graph.get_path_name()
+
+
+main('''${SPEC_JSON}''')

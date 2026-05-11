@@ -85,6 +85,8 @@ public:
     FOnConversationSelected OnConversationSelected;
 
 class SNyraBackendStatusStrip;  // Plan 02-12: status pill strip
+class SNyraModeToggle;            // Phase 12-D: Aura-parity Ask/Plan/Agent toggle
+class SNyraModelSelector;        // Phase 12-D: per-conversation Claude model pin
 
 private:
     void OnComposerSubmit(const FString& Text, const TArray<FNyraAttachmentRef>& Attachments);
@@ -101,6 +103,8 @@ private:
     TSharedPtr<class SNyraDownloadModal> DownloadModal;  // Plan 13: Gemma download progress
     TSharedPtr<class SNyraDiagnosticsDrawer> Diagnostics;// Plan 13: log tail drawer
     TSharedPtr<SNyraBackendStatusStrip> StatusStrip;      // Plan 02-12: backend status strip
+    TSharedPtr<SNyraModeToggle> ModeToggle;              // Phase 12-D
+    TSharedPtr<SNyraModelSelector> ModelSelector;        // Phase 12-D
     FNyraBackendState CurrentBackendState;               // Plan 02-12: cached for popover rendering
     bool bUserApprovedFallback = false;                 // Plan 02-12: set by [Switch to Gemma] in popover; consumed by next chat/send
     FGuid CurrentConversationId;  // default on first-ever editor launch; Plan 12b drawer overwrites via OpenConversation

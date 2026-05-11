@@ -295,6 +295,57 @@ class ComfyUIClient:
             await asyncio.sleep(history_delay)
             history_delay = min(history_delay * 1.25, 15.0)
 
+    async def upload_image(
+        self,
+        png_bytes: bytes,
+        filename: str,
+        *,
+        subfolder: str = "",
+        overwrite: bool = True,
+    ) -> str:
+        """POST /upload/image (multipart). Returns the server-side filename
+        usable by LoadImage / LoadImageMask nodes.
+
+        Mask delivery (Phase 9 INPAINT-01): there is no /upload/mask endpoint
+        in ComfyUI core (verified at docs.comfy.org/custom-nodes/backend/images_and_masks).
+        Both source images and masks go through this same /upload/image route;
+        the mask PNG is then referenced by a LoadImageMask node downstream.
+
+        T-05-04: filename is sanitised to its basename so a malicious caller
+        cannot path-traverse via the multipart `image` field.
+        """
+        safe_name = Path(filename).name
+        url = f"{self._base}/upload/image"
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self._timeout)
+        ) as sess:
+            form = aiohttp.FormData()
+            form.add_field(
+                "image",
+                png_bytes,
+                filename=safe_name,
+                content_type="image/png",
+            )
+            form.add_field("type", "input")
+            form.add_field("subfolder", subfolder)
+            form.add_field("overwrite", "true" if overwrite else "false")
+            async with sess.post(url, data=form) as resp:
+                if resp.status >= 400:
+                    raise ComfyUIAPIError(
+                        f"upload_image rejected (HTTP {resp.status}). "
+                        "Verify ComfyUI is reachable and that the input "
+                        "directory is writable."
+                    )
+                payload = await resp.json()
+        # ComfyUI returns {"name": "<filename>", "subfolder": "...", "type": "input"}
+        returned = payload.get("name") or safe_name
+        log.info(
+            "comfyui_upload_image_ok",
+            returned=returned,
+            subfolder=payload.get("subfolder", ""),
+        )
+        return returned
+
     async def interrupt(self) -> None:
         """POST /interrupt — stop the currently running ComfyUI prompt."""
         await self._post("/interrupt", {})

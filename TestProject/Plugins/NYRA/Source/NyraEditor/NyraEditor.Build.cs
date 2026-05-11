@@ -56,6 +56,9 @@ public class NyraEditor : ModuleRules
             "AnimGraph",
             "AnimGraphRuntime",
             "BlueprintGraph",
+            // Plan 09 LDA-01 — procedural blockout via GeometryScript.
+            "GeometryScriptingCore",
+            "GeometryScriptingEditor",
         });
 
         // Stage NyraHost + NyraInfer binaries when the plugin is packaged.

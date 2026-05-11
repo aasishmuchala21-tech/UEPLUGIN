@@ -1,15 +1,43 @@
 """Shared pytest fixtures for NyraHost.
 
-Wave 0 placeholder bodies — Plan 08 wires real mock_llama_server and
-mock_ollama_transport behaviour. The two deterministic fixtures
-(tmp_project_dir, mock_handshake_file) are fully functional now so later
-plans can depend on them without re-authoring.
+Phase 11-D — Python 3.10 compat shim is intentionally first so the
+polyfill fires before nyrahost.router is collected by any test module.
+The original Wave-0 fixtures (tmp_project_dir, mock_handshake_file)
+follow.
 
-Per CONTEXT.md:
-  D-06 — Handshake schema {port, token, nyrahost_pid, ue_pid, started_at}
-  CD-07 — <ProjectDir>/Saved/NYRA/ directory layout (logs/, models/, attachments/)
+Some production modules in src/nyrahost use Python 3.11+ features
+(notably ``enum.StrEnum`` in router.py). The bundled CPython for
+production is 3.12, but contributors and CI on Python 3.10 hit a
+collection-time AttributeError because StrEnum doesn't exist there.
+
+Polyfill is lossless: production on 3.12 already has the real
+StrEnum and skips the shim, so this only activates when needed.
 """
 from __future__ import annotations
+
+import enum as _enum
+import sys as _sys
+
+
+def _polyfill_strenum() -> None:
+    if hasattr(_enum, "StrEnum"):
+        return
+    if _sys.version_info >= (3, 11):
+        return
+
+    class _StrEnum(str, _enum.Enum):
+        """Minimal StrEnum polyfill for Python 3.10."""
+
+        def __str__(self) -> str:  # pragma: no cover
+            return str.__str__(self)
+
+    _enum.StrEnum = _StrEnum  # type: ignore[attr-defined]
+
+
+_polyfill_strenum()
+
+
+# --- Wave 0 fixtures (preserved from the original conftest) ---
 
 import json
 import os
