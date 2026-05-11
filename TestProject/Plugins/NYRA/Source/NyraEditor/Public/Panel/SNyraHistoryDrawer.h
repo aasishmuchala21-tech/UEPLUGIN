@@ -126,4 +126,8 @@ private:
     /** Holds the Construct-time SCompoundWidget root so toggling collapsed
      *  can invalidate layout without a full widget tree rebuild. */
     TSharedPtr<class SBox> RootBox;
+
+    /** R4.I2 fix: stored OnResponse subscription handle so the drawer can
+     *  Remove only its own subscription, not every subscriber. */
+    FDelegateHandle ResponseHandle;
 };

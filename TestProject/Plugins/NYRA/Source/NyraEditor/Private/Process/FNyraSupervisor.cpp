@@ -179,7 +179,7 @@ void FNyraSupervisor::PerformSpawn()
         });
         WsClient.OnResponse.BindLambda([this](const FNyraJsonRpcEnvelope& E)
         {
-            OnResponse.ExecuteIfBound(E);
+            OnResponse.Broadcast(E);   // R4.I2: multi-cast — every subscribed drawer/handler sees the response.
         });
 
         SetState(ENyraSupervisorState::Authenticating);

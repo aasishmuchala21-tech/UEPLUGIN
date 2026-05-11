@@ -76,11 +76,16 @@ struct FNyraInFlightRequest
 // so opening a second NYRA panel tab no longer silently overwrites the
 // first tab's bindings. Each subscriber receives its own FDelegateHandle
 // (returned by AddRaw / AddLambda) and is responsible for removing itself
-// on destruction. OnReady + OnResponse remain single-cast: only the
-// supervisor's internal startup state machine consumes them.
+// on destruction. OnReady remains single-cast: only the supervisor's
+// internal startup state machine consumes it.
+//
+// R4.I2 fix from the full-codebase review: OnResponse moved out of the
+// single-cast group. SNyraHistoryDrawer's BindRaw on OnResponse would
+// silently overwrite a sibling drawer's binding when a second NYRA panel
+// opens, leaving the first drawer permanently unserviced.
 DECLARE_DELEGATE(FOnSupervisorReady);
-DECLARE_DELEGATE_OneParam(FOnSupervisorResponse, const FNyraJsonRpcEnvelope& /*Env*/);
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnSupervisorResponse, const FNyraJsonRpcEnvelope& /*Env*/);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSupervisorStateChanged, ENyraSupervisorState /*NewState*/);
 DECLARE_MULTICAST_DELEGATE(FOnSupervisorUnstable);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSupervisorNotification, const FNyraJsonRpcEnvelope& /*Env*/);

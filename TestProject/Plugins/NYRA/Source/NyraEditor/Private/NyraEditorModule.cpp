@@ -21,6 +21,7 @@
 // `Nyra.Dev.RoundTripBench` on module load automatically; the include here
 // documents the relationship and lets us log a confirmation line below.
 #include "Dev/FNyraDevTools.h"
+#include "Panel/SNyraBlueprintDiffToolbar.h"  // R5.C3
 
 IMPLEMENT_MODULE(FNyraEditorModule, NyraEditor)
 
@@ -77,6 +78,12 @@ void FNyraEditorModule::StartupModule()
                 {
                     FGlobalTabManager::Get()->TryInvokeTab(Nyra::NyraChatTabId);
                 })));
+
+            // R5.C3 fix from the full-codebase review: register the Phase 19-F
+            // Blueprint Diff toolbar entry. Previously, FNyraBlueprintDiffToolbar
+            // was compiled and linked but never registered, so the "Review this
+            // diff with NYRA" entry never appeared in the BP Diff editor.
+            FNyraBlueprintDiffToolbar::Register();
         }));
 
     // Plan 10: D-04 eager spawn NyraHost on editor start (AFTER tab registration).
@@ -123,6 +130,7 @@ void FNyraEditorModule::ShutdownModule()
     if (UObjectInitialized())
     {
         UToolMenus::UnregisterOwner(this);
+        FNyraBlueprintDiffToolbar::Unregister();   // R5.C3
     }
 }
 
