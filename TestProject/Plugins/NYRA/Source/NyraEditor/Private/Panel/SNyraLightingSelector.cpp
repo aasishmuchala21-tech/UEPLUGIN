@@ -9,7 +9,9 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/SBoxPanel.h"
-#include "EditorStyleSet.h"
+// L6 from PR #2 follow-up: removed unused #include "EditorStyleSet.h".
+// All styling in this file uses hard-coded FLinearColor tokens; no
+// EditorStyle/FAppStyle lookups are performed.
 
 namespace NyraLightingTokens
 {

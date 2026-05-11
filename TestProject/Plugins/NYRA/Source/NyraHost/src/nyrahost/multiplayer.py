@@ -141,16 +141,24 @@ class LocalRoomBackend:
     _rooms: dict[str, Room] = field(default_factory=dict)
     _lock: object = None
 
-    def __post_init__(self) -> None:
-        import threading
-        self._lock = threading.RLock()
+    # L3 from PR #2 follow-up: LocalRoomBackend is instantiated inside the
+    # asyncio process and its `async def` methods are awaited from the
+    # event loop. The previous implementation used threading.RLock, which
+    # blocks the loop thread under contention and is the wrong primitive
+    # if any guarded section ever grows an `await`. Use asyncio.Lock,
+    # lazily created so dataclass construction doesn't try to bind it
+    # before a loop is running.
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def list_rooms(self) -> list[Room]:
-        with self._lock:
+        async with self._get_lock():
             return list(self._rooms.values())
 
     async def join_room(self, room_id: str, member: Member) -> Room:
-        with self._lock:
+        async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
                 room = Room(room_id=room_id, title=room_id)
@@ -159,7 +167,7 @@ class LocalRoomBackend:
             return room
 
     async def leave_room(self, room_id: str, user_id: str) -> bool:
-        with self._lock:
+        async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
                 return False
@@ -174,7 +182,7 @@ class LocalRoomBackend:
         encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         if len(encoded) > MAX_PAYLOAD_BYTES:
             raise ValueError(f"payload exceeds {MAX_PAYLOAD_BYTES} bytes")
-        with self._lock:
+        async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
                 raise KeyError(f"room {room_id!r} not found")
@@ -194,7 +202,7 @@ class LocalRoomBackend:
                           limit: int = 50) -> list[EventEnvelope]:
         if limit <= 0 or limit > MAX_EVENTS_PER_POLL:
             limit = min(max(1, limit), MAX_EVENTS_PER_POLL)
-        with self._lock:
+        async with self._get_lock():
             room = self._rooms.get(room_id)
             if room is None:
                 return []

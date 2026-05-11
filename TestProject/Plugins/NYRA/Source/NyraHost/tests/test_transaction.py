@@ -6,6 +6,7 @@ import pytest
 from nyrahost.transaction import (
     NyraTransactionManager,
     NyraTransaction,
+    PIEActiveError,
     TransactionState,
 )
 
@@ -49,12 +50,19 @@ class TestPIEGuard:
     """PIE mode blocks mutations."""
 
     async def test_pie_guard_prevents_mutation(self):
+        """PIE-active sessions must REFUSE begin_transaction with -32014.
+
+        Updated for CR-05 (the production code's docstring at
+        transaction.py:116-122): the old behaviour yielded a PIE_GUARDED
+        tx and let the caller body run unguarded — state accumulated
+        with no rollback. The corrected contract is "raise PIEActiveError
+        so the JSON-RPC layer returns -32014 pie_active to UE".
+        """
         manager = _make_manager()
-        # Simulate PIE active
         manager.on_pie_state_changed(True)
-        async with manager.begin_transaction("session-pie") as tx:
-            # Should be PIE_GUARDED state, not ACTIVE
-            assert tx.state == TransactionState.PIE_GUARDED
+        with pytest.raises(PIEActiveError):
+            async with manager.begin_transaction("session-pie"):
+                pass  # never reached
 
     async def test_pie_safe_false_during_pie(self):
         manager = _make_manager()

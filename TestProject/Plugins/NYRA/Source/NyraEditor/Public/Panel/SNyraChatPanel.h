@@ -108,5 +108,11 @@ private:
     FNyraBackendState CurrentBackendState;               // Plan 02-12: cached for popover rendering
     bool bUserApprovedFallback = false;                 // Plan 02-12: set by [Switch to Gemma] in popover; consumed by next chat/send
     FGuid CurrentConversationId;  // default on first-ever editor launch; Plan 12b drawer overwrites via OpenConversation
+    // L5 from PR #2 follow-up: switched FNyraSupervisor delegates to
+    // multi-cast. Each panel records its own subscription handle and
+    // removes only that handle on destruction so a second panel does
+    // not clobber the first.
     FDelegateHandle NotificationHandle;
+    FDelegateHandle StateChangedHandle;
+    FDelegateHandle UnstableHandle;
 };

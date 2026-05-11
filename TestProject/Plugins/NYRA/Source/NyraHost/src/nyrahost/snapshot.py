@@ -146,9 +146,21 @@ def export_snapshot(
         if crashes_root.exists():
             for log_path in crashes_root.rglob("*.log"):
                 rel = log_path.relative_to(crashes_root)
+                # L1: refuse arc names containing ".." or absolute parts —
+                # a crafted log filename or symlinked crash subdir could
+                # otherwise escape the `crash_logs/` prefix when extracted
+                # by a tool that resolves `..` in archive entries.
+                rel_parts = rel.parts
+                if any(p in ("..", "") for p in rel_parts) or rel.is_absolute():
+                    log.warning(
+                        "snapshot_skipped_unsafe_arcname",
+                        rel=str(rel),
+                    )
+                    continue
                 blob = _safe_read_bytes(log_path)
                 if blob:
-                    zf.writestr(f"crash_logs/{rel}", blob)
+                    arc = "crash_logs/" + "/".join(rel_parts)
+                    zf.writestr(arc, blob)
                     entries += 1
                 if buf.tell() > MAX_SNAPSHOT_BYTES:
                     log.warning("snapshot_max_size_hit",
@@ -156,9 +168,24 @@ def export_snapshot(
                                 bytes=buf.tell())
                     break
 
-        # Caller-supplied extras (e.g. recent UE Saved/Logs tail)
+        # Caller-supplied extras (e.g. recent UE Saved/Logs tail).
+        # L1: the caller composes `name`; refuse the same unsafe-arc
+        # patterns so an LLM-driven extras handoff cannot pop out of
+        # `extras/`. The slim conformant shape is bare-filename or
+        # `subdir/file`.
         for name, blob in (extra_files or {}).items():
-            zf.writestr(f"extras/{name}", blob)
+            if not isinstance(name, str) or not name:
+                continue
+            normalized = name.replace("\\", "/")
+            parts = [p for p in normalized.split("/") if p]
+            if any(p == ".." for p in parts) or normalized.startswith("/"):
+                log.warning(
+                    "snapshot_skipped_unsafe_extras_name",
+                    name=name,
+                )
+                continue
+            arc = "extras/" + "/".join(parts)
+            zf.writestr(arc, blob)
             entries += 1
 
     payload = buf.getvalue()

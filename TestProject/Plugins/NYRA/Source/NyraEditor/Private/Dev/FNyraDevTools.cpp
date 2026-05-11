@@ -242,13 +242,12 @@ FNyraBenchResult FNyraDevTools::RunRoundTripBench(int32 Count, const FString& Pr
         return Result;
     }
 
-    // Subscribe to chat/stream notifications for the bench window. Plan
-    // 10's OnNotification is a single-consumer delegate (DECLARE_DELEGATE_*,
-    // not multicast); binding BenchHandleNotification here temporarily
-    // displaces the panel's HandleNotification. We restore it to unbound
-    // on bench exit -- the panel can rebind on next supervisor event.
+    // Subscribe to chat/stream notifications for the bench window. L5:
+    // OnNotification is now a multicast delegate, so we Add our own
+    // subscription and remove just that handle on bench exit — the
+    // panel's HandleNotification subscription is unaffected.
     FNyraSupervisor* Sup = GNyraSupervisor.Get();
-    Sup->OnNotification.BindStatic(&BenchHandleNotification);
+    FDelegateHandle BenchHandle = Sup->OnNotification.AddStatic(&BenchHandleNotification);
 
     TArray<double> FirstTokenSamples;
     TArray<double> TotalSamples;
@@ -339,9 +338,9 @@ FNyraBenchResult FNyraDevTools::RunRoundTripBench(int32 Count, const FString& Pr
             GCurrentRound.MaxTickMs, GCurrentRound.FrameCount);
     }
 
-    // Unbind our notification handler. Single-consumer delegate returns to
-    // unbound state; the panel's HandleNotification can re-bind as usual.
-    Sup->OnNotification.Unbind();
+    // L5: remove only our bench subscription; other panels' OnNotification
+    // handles remain active (multicast delegate).
+    Sup->OnNotification.Remove(BenchHandle);
 
     // BL-02: now that the loop has run, set Result.N to the authoritative
     // completion count (the size of the per-round samples array). Anything

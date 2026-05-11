@@ -22,7 +22,10 @@ public class NyraEditor : ModuleRules
             "InputCore",
             "Slate",
             "SlateCore",
-            "EditorStyle",
+            // L6 from PR #2 follow-up: dropped "EditorStyle" — UE 5.x
+            // routes editor styling through `FAppStyle`, not the legacy
+            // EditorStyle module, and no NyraEditor source includes
+            // EditorStyleSet.h after the cleanup pass.
             "EditorSubsystem",
             "UnrealEd",
             "ToolMenus",

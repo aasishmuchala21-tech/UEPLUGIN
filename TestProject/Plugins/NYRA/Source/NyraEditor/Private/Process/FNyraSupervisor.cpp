@@ -29,7 +29,7 @@ FNyraSupervisor::~FNyraSupervisor() = default;
 void FNyraSupervisor::SetState(ENyraSupervisorState NewState)
 {
     State = NewState;
-    OnStateChanged.ExecuteIfBound(NewState);
+    OnStateChanged.Broadcast(NewState);   // L5: multi-cast — every subscribed panel sees the change.
 }
 
 void FNyraSupervisor::SpawnAndConnect(const FString& InProjectDir, const FString& InPluginDir, const FString& InLogDir)
@@ -152,7 +152,7 @@ void FNyraSupervisor::PerformSpawn()
         });
         WsClient.OnNotification.BindLambda([this](const FNyraJsonRpcEnvelope& E)
         {
-            OnNotification.ExecuteIfBound(E);
+            OnNotification.Broadcast(E);   // L5: multi-cast — every panel receives the envelope.
         });
         WsClient.OnResponse.BindLambda([this](const FNyraJsonRpcEnvelope& E)
         {
@@ -185,7 +185,7 @@ void FNyraSupervisor::RecordCrashAndMaybeRestart()
         UE_LOG(LogNyra, Error, TEXT("[NYRA] NyraHost unstable: %d crashes in %.0fs window"),
                CrashTimestamps.Num(), CRASH_WINDOW_S);
         SetState(ENyraSupervisorState::Unstable);
-        OnUnstable.ExecuteIfBound();
+        OnUnstable.Broadcast();   // L5: multi-cast — every panel updates its banner.
         return;
     }
 

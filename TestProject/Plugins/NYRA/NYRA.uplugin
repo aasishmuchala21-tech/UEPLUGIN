@@ -10,7 +10,7 @@
     "DocsURL": "https://nyra.ai/docs",
     "MarketplaceURL": "",
     "SupportURL": "https://nyra.ai/support",
-    "EngineVersion": "5.6.0",
+    "EngineVersion": "5.4.0",
     "CanContainContent": false,
     "IsBetaVersion": true,
     "IsExperimentalVersion": false,

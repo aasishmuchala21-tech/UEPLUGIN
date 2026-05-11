@@ -43,7 +43,7 @@ void FNyraSupervisorSpec::Define()
             TSharedRef<INyraClock> Adapter = MakeShared<FTestClockAdapter>(Clock);
             FNyraSupervisor Sup(Adapter);
             bool bUnstableFired = false;
-            Sup.OnUnstable.BindLambda([&]() { bUnstableFired = true; });
+            Sup.OnUnstable.AddLambda([&]() { bUnstableFired = true; });   // L5: multi-cast Add*
 
             // Crash 1 at t=0, Crash 2 at t=20, Crash 3 at t=40 -- all within 60s window.
             Clock.Set(0.0);
@@ -64,7 +64,7 @@ void FNyraSupervisorSpec::Define()
             TSharedRef<INyraClock> Adapter = MakeShared<FTestClockAdapter>(Clock);
             FNyraSupervisor Sup(Adapter);
             bool bUnstableFired = false;
-            Sup.OnUnstable.BindLambda([&]() { bUnstableFired = true; });
+            Sup.OnUnstable.AddLambda([&]() { bUnstableFired = true; });   // L5: multi-cast Add*
 
             Clock.Set(0.0);   Sup.SimulateCrashForTest();   // entry [0]
             Clock.Set(70.0);  Sup.SimulateCrashForTest();   // evicts t=0 -> count=1

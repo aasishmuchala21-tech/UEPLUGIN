@@ -103,7 +103,10 @@ class TestParseMarkdown:
             parsed = gate.parse_plan_markdown(body)
             return parsed
 
-        parsed = asyncio.get_event_loop().run_until_complete(_go())
+        # Python 3.12+ removed the implicit thread event loop;
+        # asyncio.get_event_loop() raises RuntimeError. asyncio.run
+        # creates and tears down its own loop.
+        parsed = asyncio.run(_go())
         assert parsed is not None
         assert parsed.plan_id == "rt-001"
         assert len(parsed.steps) == 2
