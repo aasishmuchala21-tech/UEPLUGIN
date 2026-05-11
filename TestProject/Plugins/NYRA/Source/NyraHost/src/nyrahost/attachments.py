@@ -124,12 +124,10 @@ def ingest_attachment(
     on disk (content-addressed dedup).
     """
     # BL-03: agent-controlled `attachments` field can hand-pick paths via
-    # the WS request. Reject symlinks at any depth (resolve(strict=True))
-    # and blocklist sensitive parent prefixes (~/.ssh/, /etc/, /root/,
-    # C:\Windows\, C:\Users\Default\). The bytes will still be content-
-    # hashed to the addressable shard, but the *source* must not let
-    # an LLM pick `~/.ssh/id_rsa` and have those bytes land in a
-    # predictable shard path that's also referenced from the SQLite DB.
+    # the WS request. Reject symlinks at the leaf and blocklist sensitive
+    # prefixes on the FULLY-RESOLVED real path so a chain like
+    # `~/sneaky -> /etc/passwd` is caught by the blocklist below regardless
+    # of which intermediate parent symlinks were traversed.
     try:
         src_resolved = src_path.resolve(strict=True)
     except FileNotFoundError:
@@ -138,11 +136,14 @@ def ingest_attachment(
         raise ValueError(
             f"Symlinked attachment paths are not permitted: {src_path}"
         )
-    for parent in src_path.parents:
-        if parent.is_symlink():
-            raise ValueError(
-                f"Attachment path contains symlinked parent {parent}; rejected."
-            )
+    # Note: the previous version of this guard also walked every parent
+    # of the *unresolved* src_path and refused if any was a symlink.
+    # That was redundant — `resolve(strict=True)` already follows the
+    # entire chain and the prefix blocklist runs against the resolved
+    # path, so a sneaky symlink chain into /etc/ or ~/.ssh/ is caught.
+    # The unresolved-parent check falsely rejected legitimate macOS
+    # paths because /tmp itself is a symlink to /private/tmp; users
+    # writing tempfiles under /tmp could not attach them.
     abs_lower = str(src_resolved).lower().replace("\\", "/")
     _PATH_BLOCKLIST = (
         "/etc/",
