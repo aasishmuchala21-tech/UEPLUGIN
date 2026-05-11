@@ -89,10 +89,12 @@ def test_timeline_compiles():
 
 
 def test_timeline_handler_rejects_unknown_track_kind():
+    # Phase 19-G opened ALLOWED_TRACK_KINDS to all 4 Aura kinds (float, vector,
+    # linear_color, event). Use a kind that's still unsupported.
     out = asyncio.run(tt.on_add_timeline({
         "blueprint_path": "/Game/BP",
         "track_name": "X",
-        "track_kind": "vector",  # not in v0
+        "track_kind": "quaternion",  # still not allowed
     }))
     assert out["error"]["code"] == -32602
 

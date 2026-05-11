@@ -70,12 +70,107 @@ def main(spec_json: str):
             bp_path, track_name, keyframes,
             autoplay=autoplay, loop=loop, duration=duration,
         )
-    # vector / linear-color / event paths defer to v1.1 — they require
-    # different curve asset types and a slightly different K2 node call.
-    raise NotImplementedError(
-        f"track_kind={track_kind!r} not yet supported in v0; "
-        "float tracks land first per Aura's own roadmap ordering"
-    )
+    if track_kind == "vector":
+        return add_vector_track(
+            bp_path, track_name, keyframes,
+            autoplay=autoplay, loop=loop, duration=duration,
+        )
+    if track_kind == "linear_color":
+        return add_linear_color_track(
+            bp_path, track_name, keyframes,
+            autoplay=autoplay, loop=loop, duration=duration,
+        )
+    if track_kind == "event":
+        return add_event_track(
+            bp_path, track_name, keyframes,
+            autoplay=autoplay, loop=loop, duration=duration,
+        )
+    raise ValueError(f"unsupported track_kind: {track_kind!r}")
+
+
+def _make_curve_vector(name: str, kf_pairs: list[list],
+                       asset_path: str = "/Game/NYRA/Curves") -> unreal.CurveVector:
+    at = unreal.AssetToolsHelpers.get_asset_tools()
+    curve = at.create_asset(name, asset_path,
+                            unreal.CurveVector, unreal.CurveVectorFactory())
+    for t, vx, vy, vz in kf_pairs:
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[0], t, vx)
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[1], t, vy)
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[2], t, vz)
+    return curve
+
+
+def _make_curve_linear_color(name: str, kf_pairs: list[list],
+                              asset_path: str = "/Game/NYRA/Curves"
+                              ) -> unreal.CurveLinearColor:
+    at = unreal.AssetToolsHelpers.get_asset_tools()
+    curve = at.create_asset(name, asset_path,
+                            unreal.CurveLinearColor,
+                            unreal.CurveLinearColorFactory())
+    for t, r, g, b, a in kf_pairs:
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[0], t, r)
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[1], t, g)
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[2], t, b)
+        unreal.FloatCurveKeysLibrary.add_key(curve.float_curves[3], t, a)
+    return curve
+
+
+def add_vector_track(bp_path: str, track_name: str,
+                     keyframes: list[list], *, autoplay: bool, loop: bool,
+                     duration: float | None) -> str:
+    bp = unreal.load_asset(bp_path)
+    if bp is None:
+        raise ValueError(f"blueprint not found: {bp_path}")
+    curve = _make_curve_vector(f"NyraCurveV_{track_name}", keyframes)
+    timeline = unreal.K2Node_Timeline()
+    timeline.set_editor_property("timeline_name", track_name)
+    timeline.set_editor_property("auto_play", bool(autoplay))
+    timeline.set_editor_property("loop_play", bool(loop))
+    if duration is not None:
+        timeline.set_editor_property("length", float(duration))
+    if hasattr(timeline, "add_track"):
+        timeline.add_track(curve, track_name)
+    print(f"NYRA: added vector Timeline track '{track_name}' to {bp_path}")
+    return bp.get_path_name()
+
+
+def add_linear_color_track(bp_path: str, track_name: str,
+                            keyframes: list[list], *, autoplay: bool, loop: bool,
+                            duration: float | None) -> str:
+    bp = unreal.load_asset(bp_path)
+    if bp is None:
+        raise ValueError(f"blueprint not found: {bp_path}")
+    curve = _make_curve_linear_color(f"NyraCurveC_{track_name}", keyframes)
+    timeline = unreal.K2Node_Timeline()
+    timeline.set_editor_property("timeline_name", track_name)
+    timeline.set_editor_property("auto_play", bool(autoplay))
+    timeline.set_editor_property("loop_play", bool(loop))
+    if duration is not None:
+        timeline.set_editor_property("length", float(duration))
+    if hasattr(timeline, "add_track"):
+        timeline.add_track(curve, track_name)
+    print(f"NYRA: added linear-color Timeline track '{track_name}' to {bp_path}")
+    return bp.get_path_name()
+
+
+def add_event_track(bp_path: str, track_name: str,
+                     keyframes: list[list], *, autoplay: bool, loop: bool,
+                     duration: float | None) -> str:
+    bp = unreal.load_asset(bp_path)
+    if bp is None:
+        raise ValueError(f"blueprint not found: {bp_path}")
+    timeline = unreal.K2Node_Timeline()
+    timeline.set_editor_property("timeline_name", track_name)
+    timeline.set_editor_property("auto_play", bool(autoplay))
+    timeline.set_editor_property("loop_play", bool(loop))
+    if duration is not None:
+        timeline.set_editor_property("length", float(duration))
+    # Event tracks store keyframes as event times (no curve asset).
+    if hasattr(timeline, "add_event_track"):
+        for kf in keyframes:
+            timeline.add_event_track(track_name, float(kf[0]))
+    print(f"NYRA: added event Timeline track '{track_name}' with {len(keyframes)} markers")
+    return bp.get_path_name()
 
 
 main('''${SPEC_JSON}''')

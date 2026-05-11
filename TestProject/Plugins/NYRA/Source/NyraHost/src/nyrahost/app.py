@@ -81,6 +81,11 @@ from .snapshot import SnapshotHandlers
 from .recovery import RecoveryHandlers, RecoveryStore
 from .handlers.settings_aggregator import SettingsAggregatorHandlers
 from .i18n_catalog import on_catalog as on_i18n_catalog
+# Phase 19 — Aura-killer final push.
+from .tools.audio_gen import on_generate_sfx
+from .tools.fab_search import FabSearchClient, FabSearchHandlers
+from .tools.character_replace import on_replace_player
+from .handlers.todos import TodosHandlers, TodosStore
 from .audit import AuditLog
 from .infer.router import InferRouter
 from .router import NyraRouter
@@ -291,6 +296,12 @@ async def build_and_run(
     recovery_handlers = RecoveryHandlers(RecoveryStore(project_dir=project_dir))
 
     # Phase 18-D — settings/all aggregator.
+    # Phase 19-B Fab Store search.
+    fab_search_handlers = FabSearchHandlers()
+
+    # Phase 19-I todo list MCP tools.
+    todos_handlers = TodosHandlers(TodosStore(project_dir=project_dir))
+
     settings_aggregator = SettingsAggregatorHandlers(
         instructions=instructions_handlers,
         model=model_settings_handlers,
@@ -492,6 +503,13 @@ async def build_and_run(
         server.register_request("recovery/dismiss", recovery_handlers.on_dismiss)
         server.register_request("settings/all", settings_aggregator.on_all)
         server.register_request("i18n/catalog", on_i18n_catalog)
+        # Phase 19 — Aura-killer final push.
+        server.register_request("audio_gen/sfx", on_generate_sfx)
+        server.register_request("fab/search", fab_search_handlers.on_search)
+        server.register_request("character/replace", on_replace_player)
+        server.register_request("todos/create", todos_handlers.on_create)
+        server.register_request("todos/edit", todos_handlers.on_edit)
+        server.register_request("todos/list", todos_handlers.on_list_all)
         # Phase 2 (Plans 02-06/08): new handlers appended below
         # Plan 02-06: session/set-mode (Privacy Mode toggle)
         server.register_request("session/set-mode", session_mode_handler.on_set_mode)

@@ -74,6 +74,9 @@ def list_targets() -> list[IDETarget]:
                       appdata / "Code" / "User" / "mcp.json"),
             IDETarget("rider",        "JetBrains Rider",
                       home / ".rider-mcp.json"),
+            # Phase 19-I — JetBrains AI Assistant (Junie) parity per Aura.
+            IDETarget("junie",        "JetBrains Junie",
+                      appdata / "JetBrains" / "Junie" / "mcp.json"),
         ]
     # POSIX (macOS / Linux)
     return [
@@ -85,6 +88,8 @@ def list_targets() -> list[IDETarget]:
                   home / ".config" / "Code" / "User" / "mcp.json"),
         IDETarget("rider",       "JetBrains Rider",
                   home / ".rider-mcp.json"),
+        IDETarget("junie",       "JetBrains Junie",
+                  home / ".config" / "JetBrains" / "Junie" / "mcp.json"),
     ]
 
 

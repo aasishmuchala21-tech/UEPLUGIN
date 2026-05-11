@@ -113,7 +113,16 @@ class MeshyClient:
         image_path: str,
         task_type: str = "meshy-image-to-3d-reMeshed",
         prompt: str = "",
+        *,
+        low_poly: bool = False,
+        target_polycount: int | None = None,
     ) -> MeshyTaskResult:
+        """Image-to-3D with optional smart low-poly (Phase 19-D).
+
+        ``low_poly=True`` sets ``target_polycount=1500`` (Aura's "smart
+        low poly" default heuristic — fits inside UE's draw-call budget
+        for low-LOD props). Caller can override via ``target_polycount``.
+        """
         """Submit an image-to-3D task and poll until completion.
 
         Raises:
@@ -132,6 +141,16 @@ class MeshyClient:
             data = {"task_type": task_type}
             if prompt:
                 data["prompt"] = prompt
+            # Phase 19-D smart low-poly. Meshy accepts ``target_polycount``
+            # as a soft hint; values < 500 produce visible artifacts in
+            # practice so we floor at 500.
+            effective_polycount: int | None = None
+            if low_poly:
+                effective_polycount = 1500 if target_polycount is None else max(500, int(target_polycount))
+            elif target_polycount is not None:
+                effective_polycount = max(500, int(target_polycount))
+            if effective_polycount is not None:
+                data["target_polycount"] = str(effective_polycount)
 
             resp = await self._request(
                 "POST",

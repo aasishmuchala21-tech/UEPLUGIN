@@ -24,7 +24,7 @@ ERR_BAD_INPUT: Final[int] = -32602
 ERR_TIMELINE_FAILED: Final[int] = -32053
 
 ALLOWED_TRACK_KINDS: Final[frozenset[str]] = frozenset(
-    {"float"}  # v0; vector/linear-color/event in v1.1
+    {"float", "vector", "linear_color", "event"}  # all 4 — Phase 19-G
 )
 
 TEMPLATE_PATH: Final[Path] = (

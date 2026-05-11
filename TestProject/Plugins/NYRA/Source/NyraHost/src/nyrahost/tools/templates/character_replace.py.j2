@@ -1,0 +1,92 @@
+# NYRA Phase 19-E — Replace player character preserving anims.
+# Aura ships this as a single chat command. NYRA's flow:
+#   1. Find the GameMode's Default Pawn class (or PlayerStart)
+#   2. Replace the SkeletalMeshComponent's skeletal mesh reference
+#   3. Retarget the UE Mannequin AnimBlueprint onto the new skeleton
+#      via IKRetargetBatchOperation (P9 RIG-02 reuse).
+#
+# Verified against:
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/EditorAssetLibrary
+#   https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/IKRetargetBatchOperation
+
+import json
+
+import unreal
+
+
+def find_player_pawn_class():
+    """Inspect the GameMode and return the DefaultPawnClass UE asset."""
+    world = unreal.UnrealEditorSubsystem().get_editor_world()
+    gm_settings = world.get_world_settings()
+    gm_class = gm_settings.get_editor_property("default_game_mode")
+    if gm_class is None:
+        # No project GameMode set; fall back to scanning BP_*Character.
+        return None
+    default_pawn = gm_class.get_default_object().get_editor_property("default_pawn_class")
+    return default_pawn
+
+
+def find_skel_mesh_component(actor_class) -> unreal.SkeletalMeshComponent | None:
+    """Return the first SkeletalMeshComponent on the actor blueprint."""
+    if actor_class is None:
+        return None
+    cdo = actor_class.get_default_object()
+    for prop in cdo.get_editor_property("components_to_attach") or []:
+        if isinstance(prop, unreal.SkeletalMeshComponent):
+            return prop
+    return None
+
+
+def main(spec_json: str):
+    spec = json.loads(spec_json)
+    new_mesh_path = spec["new_mesh_path"]
+    rig_path = spec.get("rig_path", "/Game/NYRA/Rigs/IK_NYRA_Auto")
+    retargeter_path = spec.get("retargeter_path", "/Game/NYRA/Rigs/RTG_Mannequin_to_NYRA")
+    out_path = spec.get("out_path", "/Game/NYRA/Retargeted")
+
+    new_mesh = unreal.load_asset(new_mesh_path)
+    if new_mesh is None:
+        raise ValueError(f"new_mesh_path not found: {new_mesh_path}")
+
+    # Step 1: locate the player pawn class.
+    pawn_class = find_player_pawn_class()
+    if pawn_class is None:
+        raise RuntimeError(
+            "No GameMode.DefaultPawnClass set on the current World. "
+            "Pick a player pawn manually and run rigging/retarget directly."
+        )
+
+    # Step 2: swap the skeletal mesh reference on the CDO. UE Python's
+    # set_editor_property auto-marks the BP dirty.
+    skel_comp = find_skel_mesh_component(pawn_class)
+    if skel_comp is None:
+        raise RuntimeError(
+            f"No SkeletalMeshComponent found on {pawn_class.get_path_name()}; "
+            "the player pawn must have one for replacement to apply."
+        )
+    old_mesh = skel_comp.get_editor_property("skeletal_mesh")
+    skel_comp.set_editor_property("skeletal_mesh", new_mesh)
+    print(f"NYRA: swapped {old_mesh and old_mesh.get_path_name()} -> "
+          f"{new_mesh.get_path_name()}")
+
+    # Step 3: kick off Phase 9 RIG-02 retarget so anims still play.
+    retargeter = unreal.load_asset(retargeter_path)
+    if retargeter is not None and old_mesh is not None:
+        anim_lib = unreal.AssetRegistryHelpers.get_asset_registry()
+        anim_assets = [
+            a.get_asset() for a in anim_lib.get_assets_by_class("AnimSequence")
+            if a.get_asset().get_skeleton() == old_mesh.skeleton
+        ]
+        if anim_assets:
+            unreal.IKRetargetBatchOperation.duplicate_and_retarget(
+                anim_assets, old_mesh, new_mesh, retargeter,
+                suffix="_NYRA", remap_referenced_assets=True,
+            )
+            print(f"NYRA: retargeted {len(anim_assets)} anims onto {new_mesh.get_path_name()}")
+        else:
+            print("NYRA: no AnimSequence assets to retarget")
+    else:
+        print(f"NYRA: retargeter {retargeter_path} not found — skipping anim retarget")
+
+
+main('''${SPEC_JSON}''')
