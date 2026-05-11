@@ -47,6 +47,16 @@ class SNyraHistoryDrawer;
 class SNyraBanner;              // Plan 13: first-run UX banner states
 class SNyraDownloadModal;       // Plan 13: Gemma download progress modal
 class SNyraDiagnosticsDrawer;   // Plan 13: on-demand log tail drawer
+// R4.C1 fix from the full-codebase review: these three forward-decls
+// MUST be at file scope, not inside the SNyraChatPanel class body. Inside
+// the class body, `class Foo;` declares the nested type
+// `SNyraChatPanel::Foo`, leaving the private `TSharedPtr<Foo>` members
+// typed as nested-class pointers that are incompatible with the real
+// file-scope `::Foo` types the .cpp constructs via `SAssignNew`. The
+// plugin will not compile until these are hoisted.
+class SNyraBackendStatusStrip;  // Plan 02-12: status pill strip
+class SNyraModeToggle;          // Phase 12-D: Aura-parity Ask/Plan/Agent toggle
+class SNyraModelSelector;       // Phase 12-D: per-conversation Claude model pin
 
 /** Fired after SNyraChatPanel::OpenConversation completes so the history
  *  drawer (Plan 12b) can sync its selection highlight. */
@@ -83,10 +93,6 @@ public:
     /** Fired after OpenConversation completes. Plan 12b's history drawer
      *  binds this to update its selection highlight. */
     FOnConversationSelected OnConversationSelected;
-
-class SNyraBackendStatusStrip;  // Plan 02-12: status pill strip
-class SNyraModeToggle;            // Phase 12-D: Aura-parity Ask/Plan/Agent toggle
-class SNyraModelSelector;        // Phase 12-D: per-conversation Claude model pin
 
 private:
     void OnComposerSubmit(const FString& Text, const TArray<FNyraAttachmentRef>& Attachments);
