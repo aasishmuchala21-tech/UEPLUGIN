@@ -83,13 +83,32 @@ def _set_owner_only_perms(path: Path) -> None:
 
 
 def _ensure_key(project_dir: Path) -> bytes:
-    """Return the symmetric key for this project, creating one if absent."""
+    """Return the symmetric key for this project, creating one if absent.
+
+    R2.I5 fix from the full-codebase review: close the TOCTOU window
+    between the .exists() check and the write_bytes(). Two concurrent
+    NyraHost processes for the same project (e.g., a crash-restart
+    while the previous process is still initialising, or a future
+    multiplayer scenario) could both pass the exists() check and then
+    both write — the second one overwrites the first, silently
+    corrupting every Fernet token encrypted with the first key.
+
+    Atomic exclusive-create: ``open(..., 'xb')`` raises FileExistsError
+    if another process created it between our exists() check and the
+    open call. We catch that and fall back to reading whatever the
+    other process wrote.
+    """
     key_path = _key_path(project_dir)
     if key_path.exists():
         return key_path.read_bytes().strip()
     key_path.parent.mkdir(parents=True, exist_ok=True)
     k = Fernet.generate_key()
-    key_path.write_bytes(k)
+    try:
+        with open(key_path, "xb") as f:
+            f.write(k)
+    except FileExistsError:
+        # Lost the race — another process wrote first. Use their key.
+        return key_path.read_bytes().strip()
     _set_owner_only_perms(key_path)
     log.info("memory_key_created", path=str(key_path))
     return k

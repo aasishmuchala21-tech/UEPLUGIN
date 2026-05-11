@@ -242,18 +242,27 @@ class SnapshotHandlers:
         target = self._project_dir / "Saved" / "NYRA" / SNAPSHOTS_DIRNAME
         if not target.exists():
             return {"snapshots": []}
-        out = []
-        for p in sorted(target.glob("*.zip"), key=lambda x: x.stat().st_mtime, reverse=True):
+        # R3.I1 fix from the full-codebase review: previously this called
+        # p.stat() twice per file — once inside the sort key lambda and
+        # again inside the loop. Cache it once. Bonus: caching closes the
+        # TOCTOU window where the file could be deleted between the two
+        # stat calls.
+        cached: list[tuple[Path, "os.stat_result"]] = []
+        for p in target.glob("*.zip"):
             try:
-                stat = p.stat()
-                out.append({
-                    "snapshot_id": p.stem,
-                    "path": str(p),
-                    "bytes": stat.st_size,
-                    "created_at": stat.st_mtime,
-                })
+                cached.append((p, p.stat()))
             except OSError:
                 continue
+        cached.sort(key=lambda pair: pair[1].st_mtime, reverse=True)
+        out = [
+            {
+                "snapshot_id": p.stem,
+                "path": str(p),
+                "bytes": st.st_size,
+                "created_at": st.st_mtime,
+            }
+            for (p, st) in cached
+        ]
         return {"snapshots": out}
 
 

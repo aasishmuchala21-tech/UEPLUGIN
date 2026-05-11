@@ -123,19 +123,23 @@ class MeshyClient:
         low_poly: bool = False,
         target_polycount: int | None = None,
     ) -> MeshyTaskResult:
-        """Image-to-3D with optional smart low-poly (Phase 19-D).
+        """Submit an image-to-3D task and poll until completion (Phase 19-D smart low-poly).
 
         ``low_poly=True`` sets ``target_polycount=1500`` (Aura's "smart
         low poly" default heuristic — fits inside UE's draw-call budget
         for low-LOD props). Caller can override via ``target_polycount``.
-        """
-        """Submit an image-to-3D task and poll until completion.
 
         Raises:
             MeshyAuthError: invalid/missing API key
             MeshyRateLimitError: HTTP 429 response
             MeshyAPIError: non-retryable API error
             MeshyTimeoutError: job exceeded self._timeout seconds
+
+        R1.I5 fix from the full-codebase review: merged a duplicate
+        docstring left over from a Phase 19-D merge. The original
+        raises-block was in a dead string literal beneath the new
+        Phase-19-D docstring, so help(image_to_3d) was missing the
+        exception list.
         """
         image_bytes = Path(image_path).read_bytes()
 
@@ -191,7 +195,15 @@ class MeshyClient:
                 if task_status == "completed":
                     model_urls = status_resp.get("model_urls", {})
                     glb_url = model_urls.get("glb") or model_urls.get("model_url")
-                    log.info("meshy_task_completed", task_id=task_id, glb_url=glb_url)
+                    # R2.I1 fix from the full-codebase review: strip the
+                    # query string before logging — Meshy returns
+                    # pre-signed S3 URLs that contain X-Amz-Signature
+                    # tokens. Logging the raw URL leaked a short-lived
+                    # capability token into the audit JSONL.
+                    safe_glb_url = (
+                        glb_url.split("?", 1)[0] if glb_url else None
+                    )
+                    log.info("meshy_task_completed", task_id=task_id, glb_url=safe_glb_url)
                     return MeshyTaskResult(
                         task_id=task_id,
                         status="completed",

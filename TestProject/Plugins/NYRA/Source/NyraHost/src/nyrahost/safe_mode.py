@@ -208,9 +208,15 @@ class NyraPermissionGate:
 
         Returns the decision dict once plan/decision arrives.
         Raises asyncio.TimeoutError if timeout elapses.
+
+        R1.I1 fix from the full-codebase review: previously, if plan_id
+        wasn't in _futures, the code re-keyed to str(uuid.uuid4()) and
+        waited on THAT future — which nobody could ever resolve because
+        approve(real_plan_id) wouldn't match the random UUID. The 300s
+        timeout was guaranteed for any caller that hit this path. Now
+        we just create the future under the caller's plan_id so
+        approve(plan_id) does match.
         """
-        if plan_id not in self._futures:
-            plan_id = str(uuid.uuid4())  # Auto-generate for new preview
         future = self._futures.get(plan_id)
         if future is None:
             # Auto-create future for new plan
