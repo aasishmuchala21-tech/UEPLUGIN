@@ -81,7 +81,19 @@ void FNyraEditorModule::StartupModule()
 
     // Plan 10: D-04 eager spawn NyraHost on editor start (AFTER tab registration).
     GNyraSupervisor = MakeUnique<FNyraSupervisor>();
-    const FString PluginDir  = IPluginManager::Get().FindPlugin(TEXT("NYRA"))->GetBaseDir();
+    // R4.C3 fix from the full-codebase review: FindPlugin can return null in
+    // some packaging configurations (project plugin dropped into a different
+    // engine install, certain cook/stage modes). Without this guard, the
+    // dereference crashes the editor on module load before any NYRA code runs.
+    TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("NYRA"));
+    if (!Plugin.IsValid())
+    {
+        UE_LOG(LogNyra, Error,
+               TEXT("[NYRA] Plugin descriptor not found via IPluginManager — "
+                    "supervisor will not spawn. NyraHost features unavailable."));
+        return;
+    }
+    const FString PluginDir  = Plugin->GetBaseDir();
     const FString ProjectDir = FPaths::ProjectDir();
     const FString LogDir     = FPaths::Combine(ProjectDir, TEXT("Saved"), TEXT("NYRA"), TEXT("logs"));
     GNyraSupervisor->SpawnAndConnect(ProjectDir, PluginDir, LogDir);
