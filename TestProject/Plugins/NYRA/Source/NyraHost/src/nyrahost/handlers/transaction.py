@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 
-from nyrahost.transaction import NyraTransactionManager
+from nyrahost.transaction import NyraTransactionManager, PIEActiveError
 
 log = structlog.get_logger("nyrahost.handlers.transaction")
 
@@ -16,14 +16,24 @@ class TransactionHandlers:
         self._tx = tx_manager
 
     async def on_transaction_begin(self, params: dict) -> dict:
-        """Handle transaction/begin request — creates a super-transaction."""
+        """Handle transaction/begin request — creates a super-transaction.
+
+        R1.C2 fix from the full-codebase review: use the non-context-manager
+        ``NyraTransactionManager.begin()`` entrypoint. The previous
+        ``await self._tx.begin_transaction(...)`` would always raise
+        TypeError because @asynccontextmanager returns a non-awaitable
+        _AsyncGeneratorContextManager. The entire transaction subsystem
+        was non-functional.
+        """
         session_id = params.get("session_id", "")
         parent_id = params.get("parent_id")
         if not session_id:
             return {"error": {"code": -32602, "message": "missing session_id"}}
 
-        # begin_transaction is an async context manager
-        tx = await self._tx.begin_transaction(session_id, parent_id)
+        try:
+            tx = await self._tx.begin(session_id, parent_id)
+        except PIEActiveError as exc:
+            return {"error": {"code": -32014, "message": "pie_active", "data": {"detail": str(exc)}}}
         return {
             "transaction_id": tx.id,
             "super_transaction_id": tx.super_transaction_id,

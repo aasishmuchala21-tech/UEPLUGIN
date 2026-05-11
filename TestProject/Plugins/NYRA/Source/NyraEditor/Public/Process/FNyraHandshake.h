@@ -45,6 +45,11 @@ DECLARE_DELEGATE(FOnHandshakeTimeout);
 class NYRAEDITOR_API FNyraHandshake
 {
 public:
+    /** R4.C2 fix from the full-codebase review: ensure the FTSTicker
+     *  registered by BeginPolling cannot fire into a freed FNyraHandshake.
+     *  CancelPolling is idempotent and a no-op when not polling. */
+    ~FNyraHandshake();
+
     /** Start polling for handshake-<EditorPid>.json in HandshakeDir. */
     void BeginPolling(const FString& InHandshakeDir, int32 InEditorPid);
 

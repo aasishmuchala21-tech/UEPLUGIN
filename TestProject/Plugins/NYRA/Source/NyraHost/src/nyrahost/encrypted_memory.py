@@ -83,13 +83,32 @@ def _set_owner_only_perms(path: Path) -> None:
 
 
 def _ensure_key(project_dir: Path) -> bytes:
-    """Return the symmetric key for this project, creating one if absent."""
+    """Return the symmetric key for this project, creating one if absent.
+
+    R2.I5 fix from the full-codebase review: close the TOCTOU window
+    between the .exists() check and the write_bytes(). Two concurrent
+    NyraHost processes for the same project (e.g., a crash-restart
+    while the previous process is still initialising, or a future
+    multiplayer scenario) could both pass the exists() check and then
+    both write — the second one overwrites the first, silently
+    corrupting every Fernet token encrypted with the first key.
+
+    Atomic exclusive-create: ``open(..., 'xb')`` raises FileExistsError
+    if another process created it between our exists() check and the
+    open call. We catch that and fall back to reading whatever the
+    other process wrote.
+    """
     key_path = _key_path(project_dir)
     if key_path.exists():
         return key_path.read_bytes().strip()
     key_path.parent.mkdir(parents=True, exist_ok=True)
     k = Fernet.generate_key()
-    key_path.write_bytes(k)
+    try:
+        with open(key_path, "xb") as f:
+            f.write(k)
+    except FileExistsError:
+        # Lost the race — another process wrote first. Use their key.
+        return key_path.read_bytes().strip()
     _set_owner_only_perms(key_path)
     log.info("memory_key_created", path=str(key_path))
     return k
@@ -118,15 +137,25 @@ def _atomic_write(path: Path, data: bytes) -> None:
 
 @dataclass
 class EncryptedMemory:
-    """Per-project encrypted scratch store. Treated as a free-form dict."""
+    """Per-project encrypted scratch store. Treated as a free-form dict.
+
+    R3.C2 fix from the full-codebase review: cache the decrypted dict in
+    memory between operations so set_key / get_key / delete_key don't
+    each do a full Fernet decrypt + JSON parse + re-encrypt + fsync
+    round-trip. Three consecutive agent-loop set_key calls now perform
+    one decrypt (first load) and three encrypts (one per save) instead
+    of three decrypts and three encrypts.
+    """
 
     project_dir: Path
 
     def __post_init__(self) -> None:
         self._key = _ensure_key(self.project_dir)
         self._cipher = Fernet(self._key)
+        self._cache: dict | None = None   # R3.C2 — None means cold
 
-    def load(self) -> dict:
+    def _cold_load(self) -> dict:
+        """Decrypt the on-disk blob into a fresh dict. Never consults the cache."""
         path = _memory_path(self.project_dir)
         if not path.exists():
             return {}
@@ -141,6 +170,18 @@ class EncryptedMemory:
             return {}
         return data
 
+    def load(self) -> dict:
+        """Return the decrypted store. Cached after the first call.
+
+        Callers must not mutate the returned dict in-place — use
+        set_key / delete_key / save. The dict is a live view of the
+        cache, not a copy, so external mutation would silently bypass
+        the encrypt-and-write step.
+        """
+        if self._cache is None:
+            self._cache = self._cold_load()
+        return self._cache
+
     def save(self, data: dict) -> Path:
         if not isinstance(data, dict):
             raise TypeError("memory body must be a dict")
@@ -152,8 +193,16 @@ class EncryptedMemory:
         token = self._cipher.encrypt(plain)
         path = _memory_path(self.project_dir)
         _atomic_write(path, token)
+        # R3.C2 — keep the cache coherent with what we just persisted.
+        self._cache = data
         log.info("memory_saved", bytes=len(plain))
         return path
+
+    def invalidate_cache(self) -> None:
+        """Force the next load() to re-read from disk. Useful when an
+        external process (a second NyraHost, the snapshot exporter) may
+        have rewritten the file under us."""
+        self._cache = None
 
     def set_key(self, key: str, value) -> dict:
         data = self.load()

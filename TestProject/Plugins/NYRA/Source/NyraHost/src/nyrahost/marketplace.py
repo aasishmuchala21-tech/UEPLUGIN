@@ -55,8 +55,59 @@ MARKETPLACE_TRUST_ROOTS: Final[tuple[str, ...]] = (
     # 64-hex Ed25519 public key — placeholder until the founder
     # generates the real signing key alongside the marketplace
     # deployment (see legal/ev-cert-acquisition-runbook.md neighbours).
+    # R1.I4 / R2.I2 fix from the full-codebase review: this all-zeros
+    # value is detected and rejected explicitly below so the marketplace
+    # handler surfaces -32073 marketplace_not_configured at the boundary
+    # instead of silently failing every install with -32072
+    # signature_invalid.
     "0000000000000000000000000000000000000000000000000000000000000000",
 )
+
+_TRUST_ROOT_PLACEHOLDER: Final[str] = "0" * 64
+
+# R2.C1 fix: listing_id must be a slug-shaped token; anything else opens
+# the path-traversal door (`../../.ssh/authorized_keys` etc.).
+import re  # noqa: E402
+_LISTING_ID_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+
+# R2.I4 fix: download_url must match a small host allowlist regardless of
+# Privacy Mode state. Adding to this list is a deliberate operator action.
+_DOWNLOAD_URL_HOST_ALLOWLIST: Final[frozenset[str]] = frozenset({
+    "marketplace.nyra.ai",
+    "fab.com",
+})
+
+
+def _trust_roots_configured() -> bool:
+    """R1.I4 / R2.I2 — return False when the trust-root list is still the
+    all-zeros placeholder, so the install handler can refuse with a clear
+    'not configured' error instead of letting every signature verification
+    fail downstream."""
+    return any(root != _TRUST_ROOT_PLACEHOLDER for root in MARKETPLACE_TRUST_ROOTS)
+
+
+def _validate_listing_id(listing_id: str) -> Optional[str]:
+    """Return error-detail string if invalid, None if OK."""
+    if not isinstance(listing_id, str) or not listing_id:
+        return "missing"
+    if not _LISTING_ID_RE.match(listing_id):
+        return f"listing_id={listing_id!r} must match {_LISTING_ID_RE.pattern}"
+    return None
+
+
+def _validate_download_url_host(url: str) -> Optional[str]:
+    """R2.I4 — return error-detail string if host isn't in the allowlist."""
+    from urllib.parse import urlparse
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return f"download_url={url!r} could not be parsed"
+    if host not in _DOWNLOAD_URL_HOST_ALLOWLIST:
+        return (
+            f"download_url host {host!r} not in allowlist "
+            f"{sorted(_DOWNLOAD_URL_HOST_ALLOWLIST)}"
+        )
+    return None
 
 
 @dataclass(frozen=True)
@@ -192,11 +243,23 @@ class MarketplaceClient:
 
     async def install_listing(self, listing: Listing, *,
                               user_tools_dir: Path) -> Path:
+        # R2.C1 fix: belt-and-suspenders. Even if a caller bypassed the
+        # handler-layer slug validation, ensure the resolved target lives
+        # inside user_tools_dir.
+        detail = _validate_listing_id(listing.listing_id)
+        if detail is not None:
+            raise ValueError(detail)
         blob = await self.download_blob(listing)
         user_tools_dir.mkdir(parents=True, exist_ok=True)
-        # T-17-02: filename is the listing id, never the user-supplied name,
-        # so a hostile listing can't path-traverse via "../../etc/passwd.py".
         target = user_tools_dir / f"market_{listing.listing_id}.py"
+        resolved_target = target.resolve()
+        resolved_root = user_tools_dir.resolve()
+        try:
+            resolved_target.relative_to(resolved_root)
+        except ValueError:
+            raise ValueError(
+                f"listing_id={listing.listing_id!r} resolves outside user_tools_dir"
+            )
         target.write_bytes(blob)
         log.info("marketplace_installed", listing_id=listing.listing_id, target=str(target))
         return target
@@ -222,6 +285,16 @@ class MarketplaceHandlers:
         return {"listings": [l.to_dict() for l in listings]}
 
     async def on_install(self, params: dict, session=None, ws=None) -> dict:
+        # R1.I4 fix: refuse with a clear error if the trust roots haven't
+        # been provisioned. Better than letting every install fail
+        # downstream with -32072 signature_invalid.
+        if not _trust_roots_configured():
+            return _err(
+                -32073,
+                "marketplace_not_configured",
+                "MARKETPLACE_TRUST_ROOTS still holds the all-zeros placeholder; "
+                "set a real Ed25519 public key before enabling marketplace installs.",
+            )
         # The panel sends the entire Listing it picked, so we don't re-fetch.
         try:
             listing = Listing(
@@ -237,6 +310,19 @@ class MarketplaceHandlers:
             )
         except KeyError as exc:
             return _err(ERR_BAD_INPUT, "missing_field", str(exc))
+
+        # R2.C1 fix: slug-shape listing_id before it touches the filesystem.
+        detail = _validate_listing_id(listing.listing_id)
+        if detail is not None:
+            return _err(ERR_BAD_INPUT, "invalid_listing_id", detail)
+
+        # R2.I4 fix: download_url must be on the allowlist regardless of
+        # Privacy Mode state — Privacy Mode is an additional gate, not the
+        # only one. Refuses SSRF to cloud-metadata endpoints, internal
+        # services, file://, etc.
+        detail = _validate_download_url_host(listing.download_url)
+        if detail is not None:
+            return _err(ERR_BAD_INPUT, "invalid_download_url", detail)
         try:
             path = await self._client.install_listing(listing,
                                                        user_tools_dir=self._dir)
@@ -256,7 +342,19 @@ class MarketplaceHandlers:
         listing_id = params.get("listing_id")
         if not isinstance(listing_id, str) or not listing_id:
             return _err(ERR_BAD_INPUT, "missing_field", "listing_id")
+        # R2.C1 fix: same slug-shape gate as on_install. Without it, an
+        # uninstall call could delete arbitrary files via crafted
+        # listing_id like '../../some/important.py'.
+        detail = _validate_listing_id(listing_id)
+        if detail is not None:
+            return _err(ERR_BAD_INPUT, "invalid_listing_id", detail)
         target = self._dir / f"market_{listing_id}.py"
+        # Belt-and-suspenders: ensure resolved target stays inside _dir.
+        try:
+            target.resolve().relative_to(self._dir.resolve())
+        except ValueError:
+            return _err(ERR_BAD_INPUT, "invalid_listing_id",
+                        f"listing_id={listing_id!r} resolves outside user_tools_dir")
         if not target.exists():
             return {"removed": False, "listing_id": listing_id}
         try:

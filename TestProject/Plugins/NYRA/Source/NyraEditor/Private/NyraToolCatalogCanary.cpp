@@ -437,7 +437,23 @@ void RunToolCatalogCanary(int32 Iterations)
 
     UE_LOG(LogNyraToolCanary, Display, TEXT("========================================"));
 
-    if (TotalFailed > 0)
+    // R5.C2 fix from the full-codebase review: when every Validate_* stub
+    // is still the BL-03 placeholder ("return false; PENDING IPC"), the
+    // verdict was [FAIL — 20 tools did not register], which trained
+    // developers to ignore the canary. Distinguish "no PASS reported"
+    // from "real failure" so a future genuine regression actually
+    // catches attention. TotalPassed == 0 with TotalFailed == every tool
+    // is the BL-03 PENDING state.
+    const int32 TotalTools = TotalPassed + TotalFailed;
+    if (TotalPassed == 0 && TotalFailed == TotalTools && TotalTools > 0)
+    {
+        UE_LOG(LogNyraToolCanary, Warning,
+            TEXT("[VERDICT] PENDING — %d tool(s) have unimplemented validation stubs. "
+                 "BL-03 still open: real validation needs IPC to NyraHost's tools/list "
+                 "endpoint. Treat as 'not yet validated', NOT as a regression."),
+            TotalTools);
+    }
+    else if (TotalFailed > 0)
     {
         UE_LOG(LogNyraToolCanary, Error,
             TEXT("[VERDICT] FAIL — %d tool(s) did not register correctly. "

@@ -23,6 +23,11 @@ from typing import Any, Optional
 
 import structlog
 
+# R2.C2 fix from the full-codebase review: route every outbound
+# Messages-API call through PRIVACY_GUARD so Privacy Mode prevents
+# screenshots from being sent to api.anthropic.com.
+from nyrahost.privacy_guard import GUARD as PRIVACY_GUARD
+
 log = structlog.get_logger("nyrahost.external.computer_use.backend_anthropic")
 
 # computer_20251124 long-edge cap (Opus 4.7) — matches actions.py.
@@ -122,6 +127,11 @@ class AnthropicComputerUseBackend:
                 ),
             },
         ]
+        # R2.C2 fix: Privacy Mode must block computer-use's outbound API call.
+        # Otherwise a studio enabling Privacy Mode to keep unreleased UE
+        # assets off cloud servers would still send screenshots of their
+        # screen (containing those assets) to api.anthropic.com.
+        PRIVACY_GUARD.assert_allowed("https://api.anthropic.com")
         try:
             resp = self._client.messages.create(
                 model=self._model,

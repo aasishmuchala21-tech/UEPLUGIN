@@ -141,7 +141,10 @@ def test_marketplace_install_signature_invalid(tmp_path):
     async def _fake_download(self, listing):
         # Re-raise the same path the real code takes
         raise PermissionError("signature_invalid")
-    with patch.object(MarketplaceClient, "download_blob", new=_fake_download):
+    # R1.I4 fix added a not_configured gate; patch _trust_roots_configured
+    # so the test exercises the signature-invalid path it cares about.
+    with patch("nyrahost.marketplace._trust_roots_configured", return_value=True), \
+         patch.object(MarketplaceClient, "download_blob", new=_fake_download):
         h = MarketplaceHandlers(client, user_tools_dir=tmp_path)
         out = asyncio.run(h.on_install(bad_listing))
     assert out["error"]["code"] == -32073
@@ -156,7 +159,8 @@ def test_marketplace_install_blob_too_large(tmp_path):
     }
     async def _fake_download(self, listing):
         raise ValueError(f"blob exceeds {MAX_BLOB_BYTES} bytes")
-    with patch.object(MarketplaceClient, "download_blob", new=_fake_download):
+    with patch("nyrahost.marketplace._trust_roots_configured", return_value=True), \
+         patch.object(MarketplaceClient, "download_blob", new=_fake_download):
         h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
         out = asyncio.run(h.on_install(listing))
     assert out["error"]["code"] == -32075
@@ -164,7 +168,8 @@ def test_marketplace_install_blob_too_large(tmp_path):
 
 def test_marketplace_install_missing_field(tmp_path):
     h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
-    out = asyncio.run(h.on_install({"name": "x"}))
+    with patch("nyrahost.marketplace._trust_roots_configured", return_value=True):
+        out = asyncio.run(h.on_install({"name": "x"}))
     assert out["error"]["code"] == -32602
 
 
@@ -184,13 +189,66 @@ def test_marketplace_install_writes_file(tmp_path):
         "signature_hex": "00" * 64,
         "public_key_hex": MARKETPLACE_TRUST_ROOTS[0],
     }
-    with patch.object(MarketplaceClient, "download_blob", new=_fake_download):
+    with patch("nyrahost.marketplace._trust_roots_configured", return_value=True), \
+         patch.object(MarketplaceClient, "download_blob", new=_fake_download):
         h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
         out = asyncio.run(h.on_install(listing))
     assert out["installed"] is True
     target = tmp_path / "market_good.py"
     assert target.exists()
     assert target.read_bytes() == blob
+
+
+# R2.C1 fix regression tests — listing_id slug validation + path containment
+def test_marketplace_install_rejects_path_traversal_listing_id(tmp_path):
+    listing = {
+        "listing_id": "../../etc/passwd",
+        "download_url": "https://marketplace.nyra.ai/x",
+        "signature_hex": "00" * 64,
+        "public_key_hex": "11" * 32,
+    }
+    with patch("nyrahost.marketplace._trust_roots_configured", return_value=True):
+        h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
+        out = asyncio.run(h.on_install(listing))
+    assert out["error"]["code"] == -32602
+    assert out["error"]["message"] == "invalid_listing_id"
+
+
+def test_marketplace_uninstall_rejects_path_traversal_listing_id(tmp_path):
+    h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
+    out = asyncio.run(h.on_uninstall({"listing_id": "../../.ssh/authorized_keys"}))
+    assert out["error"]["code"] == -32602
+    assert out["error"]["message"] == "invalid_listing_id"
+
+
+def test_marketplace_install_rejects_non_allowlisted_host(tmp_path):
+    # R2.I4 fix: download_url host must be in the static allowlist.
+    listing = {
+        "listing_id": "ok-slug",
+        "download_url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/default",
+        "signature_hex": "00" * 64,
+        "public_key_hex": "11" * 32,
+    }
+    with patch("nyrahost.marketplace._trust_roots_configured", return_value=True):
+        h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
+        out = asyncio.run(h.on_install(listing))
+    assert out["error"]["code"] == -32602
+    assert out["error"]["message"] == "invalid_download_url"
+
+
+def test_marketplace_install_refuses_when_trust_roots_unconfigured(tmp_path):
+    # R1.I4 fix: with the default all-zeros placeholder still in place,
+    # on_install must return -32073 marketplace_not_configured early.
+    listing = {
+        "listing_id": "abc",
+        "download_url": "https://marketplace.nyra.ai/x",
+        "signature_hex": "00" * 64,
+        "public_key_hex": "11" * 32,
+    }
+    h = MarketplaceHandlers(MarketplaceClient(), user_tools_dir=tmp_path)
+    out = asyncio.run(h.on_install(listing))
+    assert out["error"]["code"] == -32073
+    assert out["error"]["message"] == "marketplace_not_configured"
 
 
 # ---------- 17-C multiplayer ----------

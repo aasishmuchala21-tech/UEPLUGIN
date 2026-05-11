@@ -2,7 +2,7 @@
 
 ## The installer won't run / SmartScreen flags it
 
-NYRA is signed with an EV code-signing certificate (acquisition runbook in `legal/ev-cert-acquisition-runbook.md`). If you see an "Unrecognised app" SmartScreen warning, you almost certainly downloaded a pre-1.0 unsigned beta — pull the latest release from `nyra.ai/download` which is signed.
+NYRA is signed with an EV code-signing certificate (acquisition runbook in `legal/ev-cert-acquisition-runbook.md`). If you see an "Unrecognised app" SmartScreen warning, you almost certainly downloaded a pre-1.0 unsigned beta — pull the latest release from <https://github.com/aasishmuchala21-tech/UEPLUGIN/releases> (signed binaries land there once the EV cert clears; see Phase 0 calendar items). The `nyra.ai/download` URL referenced in earlier drafts is not yet owned by this project — see `.planning/phases/00-legal-brand-gate/trademark/00-03-verdict-and-reservations.md` for trademark/domain status (R6.I4 fix from the full-codebase review).
 
 ## "Plugin failed to load" on editor startup
 

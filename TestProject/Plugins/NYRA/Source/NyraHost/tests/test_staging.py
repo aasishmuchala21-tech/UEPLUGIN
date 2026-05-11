@@ -86,7 +86,9 @@ class TestStagingManifest:
         existing = manifest.find_by_hash(
             tool="meshy",
             operation="image-to-3d",
-            input_hash=manifest._compute_hash(str(img_path)),
+            # R5.I1 fix from the full-codebase review: call the public
+            # compute_hash() instead of the _compute_hash shim.
+            input_hash=manifest.compute_hash(str(img_path)),
         )
 
         assert existing == job_id_1

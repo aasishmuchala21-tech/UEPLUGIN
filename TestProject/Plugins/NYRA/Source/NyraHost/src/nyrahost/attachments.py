@@ -148,6 +148,13 @@ def ingest_attachment(
     _PATH_BLOCKLIST = (
         "/etc/",
         "/root/",
+        # R2.I3 fix from the full-codebase review: macOS's /etc and /var
+        # are symlinks to /private/etc and /private/var. After
+        # resolve(strict=True), an attachment path like /etc/passwd
+        # becomes /private/etc/passwd, bypassing the /etc/ entry.
+        "/private/etc/",
+        "/private/var/db/",
+        "/private/var/root/",
         "c:/windows/",
         "c:/users/default/",
         # User SSH/AWS/credentials directories on POSIX and Windows.

@@ -59,9 +59,15 @@ public class NyraEditor : ModuleRules
             "AnimGraph",
             "AnimGraphRuntime",
             "BlueprintGraph",
-            // Plan 09 LDA-01 — procedural blockout via GeometryScript.
-            "GeometryScriptingCore",
-            "GeometryScriptingEditor",
+            // R6.I3 fix from the full-codebase review: removed
+            // "GeometryScriptingCore" + "GeometryScriptingEditor".
+            // Phase 9 LDA-01's blockout work is done entirely in Python
+            // templates (blockout.py.j2 calls unreal.GeometryScript_*
+            // via UE's Python scripting plugin). No NyraEditor C++
+            // source includes any GeometryScript header, so the modules
+            // were dead PrivateDependencyModuleNames that only inflated
+            // link time. The .uplugin still declares GeometryScripting
+            // as a plugin dep so the Python side keeps working.
         });
 
         // Stage NyraHost + NyraInfer binaries when the plugin is packaged.

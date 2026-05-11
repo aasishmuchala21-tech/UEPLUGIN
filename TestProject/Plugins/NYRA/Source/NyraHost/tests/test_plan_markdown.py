@@ -20,7 +20,12 @@ def gate(tmp_path: Path) -> NyraPermissionGate:
 
 
 def _seed_preview(gate: NyraPermissionGate, plan_id: str = "abc12345") -> None:
-    asyncio.get_event_loop().run_until_complete(
+    # R5.C1 fix from the full-codebase review: PR #3's T1 fix moved the
+    # public test to asyncio.run() but left this helper on the
+    # deprecated asyncio.get_event_loop().run_until_complete() — which
+    # also raises on Python 3.12+. Closing the gap so every test in
+    # this file is Py-3.12-safe.
+    asyncio.run(
         gate.generate_preview(
             plan_id,
             [

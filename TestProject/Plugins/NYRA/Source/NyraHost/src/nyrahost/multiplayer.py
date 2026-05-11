@@ -27,6 +27,7 @@ the same MultiplayerBackend protocol, so handler tests are hermetic.
 from __future__ import annotations
 
 import asyncio
+import json  # R3.I4 — hoisted from deferred import inside post_event hot path
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -177,7 +178,7 @@ class LocalRoomBackend:
                          kind: str, payload: dict) -> EventEnvelope:
         if kind not in ALLOWED_KINDS:
             raise ValueError(f"kind {kind!r} not in {sorted(ALLOWED_KINDS)}")
-        import json
+        # R3.I4: json is now imported at module level
         # Payload size check
         encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         if len(encoded) > MAX_PAYLOAD_BYTES:

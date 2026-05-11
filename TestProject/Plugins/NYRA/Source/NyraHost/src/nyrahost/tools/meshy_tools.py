@@ -155,12 +155,19 @@ class MeshyImageTo3DTool(NyraTool):
         # Start background polling task on NyraHost's event loop.
         # _poll_meshy_and_update_manifest is an async fn. When mocked (e.g. in tests)
         # it may be a regular function — detect and handle accordingly.
+        # R1.C1 fix from the full-codebase review: pass Phase 19-D low_poly
+        # params through to the background task. Previously the poll
+        # function tried to read `params` from a closure scope that didn't
+        # exist, raising NameError on every call; the asyncio.create_task
+        # swallowed it silently, leaving the manifest stuck at "pending".
         _coro = _poll_meshy_and_update_manifest(
             job_id=job_id,
             image_path=image_path,
             task_type=task_type,
             target_folder=target_folder,
             api_key=api_key,
+            low_poly=bool(params.get("low_poly", False)),
+            target_polycount=params.get("target_polycount"),
         )
         try:
             loop = asyncio.get_running_loop()
@@ -190,15 +197,25 @@ async def _poll_meshy_and_update_manifest(
     task_type: str,
     target_folder: str,
     api_key: str,
+    low_poly: bool = False,
+    target_polycount: int | None = None,
 ) -> None:
-    """Background task: poll Meshy and update the manifest entry on completion."""
+    """Background task: poll Meshy and update the manifest entry on completion.
+
+    R1.C1 fix from the full-codebase review: `low_poly` and `target_polycount`
+    are now explicit kwargs. Previously these were read from a `params`
+    closure that didn't exist in this module-level function's scope,
+    raising NameError silently on every Meshy call.
+    """
     manifest = StagingManifest()
     try:
         client = MeshyClient(api_key=api_key)
-        # Phase 19-D smart low-poly toggle.
-        _low_poly = bool(params.get("low_poly", False))
-        _target_polycount = params.get("target_polycount")
-        result = await client.image_to_3d(image_path=image_path, low_poly=_low_poly, target_polycount=_target_polycount, task_type=task_type)
+        result = await client.image_to_3d(
+            image_path=image_path,
+            low_poly=low_poly,
+            target_polycount=target_polycount,
+            task_type=task_type,
+        )
 
         if result.status == "completed" and result.glb_url:
             # Phase 5 WR-01: SSRF defence. The glb_url is supplied by
@@ -235,12 +252,11 @@ async def _poll_meshy_and_update_manifest(
                     host=host,
                     scheme=parsed.scheme,
                 )
-                return NyraToolResult.ok({
-                    "job_id": job_id,
-                    "task_id": result.task_id,
-                    "status": "failed",
-                    "error": "untrusted_glb_host",
-                })
+                # R1.N2 fix: this is a background coroutine (_poll_meshy_...).
+                # Its return value is never observed by the asyncio task
+                # caller, so returning a NyraToolResult here was misleading.
+                # Bare return; the manifest update above records the failure.
+                return
 
             # Download GLB to staging directory
             staging_root = manifest._root

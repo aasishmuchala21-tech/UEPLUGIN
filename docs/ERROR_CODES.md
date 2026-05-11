@@ -73,3 +73,69 @@ verbatim inside an error bubble.
 | -32038 | meshy_rig_failed | nyrahost.tools.rigging_tools |
 | -32039 | retarget_render_failed | nyrahost.tools.retarget_tools |
 | -32040 | blockout_render_failed | nyrahost.tools.level_design_tools |
+
+## Phase 10–19 additions (R6.C2 backfill from the full-codebase review)
+
+The codes below were emitted by handlers shipped in Phases 10 through 19 but
+not documented here. The C++ panel's error-bubble button mapping and any
+downstream MCP-host integrators rely on this table being complete.
+
+| Code | Message | Module / Phase |
+|---|---|---|
+| -32041 | instructions_too_large | nyrahost.handlers.instructions (Phase 10-1) |
+| -32042 | instructions_write_failed | nyrahost.handlers.instructions (Phase 10-1) |
+| -32043 | unknown_model | nyrahost.handlers.model_settings (Phase 10-3) |
+| -32044 | composer_search_failed | nyrahost.handlers.composer (Phase 11-C) |
+| -32045 | unknown_target | nyrahost.handlers.mcp_install (Phase 12-A) |
+| -32046 | install_failed | nyrahost.handlers.mcp_install (Phase 12-A) |
+| -32047 | project_not_found | nyrahost.tools.headless_ue (Phase 12-B) |
+| -32048 | editor_not_found | nyrahost.tools.headless_ue (Phase 12-B) |
+| -32049 | launch_failed | nyrahost.tools.headless_ue (Phase 12-B) |
+| -32050 | no_session | nyrahost.tools.headless_ue (Phase 12-B) |
+| -32051 | thread_limit_reached | nyrahost.handlers.threads (Phase 13-A) |
+| -32052 | unknown_thread | nyrahost.handlers.threads (Phase 13-A) |
+| -32053 | timeline_render_failed | nyrahost.tools.timeline_tools (Phase 13-B / 19-G) |
+| -32054 | hygiene_render_failed | nyrahost.tools.asset_hygiene (Phase 13-C) |
+| -32055 | perf_budget_failed | nyrahost.tools.perf_budget (Phase 13-E) |
+| -32056 | reproducibility_out_of_range | nyrahost.handlers.reproducibility (Phase 14-A) |
+| -32057 | user_tool_not_found | nyrahost.handlers.user_tools (Phase 14-D) |
+| -32058 | user_tool_failed | nyrahost.handlers.user_tools (Phase 14-D) |
+| -32059 | crash_rca_failed | nyrahost.tools.crash_rca (Phase 14-E) |
+| -32060 | test_gen_failed | nyrahost.tools.test_gen (Phase 14-F) |
+| -32061 | doc_from_code_failed | nyrahost.tools.doc_from_code (Phase 14-G) |
+| -32062 | replication_scaffold_failed | nyrahost.tools.replication_scaffolder (Phase 14-H) |
+| -32063 | encrypted_memory_too_large | nyrahost.handlers.encrypted_memory (Phase 15-A) |
+| -32064 | encrypted_memory_failed | nyrahost.handlers.encrypted_memory (Phase 15-A) |
+| -32065 | localization_failed | nyrahost.tools.localization (Phase 15-B) |
+| -32066 | cinematic_failed | nyrahost.tools.cinematic (Phase 15-C) |
+| -32067 | blueprint_review_failed | nyrahost.tools.blueprint_review (Phase 15-F) |
+| -32068 | pcg_scatter_failed | nyrahost.tools.pcg_scatter (Phase 16-A) |
+| -32069 | blueprint_review_llm_failed | nyrahost.tools.blueprint_review_llm (Phase 16-D) |
+| -32070 | local_sd_not_installed | nyrahost.external.local_sd (Phase 17-A) |
+| -32071 | local_sd_infer_failed | nyrahost.external.local_sd (Phase 17-A) |
+| -32072 | privacy_mode_active | shared (audio_gen, fab_search, marketplace, multiplayer, computer_use, meshy) |
+| -32073 | marketplace_signature_invalid / marketplace_not_configured | nyrahost.marketplace (Phase 17-B; PR-#4 R1.I4 adds the not-configured variant) |
+| -32074 | marketplace_network_failed | nyrahost.marketplace (Phase 17-B) |
+| -32075 | marketplace_blob_too_large | nyrahost.marketplace (Phase 17-B) |
+| -32076 | multiplayer_no_room | nyrahost.multiplayer (Phase 17-C) |
+| -32077 | multiplayer_backend_failed | nyrahost.multiplayer (Phase 17-C) |
+| -32078 | snapshot_failed | nyrahost.snapshot (Phase 18-B) |
+| -32079 | recovery_no_resume | nyrahost.recovery (Phase 18-C) |
+| -32080 | recovery_failed | nyrahost.recovery (Phase 18-C) |
+| -32081 | audio_gen_auth_failed | nyrahost.tools.audio_gen (Phase 19-A) |
+| -32082 | audio_gen_failed | nyrahost.tools.audio_gen (Phase 19-A) |
+| -32083 | fab_search_failed | nyrahost.tools.fab_search (Phase 19-B) |
+| -32084 | character_replace_failed | nyrahost.tools.character_replace (Phase 19-E) |
+| -32085 | todo_list_unknown | nyrahost.handlers.todos (Phase 19-I) |
+
+### Suggested panel-button mappings (Slate)
+
+| Code | Button | Action |
+|---|---|---|
+| -32041, -32063, -32075 | `[Trim]` | Open the relevant blob (instructions / memory / marketplace listing) for trimming |
+| -32045 | `[Pick another IDE]` | Re-open the IDE-target dropdown |
+| -32047, -32048 | `[Set UE path]` | Open Settings → UE Engine Path |
+| -32070 | `[Install local SD]` | Open the `pip install` runbook |
+| -32072 | `[Disable Privacy Mode]` | Toggle Settings → Privacy Mode off (user-acknowledged) |
+| -32073 | `[Open marketplace settings]` | If `marketplace_not_configured`, open the trust-root config |
+| -32085 | `[Open todos]` | Open the per-project todos panel |

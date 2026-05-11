@@ -83,13 +83,54 @@ def _redact(d: dict) -> dict:
 
 @dataclass
 class AuditLog:
-    """Per-project append-only JSONL audit log."""
+    """Per-project append-only JSONL audit log.
+
+    R3.C1 fix from the full-codebase review: the log keeps running
+    in-memory counters so ``HealthDashboard.snapshot()`` does not have
+    to re-read and re-parse the entire JSONL file on every 60s poll.
+    The counters are updated synchronously alongside every ``_write``
+    and exposed via ``stats(now=...)``.
+    """
 
     project_dir: Path
 
     def __post_init__(self) -> None:
         self.path = _audit_path(self.project_dir)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        # R3.C1 — running stats. `_event_timestamps_recent` is a ring
+        # buffer of the last RECENT_RING_SIZE event ts values, used to
+        # answer "how many events in the last `window_s` seconds?"
+        # without touching the file.
+        self._event_count_total: int = 0
+        self._event_timestamps_recent: list[float] = []
+        # Seed from any existing file content on construction so a
+        # warm-restart doesn't undercount.
+        for rec in self.read_all():
+            self._event_count_total += 1
+            ts = rec.get("ts")
+            if isinstance(ts, (int, float)):
+                self._event_timestamps_recent.append(float(ts))
+        if len(self._event_timestamps_recent) > self._RECENT_RING_SIZE:
+            self._event_timestamps_recent = self._event_timestamps_recent[
+                -self._RECENT_RING_SIZE:
+            ]
+
+    # ClassVar so dataclass doesn't treat this as an instance field.
+    from typing import ClassVar as _ClassVar  # noqa: E402, PLC0415
+    _RECENT_RING_SIZE: _ClassVar[int] = 1000
+
+    def stats(self, *, now: float | None = None, window_s: float = 600.0) -> dict:
+        """Return cached counters — no file I/O.
+
+        ``recent`` is the number of events with ts >= now - window_s
+        among the last ``_RECENT_RING_SIZE`` events tracked. ``total``
+        is the absolute count since the log was first opened.
+        """
+        if now is None:
+            now = time.time()
+        cutoff = now - window_s
+        recent = sum(1 for t in self._event_timestamps_recent if t >= cutoff)
+        return {"total": self._event_count_total, "recent": recent}
 
     def _write(self, kind: str, payload: dict) -> dict:
         record = {
@@ -111,6 +152,15 @@ class AuditLog:
         # logging (kernel page cache + monitor-mode sync is enough).
         with self.path.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
+        # R3.C1 — update running counters in memory so health/snapshot
+        # never has to re-read the file.
+        self._event_count_total += 1
+        self._event_timestamps_recent.append(record["ts"])
+        if len(self._event_timestamps_recent) > self._RECENT_RING_SIZE:
+            # Trim from the front; cheap with append-only workload.
+            self._event_timestamps_recent = self._event_timestamps_recent[
+                -self._RECENT_RING_SIZE:
+            ]
         return record
 
     # --- typed event entries ---

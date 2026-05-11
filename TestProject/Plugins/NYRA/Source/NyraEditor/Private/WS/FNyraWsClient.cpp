@@ -7,6 +7,15 @@
 #include "WebSocketsModule.h"
 #include "Dom/JsonObject.h"
 
+FNyraWsClient::~FNyraWsClient()
+{
+    // R4.I1 fix from the full-codebase review: Disconnect() clears every
+    // socket delegate before Socket.Reset(). If we don't call it here,
+    // any IWebSocket callback the underlying module has already queued
+    // dispatches into our freed lambdas.
+    Disconnect();
+}
+
 void FNyraWsClient::Connect(const FString& Host, int32 Port, const FString& AuthToken)
 {
     // BL-05: bump the connection generation BEFORE creating the new socket

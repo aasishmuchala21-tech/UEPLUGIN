@@ -96,22 +96,24 @@ void SNyraHistoryDrawer::Construct(const FArguments& InArgs)
         ]
     ];
 
-    // Single OnResponse binding for the drawer. PendingResponses routes
-    // envelopes to per-request lambdas keyed by rpc id.
+    // R4.I2: OnResponse is now a multicast delegate. Store our subscription
+    // handle so the destructor removes only our own binding, not every
+    // other panel's drawer. PendingResponses routes envelopes to per-rpc-id
+    // lambdas.
     if (GNyraSupervisor.IsValid())
     {
-        GNyraSupervisor->OnResponse.BindRaw(this, &SNyraHistoryDrawer::HandleResponse);
+        ResponseHandle = GNyraSupervisor->OnResponse.AddRaw(this, &SNyraHistoryDrawer::HandleResponse);
     }
 }
 
 SNyraHistoryDrawer::~SNyraHistoryDrawer()
 {
-    // Unbind OnResponse on destruction so a late response after tab close
-    // does not fire HandleResponse on a dead widget. Plan 10's delegate is
-    // single-bind so Unbind() is the symmetric inverse of BindRaw.
-    if (GNyraSupervisor.IsValid())
+    // Remove only our own OnResponse subscription (R4.I2 multicast change).
+    // A late response after tab close cannot fire HandleResponse on a dead
+    // widget because the handle is gone; other panels' drawers stay subscribed.
+    if (GNyraSupervisor.IsValid() && ResponseHandle.IsValid())
     {
-        GNyraSupervisor->OnResponse.Unbind();
+        GNyraSupervisor->OnResponse.Remove(ResponseHandle);
     }
     PendingResponses.Empty();
 }
