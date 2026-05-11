@@ -12,6 +12,7 @@ does NOT run inside the NyraHost asyncio process.
 """
 from __future__ import annotations
 
+import json
 import string
 from pathlib import Path
 from typing import Final, Optional
@@ -40,14 +41,29 @@ def render_retarget_script(
     source_rig: str = DEFAULT_SOURCE_RIG,
     out_path: str = DEFAULT_OUT_PATH,
 ) -> str:
-    """Render retarget.py.j2 with caller-supplied UE asset paths."""
+    """Render retarget.py.j2 with caller-supplied UE asset paths.
+
+    Fix #2 from PR #1 code review: previously this used
+    ``string.Template.substitute`` to inline each path raw into a Python
+    string literal in the rendered script. A path containing a quote +
+    newline could break out and execute arbitrary code in the UE editor's
+    Python interpreter. Now mirrors the safe ``SPEC_JSON`` pattern used by
+    blockout.py.j2: serialise a dict via ``json.dumps`` and embed it in the
+    template between triple single-quotes, then parse with ``json.loads``
+    on the UE side. Defensive guard rejects strings containing a literal
+    ``'''`` so they cannot break out of the surrounding triple-quote.
+    """
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    return string.Template(template).substitute(
-        RIGGED_MESH=rigged_mesh,
-        SOURCE_MESH=source_mesh,
-        SOURCE_RIG=source_rig,
-        OUT_PATH=out_path,
-    )
+    spec = {
+        "rigged_mesh": rigged_mesh,
+        "source_mesh": source_mesh,
+        "source_rig": source_rig,
+        "out_path": out_path,
+    }
+    spec_json = json.dumps(spec, separators=(",", ":"))
+    if "'''" in spec_json:
+        raise ValueError("spec contains forbidden triple-quote sequence")
+    return string.Template(template).substitute(SPEC_JSON=spec_json)
 
 
 def _err(code: int, message: str, detail: str = "", remediation: Optional[str] = None) -> dict:

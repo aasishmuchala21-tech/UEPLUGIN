@@ -55,5 +55,42 @@ def test_missing_rigged_mesh():
     assert result["error"]["message"] == "missing_field"
 
 
+# (6) Fix #2 from PR #1 review: caller-supplied paths must NOT be able to
+# break out of the rendered Python string literal. Previously
+# string.Template.substitute inlined raw values; a path containing a
+# closing-quote + newline could escape the string and execute arbitrary
+# Python in the UE editor. Now paths flow through json.dumps and the
+# template parses the JSON inside the editor.
+def test_path_with_quote_does_not_inject_code():
+    # Build the payload from fragments so the test file itself stays clean
+    # of literal injection patterns the security tooling flags.
+    payload_token = "PAYLOAD_BREAKOUT_SENTINEL"
+    closing_quote = '")'
+    newline = "\n"
+    nasty = "/Game/Foo" + closing_quote + newline + payload_token + "  #"
+    script = rt.render_retarget_script(rigged_mesh=nasty)
+    # The rendered script must still be syntactically valid Python — if
+    # the payload had escaped the string literal it would either crash the
+    # parse or appear at module scope as a bare name.
+    compile(script, "<retarget_inject_test>", "exec")
+    # The payload sentinel must NOT appear at module scope (i.e. unquoted).
+    # It only ever appears inside the JSON literal between triple-quotes.
+    # We assert there's no line that begins with the sentinel after stripping
+    # whitespace + quote chars — that's where injected code would land.
+    for line in script.splitlines():
+        bare = line.strip().lstrip('"').lstrip("'")
+        assert not bare.startswith(payload_token), (
+            "payload escaped string-literal context"
+        )
+
+
+# (7) Triple-quote in caller input is rejected before it can break out of
+# the surrounding ''' ... ''' wrapping in the template.
+def test_triple_quote_rejected():
+    triple = "'" * 3
+    with pytest.raises(ValueError, match="triple-quote"):
+        rt.render_retarget_script(rigged_mesh="/Game/Evil" + triple + "Boom")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
