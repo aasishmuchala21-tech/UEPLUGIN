@@ -86,9 +86,13 @@ class HealthDashboard:
         scoreboard. Defaults to 0 when unknown — never silently invents
         a number.
         """
-        records = list(self.audit_log.read_all())
+        # R3.C1 fix from the full-codebase review: read pre-computed
+        # counters from AuditLog.stats() instead of re-reading and
+        # re-parsing the whole audit.jsonl file on every 60s health poll.
+        # Old code: list(self.audit_log.read_all()) — ~5-15 ms blocking
+        # I/O on the event loop after a day's session, repeated forever.
         now = time.time()
-        recent = sum(1 for r in records if now - float(r.get("ts", 0)) < recent_window_s)
+        stats = self.audit_log.stats(now=now, window_s=recent_window_s)
         notes: list[str] = []
         if self.thread_registry.count == self.thread_registry.max_threads:
             notes.append("thread_capacity_full")
@@ -100,8 +104,8 @@ class HealthDashboard:
             ts=now,
             thread_count=self.thread_registry.count,
             thread_capacity=self.thread_registry.max_threads,
-            audit_events_recent=recent,
-            audit_events_total=len(records),
+            audit_events_recent=stats["recent"],
+            audit_events_total=stats["total"],
             crash_signature_count=int(last_crash_count or 0),
             perf_violations=int(last_perf_violations or 0),
             hygiene_findings=int(last_hygiene_findings or 0),
