@@ -120,6 +120,13 @@ async def on_auto_rig(params: dict, session=None, ws=None) -> dict:
 
     # Download the rigged GLB into the staging dir.
     out_path = rigged_root / f"{job_id}.glb"
+    # Fix #3 from PR #1 code review: gate the GLB download through
+    # Privacy Mode (Phase 15-E) like the Meshy submit/poll calls already do.
+    from nyrahost.privacy_guard import GUARD as PRIVACY_GUARD, OutboundRefused
+    try:
+        PRIVACY_GUARD.assert_allowed(rigged_url)
+    except OutboundRefused as exc:
+        return _err(ERR_RIG_FAILED, "privacy_refused", str(exc))
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as dl:
             r = await dl.get(rigged_url)

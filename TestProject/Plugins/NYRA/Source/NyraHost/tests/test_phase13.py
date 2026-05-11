@@ -104,6 +104,55 @@ def test_timeline_handler_missing_blueprint_path():
     assert out["error"]["code"] == -32602
 
 
+# Fix #4 from PR #1 code review: per-kind keyframe shape validation.
+# Phase 19-G expanded ALLOWED_TRACK_KINDS without arity guards, so a
+# vector track with float-shaped keyframes used to blow up the UE
+# template's tuple-unpack helper. Now the host returns -32602 with a
+# kind-specific message.
+def test_timeline_vector_with_float_shaped_keyframes_rejected():
+    out = asyncio.run(tt.on_add_timeline({
+        "blueprint_path": "/Game/BP",
+        "track_name": "Pos",
+        "track_kind": "vector",
+        "keyframes": [[0.0, 1.0]],  # float shape — wrong for vector (needs 4)
+    }))
+    assert out["error"]["code"] == -32602
+    assert "vector" in out["error"]["data"]["detail"]
+
+
+def test_timeline_linear_color_with_vector_keyframes_rejected():
+    out = asyncio.run(tt.on_add_timeline({
+        "blueprint_path": "/Game/BP",
+        "track_name": "Col",
+        "track_kind": "linear_color",
+        "keyframes": [[0.0, 1.0, 0.0, 0.0]],  # vector shape — needs 5 for linear_color
+    }))
+    assert out["error"]["code"] == -32602
+
+
+def test_timeline_event_with_extra_value_rejected():
+    out = asyncio.run(tt.on_add_timeline({
+        "blueprint_path": "/Game/BP",
+        "track_name": "Evt",
+        "track_kind": "event",
+        "keyframes": [[0.5, 1.0]],  # event needs only [t]
+    }))
+    assert out["error"]["code"] == -32602
+
+
+def test_timeline_keyframes_default_to_per_kind_shape():
+    # Caller omits keyframes — host must pick a kind-appropriate default,
+    # not the legacy [[0,0],[1,1]] float pair that would now blow shape
+    # validation for vector / linear_color / event.
+    for kind in ("float", "vector", "linear_color", "event"):
+        out = asyncio.run(tt.on_add_timeline({
+            "blueprint_path": "/Game/BP",
+            "track_name": "T",
+            "track_kind": kind,
+        }))
+        assert "error" not in out, f"{kind} default keyframes should be valid"
+
+
 # ---------- 13-C Asset Hygiene ----------
 
 def test_hygiene_renders_no_leftovers():

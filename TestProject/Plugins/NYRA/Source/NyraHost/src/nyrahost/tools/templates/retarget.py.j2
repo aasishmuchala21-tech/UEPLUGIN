@@ -11,14 +11,23 @@
 # Anti-patterns avoided (see PLAN_aura_killers_1wk.md §3.5):
 #   * Direct mutation of UIKRigDefinition / UIKRetargeter — uses controllers.
 #   * UAnimationBlueprintLibrary for batch retarget — uses IKRetargetBatchOperation.
+#
+# Security note (fix #2 from PR #1 code review): previously this template
+# inlined caller-supplied UE asset paths via per-field string.Template
+# substitution into a raw Python string literal, allowing code injection
+# if any path contained a closing-quote + newline. The template now
+# receives a single JSON spec the same way blockout.py.j2 does — the host
+# emits json.dumps() of a dict so embedded quotes, backslashes and
+# newlines stay inside the JSON string parse on the UE side.
 
+import json
 import unreal
 
 
 def auto_rig_and_retarget(rigged_skel_mesh_path: str,
-                          source_skel_mesh_path: str = "${SOURCE_MESH}",
-                          source_rig_path: str = "${SOURCE_RIG}",
-                          out_path: str = "${OUT_PATH}"):
+                          source_skel_mesh_path: str,
+                          source_rig_path: str,
+                          out_path: str):
     rigged_mesh = unreal.load_asset(rigged_skel_mesh_path)
     src_mesh    = unreal.load_asset(source_skel_mesh_path)
     src_rig     = unreal.load_asset(source_rig_path)
@@ -65,4 +74,14 @@ def auto_rig_and_retarget(rigged_skel_mesh_path: str,
     print(f"NYRA: retargeted {len(anim_assets)} anims to {out_path}")
 
 
-auto_rig_and_retarget("${RIGGED_MESH}")
+def main(spec_json: str):
+    spec = json.loads(spec_json)
+    auto_rig_and_retarget(
+        rigged_skel_mesh_path=spec["rigged_mesh"],
+        source_skel_mesh_path=spec["source_mesh"],
+        source_rig_path=spec["source_rig"],
+        out_path=spec["out_path"],
+    )
+
+
+main('''${SPEC_JSON}''')

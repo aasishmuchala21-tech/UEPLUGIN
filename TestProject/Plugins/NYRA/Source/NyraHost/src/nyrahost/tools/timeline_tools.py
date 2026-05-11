@@ -27,6 +27,20 @@ ALLOWED_TRACK_KINDS: Final[frozenset[str]] = frozenset(
     {"float", "vector", "linear_color", "event"}  # all 4 — Phase 19-G
 )
 
+# Fix #4 from PR #1 code review: when Phase 19-G opened ALLOWED_TRACK_KINDS
+# to all four kinds, the only validation at the render boundary remained
+# the membership check. The template helpers blindly unpack tuples
+# (`(t, vx, vy, vz)`, `(t, r, g, b, a)`), so a `vector` track that
+# accidentally received float-shaped keyframes raised ValueError deep
+# inside UE's Python interpreter, never seen by the WS caller. Pin per-kind
+# arity at the host boundary so the JSON-RPC client gets a -32602 instead.
+TRACK_KIND_ARITY: Final[dict[str, int]] = {
+    "float":        2,   # [t, value]
+    "vector":       4,   # [t, vx, vy, vz]
+    "linear_color": 5,   # [t, r, g, b, a]
+    "event":        1,   # [t]
+}
+
 TEMPLATE_PATH: Final[Path] = (
     Path(__file__).resolve().parent / "templates" / "timeline.py.j2"
 )
@@ -56,12 +70,49 @@ def render_timeline_script(
         raise ValueError("blueprint_path must be a non-empty string")
     if not isinstance(track_name, str) or not track_name:
         raise ValueError("track_name must be a non-empty string")
+
+    # Resolve keyframes: explicit caller-supplied list, or kind-appropriate
+    # default. Float defaults remain backward-compatible.
+    if keyframes is None:
+        defaults = {
+            "float":        [[0.0, 0.0], [1.0, 1.0]],
+            "vector":       [[0.0, 0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 1.0]],
+            "linear_color": [[0.0, 0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0]],
+            "event":        [[0.0]],
+        }
+        kf_list = defaults[track_kind]
+    else:
+        kf_list = keyframes
+
+    # Fix #4: per-kind shape validation — refuse mismatched keyframes
+    # at the host boundary so the UE template's tuple-unpack helpers
+    # cannot blow up deep inside the editor's Python interpreter.
+    expected_arity = TRACK_KIND_ARITY[track_kind]
+    if not isinstance(kf_list, list) or not kf_list:
+        raise ValueError("keyframes must be a non-empty list")
+    for i, kf in enumerate(kf_list):
+        if not isinstance(kf, (list, tuple)):
+            raise ValueError(
+                f"keyframes[{i}] must be a list, got {type(kf).__name__}"
+            )
+        if len(kf) != expected_arity:
+            raise ValueError(
+                f"keyframes[{i}] for track_kind={track_kind!r} must have "
+                f"exactly {expected_arity} numeric elements "
+                f"(got {len(kf)})"
+            )
+        for j, v in enumerate(kf):
+            if not isinstance(v, (int, float)) or isinstance(v, bool):
+                raise ValueError(
+                    f"keyframes[{i}][{j}] must be a number, "
+                    f"got {type(v).__name__}"
+                )
+
     spec = {
         "blueprint_path": blueprint_path,
         "track_name": track_name,
         "track_kind": track_kind,
-        "keyframes": keyframes if keyframes is not None
-                                 else [[0.0, 0.0], [1.0, 1.0]],
+        "keyframes": kf_list,
         "autoplay": bool(autoplay),
         "loop": bool(loop),
     }
@@ -109,6 +160,7 @@ __all__ = [
     "on_add_timeline",
     "render_timeline_script",
     "ALLOWED_TRACK_KINDS",
+    "TRACK_KIND_ARITY",
     "TEMPLATE_PATH",
     "ERR_BAD_INPUT",
     "ERR_TIMELINE_FAILED",

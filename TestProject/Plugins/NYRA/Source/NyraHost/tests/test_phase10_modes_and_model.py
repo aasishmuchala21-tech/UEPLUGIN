@@ -157,3 +157,64 @@ def test_settings_set_missing_conversation_id():
     h = ModelSettingsHandlers(ModelPreference())
     out = asyncio.run(h.on_set({"model": "claude-opus-4-7"}))
     assert out["error"]["code"] == -32602
+
+
+# Fix #5 from PR #1 code review: operating_mode set via set_operating_mode
+# was never consulted by generate_preview / await_decision. Agent mode
+# hung for 5 minutes at the first approval gate. These tests pin the new
+# auto-resolve semantics.
+
+def test_agent_mode_auto_approves_preview():
+    """Agent mode resolves the preview future immediately as approved."""
+    from nyrahost.safe_mode import NyraPermissionGate, PlanPreviewState
+
+    async def _run():
+        gate = NyraPermissionGate()
+        gate.set_operating_mode("agent")
+        preview = await gate.generate_preview("p-agent", [{"tool": "x"}])
+        assert preview.state == PlanPreviewState.APPROVED
+        return await asyncio.wait_for(gate.await_decision("p-agent"), timeout=1.0)
+
+    decision = asyncio.run(_run())
+    assert decision["decision"] == "approved"
+    assert decision.get("auto") == "agent_mode"
+
+
+def test_ask_mode_auto_rejects_preview():
+    """Ask mode resolves the preview future immediately as rejected."""
+    from nyrahost.safe_mode import NyraPermissionGate, PlanPreviewState
+
+    async def _run():
+        gate = NyraPermissionGate()
+        gate.set_operating_mode("ask")
+        preview = await gate.generate_preview("p-ask", [{"tool": "x"}])
+        assert preview.state == PlanPreviewState.REJECTED
+        return await asyncio.wait_for(gate.await_decision("p-ask"), timeout=1.0)
+
+    decision = asyncio.run(_run())
+    assert decision["decision"] == "rejected"
+    assert decision.get("auto") == "ask_mode"
+
+
+def test_plan_mode_still_waits_for_user_decision():
+    """Plan mode (default) preserves the original 'await user' contract.
+
+    generate_preview + await_decision MUST run in the same event loop —
+    the Future inside generate_preview is bound to whichever loop calls
+    it. Run both in one asyncio.run() body.
+    """
+    from nyrahost.safe_mode import NyraPermissionGate
+
+    async def _run():
+        gate = NyraPermissionGate()
+        # No set_operating_mode call — default "plan"
+        await gate.generate_preview("p-plan", [{"tool": "x"}])
+        try:
+            await asyncio.wait_for(gate.await_decision("p-plan"), timeout=0.05)
+        except asyncio.TimeoutError:
+            return "timeout_as_expected"
+        return "resolved_unexpectedly"
+
+    assert asyncio.run(_run()) == "timeout_as_expected", (
+        "plan mode must wait for user"
+    )

@@ -107,6 +107,15 @@ class NyraPermissionGate:
         Register a new plan for user approval.
 
         Creates a Future so the caller can await the user's decision.
+
+        Fix #5 from PR #1 code review: honour the operating mode set via
+        :meth:`set_operating_mode` instead of always waiting for an explicit
+        UE-panel decision. ``ask`` auto-rejects every mutating preview
+        (-32011 plan_rejected), ``agent`` auto-approves so autonomous runs
+        do not hang for 5 minutes at the first approval gate, ``plan`` (the
+        default) preserves the existing user-approval contract. Safe mode
+        itself remains ON unconditionally (CHAT-04 invariant) — only the
+        decision policy changes.
         """
         preview = PlanPreview(
             plan_id=plan_id,
@@ -121,8 +130,37 @@ class NyraPermissionGate:
             ],
         )
         self._previews[plan_id] = preview
-        self._futures[plan_id] = asyncio.Future()
-        log.info("preview_generated", plan_id=plan_id, steps=len(steps))
+        future: asyncio.Future = asyncio.Future()
+        self._futures[plan_id] = future
+
+        mode = self._operating_mode
+        if mode == "agent":
+            # Auto-approve so await_decision returns immediately. The
+            # preview is still recorded for audit/trace surfaces.
+            preview.state = PlanPreviewState.APPROVED
+            preview.user_confirmed = True
+            future.set_result({"decision": "approved", "auto": "agent_mode"})
+            log.info("preview_auto_approved_agent_mode", plan_id=plan_id)
+        elif mode == "ask":
+            # Ask mode refuses mutating tools at preview time so the user
+            # is forced to choose whether to escalate to plan/agent.
+            preview.state = PlanPreviewState.REJECTED
+            preview.user_confirmed = False
+            future.set_result({
+                "decision": "rejected",
+                "reason": "ask_mode_refuses_mutation",
+                "auto": "ask_mode",
+            })
+            log.info("preview_auto_rejected_ask_mode", plan_id=plan_id)
+        # "plan" — leave the future pending; await_decision waits for
+        # an explicit plan/decision request from the UE panel.
+
+        log.info(
+            "preview_generated",
+            plan_id=plan_id,
+            steps=len(steps),
+            operating_mode=mode,
+        )
         return preview
 
     async def approve(self, plan_id: str) -> bool:
