@@ -205,14 +205,15 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
     // the tab AFTER GNyraSupervisor is populated).
     if (GNyraSupervisor.IsValid())
     {
-        GNyraSupervisor->OnNotification.BindRaw(this, &SNyraChatPanel::HandleNotification);
+        NotificationHandle = GNyraSupervisor->OnNotification.AddRaw(
+            this, &SNyraChatPanel::HandleNotification);
 
         // Plan 13: state-machine banner wiring per RESEARCH §3.9 table.
         // Spawning/WaitingForHandshake/Connecting/Authenticating -> Info
         // Ready                                                   -> Hidden
         // Crashed (under 3-in-60s restart policy)                 -> Warning
         // (Unstable/OnUnstable handled separately below.)
-        GNyraSupervisor->OnStateChanged.BindLambda([this](ENyraSupervisorState NewState)
+        StateChangedHandle = GNyraSupervisor->OnStateChanged.AddLambda([this](ENyraSupervisorState NewState)
         {
             if (!Banner.IsValid()) return;
             switch (NewState)
@@ -239,7 +240,7 @@ void SNyraChatPanel::Construct(const FArguments& InArgs)
         // Plan 13: unstable-banner wiring. OnUnstable fires after the 3-in-60s
         // restart policy trips in FNyraSupervisor (Plan 10). Error kind banner
         // with [Restart] + [Open log] buttons wired to module-level actions.
-        GNyraSupervisor->OnUnstable.BindLambda([this]()
+        UnstableHandle = GNyraSupervisor->OnUnstable.AddLambda([this]()
         {
             if (!Banner.IsValid()) return;
 
@@ -301,9 +302,20 @@ SNyraChatPanel::~SNyraChatPanel()
     // don't fire into a dead Banner pointer during teardown.
     if (GNyraSupervisor.IsValid())
     {
-        GNyraSupervisor->OnNotification.Unbind();
-        GNyraSupervisor->OnStateChanged.Unbind();
-        GNyraSupervisor->OnUnstable.Unbind();
+        // L5: only remove THIS panel's handles, not every subscriber, so a
+        // sibling NYRA panel tab still receives state/notification events.
+        if (NotificationHandle.IsValid())
+        {
+            GNyraSupervisor->OnNotification.Remove(NotificationHandle);
+        }
+        if (StateChangedHandle.IsValid())
+        {
+            GNyraSupervisor->OnStateChanged.Remove(StateChangedHandle);
+        }
+        if (UnstableHandle.IsValid())
+        {
+            GNyraSupervisor->OnUnstable.Remove(UnstableHandle);
+        }
     }
 }
 

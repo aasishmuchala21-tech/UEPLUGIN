@@ -128,7 +128,18 @@ def _read_config(path: Path) -> dict:
 
 
 def _atomic_write(path: Path, data: dict) -> None:
-    """T-12-02 atomic write."""
+    """T-12-02 atomic write.
+
+    L4 from PR #2 follow-up: the tempfile is created in ``path.parent``
+    so ``os.replace`` is atomic in the normal case (same filesystem).
+    However, on Windows when ``path.parent`` is a reparse-point/junction
+    to a different physical volume, ``os.replace`` may fail with
+    ``OSError(errno.EXDEV, ...)``. Defensive fallback: copy + remove,
+    which is non-atomic but at least surfaces the write rather than
+    bubbling EXDEV to the caller.
+    """
+    import errno
+    import shutil
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = tempfile.NamedTemporaryFile(
         mode="w", encoding="utf-8", delete=False,
@@ -140,7 +151,16 @@ def _atomic_write(path: Path, data: dict) -> None:
         tmp.flush()
         os.fsync(tmp.fileno())
         tmp.close()
-        os.replace(tmp.name, path)
+        try:
+            os.replace(tmp.name, path)
+        except OSError as exc:
+            if getattr(exc, "errno", None) != errno.EXDEV:
+                raise
+            # Cross-volume — fall back to copy+remove. Not atomic, but
+            # the target dir hasn't been touched yet so a crash here
+            # leaves the previous content intact.
+            shutil.copy2(tmp.name, path)
+            os.unlink(tmp.name)
     except Exception:
         try:
             os.unlink(tmp.name)

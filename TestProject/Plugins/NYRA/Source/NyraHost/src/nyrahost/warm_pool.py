@@ -53,8 +53,17 @@ class WarmClaudePool:
     _idle: list[WarmProcess] = field(default_factory=list)
     _lock: object = None
 
-    def __post_init__(self) -> None:
-        self._lock = asyncio.Lock()
+    # L2 from PR #2 follow-up: do NOT instantiate asyncio.Lock in
+    # __post_init__. Python 3.10+ binds asyncio primitives to the running
+    # loop at construction time; constructing the pool during module
+    # import or from a synchronous test fixture (no loop running yet)
+    # would either fail or bind the lock to a stale loop. Lazy-init on
+    # first acquisition keeps the lock attached to whichever loop calls
+    # `acquire()` / `release()`.
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     @property
     def idle_count(self) -> int:
@@ -62,7 +71,7 @@ class WarmClaudePool:
 
     async def acquire(self) -> WarmProcess:
         """Return a warm process, spawning one if the pool is empty."""
-        async with self._lock:
+        async with self._get_lock():
             while self._idle:
                 cand = self._idle.pop(0)
                 age = time.time() - cand.last_used_at
@@ -76,7 +85,7 @@ class WarmClaudePool:
 
     async def release(self, proc: WarmProcess) -> None:
         """Return a process to the pool if it's still healthy + under cap."""
-        async with self._lock:
+        async with self._get_lock():
             if not _is_alive(proc):
                 log.info("warm_pool_dead_on_release", pid=proc.pid)
                 return
@@ -89,7 +98,7 @@ class WarmClaudePool:
     async def prewarm(self, count: int | None = None) -> int:
         """Spawn up to count (default max_size) processes if pool is below cap."""
         target = self.max_size if count is None else min(count, self.max_size)
-        async with self._lock:
+        async with self._get_lock():
             while len(self._idle) < target:
                 p = await self._spawn_one_locked()
                 self._idle.append(p)
@@ -97,7 +106,7 @@ class WarmClaudePool:
 
     async def drain(self) -> int:
         """Terminate all idle processes; return count drained."""
-        async with self._lock:
+        async with self._get_lock():
             drained = list(self._idle)
             self._idle.clear()
         for p in drained:

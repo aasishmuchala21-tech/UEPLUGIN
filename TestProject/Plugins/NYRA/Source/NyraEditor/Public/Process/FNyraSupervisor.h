@@ -71,11 +71,19 @@ struct FNyraInFlightRequest
     int64 OriginalId = 0;
 };
 
-DECLARE_DELEGATE_OneParam(FOnSupervisorStateChanged, ENyraSupervisorState /*NewState*/);
+// L5 from PR #2 follow-up: switched OnStateChanged / OnUnstable /
+// OnNotification from single-cast TDelegate to multi-cast TMulticastDelegate
+// so opening a second NYRA panel tab no longer silently overwrites the
+// first tab's bindings. Each subscriber receives its own FDelegateHandle
+// (returned by AddRaw / AddLambda) and is responsible for removing itself
+// on destruction. OnReady + OnResponse remain single-cast: only the
+// supervisor's internal startup state machine consumes them.
 DECLARE_DELEGATE(FOnSupervisorReady);
-DECLARE_DELEGATE(FOnSupervisorUnstable);
-DECLARE_DELEGATE_OneParam(FOnSupervisorNotification, const FNyraJsonRpcEnvelope& /*Env*/);
-DECLARE_DELEGATE_OneParam(FOnSupervisorResponse,     const FNyraJsonRpcEnvelope& /*Env*/);
+DECLARE_DELEGATE_OneParam(FOnSupervisorResponse, const FNyraJsonRpcEnvelope& /*Env*/);
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnSupervisorStateChanged, ENyraSupervisorState /*NewState*/);
+DECLARE_MULTICAST_DELEGATE(FOnSupervisorUnstable);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnSupervisorNotification, const FNyraJsonRpcEnvelope& /*Env*/);
 
 class NYRAEDITOR_API FNyraSupervisor
 {
